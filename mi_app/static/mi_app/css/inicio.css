@@ -147,3 +147,14 @@ body {
 .fade-out-Left {
   animation: fadeOutLeft 0.7s forwards;
 }
+.logo-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.logo {
+  width: 100px;
+  height: auto;
+  border-radius: 10px; /* opcional si querés bordes redondeados */
+}

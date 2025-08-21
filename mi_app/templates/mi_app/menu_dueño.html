@@ -1,0 +1,42 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rol Costurero</title>
+  <link rel="stylesheet" href="{% static 'mi_app/css/menu_dueño.css' %}">
+</head>
+ 
+<body>
+  <div class="form-container" id="form-container">
+    <!-- Logo en la parte inferior izquierda -->
+     <div class="logo-container">
+      <img src="{% static 'mi_app/img/logo.jpg' %}" alt="Logo King Importados" class="logo">
+    </div>
+      <h1 class="title">Dueño</h1>
+
+      <!-- Botones principales -->
+      <div class="buttons">
+        <button class="btn">
+          <span class="icon">＋</span> stock de inventario
+        </button>
+        <button class="btn">
+          <span class="icon">🛒</span> ventas totales
+        </button>
+        <button class="btn">
+          <span class="icon">📅</span> Pedidos
+        </button>
+        <button class="btn">
+          <span class="icon">💰</span> costos
+        </button>
+      </div>
+
+      <!-- Botones inferiores -->
+    <div class="acciones">
+      <button class="volver">Volver</button>
+      <button class="cerrar">Cerrar Sesión</button>
+    </div>
+  </div>
+</body>
+</html>

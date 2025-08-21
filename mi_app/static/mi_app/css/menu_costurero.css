@@ -1,0 +1,157 @@
+/* Reset básico */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+}
+
+body {
+  background: #222;
+  color: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+/* Contenedor principal */
+.container {
+  display: flex;
+  background: linear-gradient(135deg, #1c1c1c, #444);
+  border-radius: 8px;
+  overflow: hidden;
+  width: 950px;
+  height: 550px;
+}
+
+/* Sidebar */
+.sidebar {
+  background: #111;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 180px;
+  color: white;
+}
+
+.sidebar .logo {
+  width: 80px;
+  margin-bottom: 10px;
+}
+
+/* Contenido principal */
+.content {
+  flex: 1;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.title {
+  text-align: center;
+  font-size: 28px;
+  font-weight: bold;
+  margin-bottom: 40px;
+}
+
+/* Botones principales */
+.buttons {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+}
+
+.btn {
+  background: white;
+  color: black;
+  padding: 12px 25px;
+  border-radius: 8px;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 160px;
+  justify-content: center;
+  transition: background 0.3s;
+}
+
+.btn:hover {
+  background: #ddd;
+}
+
+.icon {
+  font-size: 18px;
+}
+/* Botones inferiores */
+.acciones {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 40px;
+}
+
+.volver, .cerrar {
+  background: #111;
+  color: white;
+  border: none;
+  padding: 10px 25px;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.volver:hover, .cerrar:hover {
+  background: #333;
+}
+/* Botones inferiores */
+.footer-buttons {
+  display: flex;
+  justify-content: space-between;
+}
+
+.btn-black {
+  background: black;
+  color: white;
+  padding: 10px 25px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-dark {
+  background: #222;
+  color: white;
+  padding: 10px 25px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+}
+.volver, .cerrar {
+  background: #111;
+  color: white;
+  border: none;
+  padding: 10px 25px;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.volver:hover, .cerrar:hover {
+  background: #333;
+}
+
+.logo-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.logo {
+  width: 100px;
+  height: auto;
+  border-radius: 10px; /* opcional si querés bordes redondeados */
+}
