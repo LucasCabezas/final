@@ -39,7 +39,11 @@ INSTALLED_APPS = [  # Lista de aplicaciones instaladas en el proyecto
     'django.contrib.staticfiles',  # Archivos estáticos
     'rest_framework',  # Django REST Framework para APIs
     'corsheaders',  # Manejo de CORS
-    'mi_app',  # Aplicación personalizada del proyecto
+    'clasificaciones',  # Aplicación personalizada para clasificaciones
+    'inventario',  # Aplicación personalizada para inventario
+    'pedidos',  # Aplicación personalizada para pedidos
+    'talleres',  # Aplicación personalizada para talleres
+    'usuarios',  # Aplicación personalizada para usuarios
 ]
 
 MIDDLEWARE = [  # Lista de middlewares que procesan las peticiones/respuestas
@@ -80,7 +84,7 @@ WSGI_APPLICATION = 'mi_proyecto.wsgi.application'  # Configuración para WSGI (s
 DATABASES = {  # Configuración de la base de datos
     'default': {
         'ENGINE': 'django.db.backends.mysql',  # Motor de base de datos (MySQL)
-        'NAME': 'proyecto_king',      # Nombre de la base de datos
+        'NAME': 'king_importados',      # Nombre de la base de datos
         'USER': 'root',       # Usuario de la base de datos
         'PASSWORD': '1234',  # Contraseña de la base de datos
         'HOST': 'localhost',              # Host de la base de datos
