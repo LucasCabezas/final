@@ -1,0 +1,24 @@
+[
+    {
+        "model": "usuarios.usuario",
+        "pk": 1,
+        "fields": {
+                    "Usuario_nombre": "Juan",
+                    "Usuario_apellido": "Pérez",
+                    "Usuario_email": "juan@example.com",
+                    "Usuario_dni": 12345678,
+                    "Usuario_contrasena": "1234"
+    }
+},
+{
+    "model": "usuarios.usuario",
+    "pk": 2,
+    "fields": {
+                "Usuario_nombre": "María",
+                "Usuario_apellido": "Gómez",
+                "Usuario_email": "maria@example.com",
+                "Usuario_dni": 87654321,
+                "Usuario_contrasena": "abcd"
+    }
+}
+]
