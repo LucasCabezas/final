@@ -20,5 +20,27 @@
                 "Usuario_dni": 87654321,
                 "Usuario_contrasena": "abcd"
     }
+},
+{
+    "model": "usuarios.usuario",
+    "pk": 3,
+    "fields": {
+                "Usuario_nombre": "Luis",
+                "Usuario_apellido": "Martínez",
+                "Usuario_email": "luis@example.com",
+                "Usuario_dni": 11223344,
+                "Usuario_contrasena": "5678"
+    }
+},
+{
+    "model": "usuarios.usuario",
+    "pk": 4,
+    "fields": {
+                "Usuario_nombre": "Ana",
+                "Usuario_apellido": "López",
+                "Usuario_email": "ana@example.com",
+                "Usuario_dni": 55667788,
+                "Usuario_contrasena": "abcd"
+    }
 }
 ]

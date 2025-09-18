@@ -1,0 +1,18 @@
+[
+    {
+        "model": "talleres.taller",
+        "pk": 1,
+        "fields": {
+            "Taller_nombre": "Taller de Costura",
+            "Taller_direccion": "Calle Falsa 123"
+    }
+},
+    {
+        "model": "talleres.taller",
+        "pk": 2,
+        "fields": {
+            "Taller_nombre": "Taller de Estampado",
+            "Taller_direccion": "Avenida Siempre Viva 456"
+    }
+}
+]
