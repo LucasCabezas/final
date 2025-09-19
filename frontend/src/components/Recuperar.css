@@ -1,5 +1,5 @@
 /* Fondo general */
-.login-container {
+.recuperar-container {
   background: url("./assets/fondo.png") no-repeat center center fixed;
   background-size: cover;
   height: 100vh;
@@ -8,8 +8,8 @@
   align-items: center;
 }
 
-/* Caja del login */
-.login-box {
+/* Caja recuperación */
+.recuperar-box {
   background-color: rgba(30, 30, 30, 0.9);
   padding: 30px;
   border-radius: 12px;
@@ -19,55 +19,32 @@
 }
 
 /* Logo */
-.logo {
-  width: 200px;
+.recuperar-box .logo {
+  width: 180px;
   margin-bottom: 15px;
-  opacity: 0.9; /* 0 = totalmente transparente, 1 = totalmente opaco */
+  opacity: 0.9;
 }
 
 /* Título */
-.login-box h3 {
+.recuperar-box h3 {
   color: #fff;
   margin-bottom: 20px;
 }
 
-/* Contenedor de inputs */
-.input-container {
-  position: relative;
-  width: 100%;
-  margin: 8px 0;
-}
-
-/* Inputs */
-.login-box input {
+/* Input */
+.recuperar-box input {
   width: 100%;
   padding: 10px;
-  padding-right: 35px; /* espacio reservado para el ojo */
+  margin: 8px 0;
   border-radius: 6px;
   border: none;
   outline: none;
   background: #f9f8f8;
-  color: #0a0a0a;
-  box-sizing: border-box;
-}
-
-/* Ojo dentro del input */
-.eye-icon {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  cursor: pointer;
-  font-size: 18px;
-  color: #555;
-}
-
-.eye-icon:hover {
-  color: #d49e01;
+  color: #080808;
 }
 
 /* Botón principal */
-.login-box button {
+.recuperar-box button {
   width: 100%;
   padding: 10px;
   margin-top: 10px;
@@ -75,24 +52,24 @@
   border-radius: 6px;
   cursor: pointer;
   background: #0a0a0a;
-  color: #fbf8f8;
+  color: #ffffff;
   font-weight: bold;
   transition: 0.3s;
 }
 
-.login-box button:hover {
+.recuperar-box button:hover {
   background: #d49e01;
 }
 
-/* Botón recuperar */
-.recuperar {
+/* Botón volver */
+.volver {
   background: transparent;
   color: #ccc;
   font-size: 0.9rem;
   margin-top: 10px;
 }
 
-.recuperar:hover {
+.volver:hover {
   text-decoration: underline;
 }
 .mensaje {
@@ -100,7 +77,8 @@
   font-weight: bold;
   font-size: 0.9rem;
 }
-* Colores según tipo de mensaje */
+
+/* Colores según tipo de mensaje */
 .mensaje.exito {
   color: #4caf50; /* Verde */
 }
