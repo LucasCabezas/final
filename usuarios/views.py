@@ -1,103 +1,164 @@
-from rest_framework.views import APIView # Importa la clase APIView de Django REST Framework
-from rest_framework.response import Response # Importa la clase Response para manejar respuestas HTTP
-from .models import Usuario, Rol, RolesXUsuarios # Importa los modelos Usuario, Rol y RolesXUsuarios desde el archivo models.py en el mismo directorio
-from .serializers import UsuarioSerializer, RolSerializer, RolesXUsuariosSerializer # Importa los serializadores desde el archivo serializers.py en el mismo directorio
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .models import Usuario, Rol, RolesXUsuarios
+from .serializers import UsuarioSerializer, RolSerializer, RolesXUsuariosSerializer
+import logging
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from .models import RolesXUsuarios, Rol
 
-# View de Usuarios
-class UsuarioList(APIView): # Define una vista para listar y crear usuarios
-    def get(self, request): # Maneja las solicitudes GET
-        usuarios = Usuario.objects.all() # Obtiene todos los objetos Usuario
-        serializer = UsuarioSerializer(usuarios, many=True) # Serializa los objetos Usuario
-        return Response(serializer.data) # Devuelve los datos serializados en la respuesta
+class RolesPorUsuarioView(APIView):
+    def get(self, request, usuario_id):
+        roles_x_usuarios = RolesXUsuarios.objects.filter(usuario_id=usuario_id)
+        data = []
+        for ru in roles_x_usuarios:
+            rol_obj = Rol.objects.get(pk=ru.rol_id)
+            data.append({
+                "rol_id": rol_obj.pk,
+                "rol_nombre": rol_obj.Rol_nombre
+            })
+        return Response(data)
+logger = logging.getLogger(__name__)
+# Login
+class LoginView(APIView):
+    def post(self, request):
+        username = request.data.get("username")
+        password = request.data.get("password")
 
-    def post(self, request): # Maneja las solicitudes POST
-        serializer = UsuarioSerializer(data=request.data) # Deserializa los datos recibidos
-        if serializer.is_valid(): # Valida los datos
-            serializer.save() # Guarda el nuevo objeto Usuario
-            return Response(serializer.data, status=201) # Devuelve los datos serializados con estado 201 (creado)
-        return Response(serializer.errors, status=400) # Devuelve los errores de validación con estado 400 (solicitud incorrecta)
+        try:
+            user = Usuario.objects.get(Usuario_email=username)
 
-class UsuarioDetail(APIView): # Define una vista para obtener, actualizar o eliminar un usuario específico
-    def get(self, request, pk): # Maneja las solicitudes GET para un usuario específico
-        usuario = Usuario.objects.get(pk=pk) # Obtiene el objeto Usuario por su clave primaria (pk)                                    
-        serializer = UsuarioSerializer(usuario) # Serializa el objeto Usuario
-        return Response(serializer.data) # Devuelve los datos serializados en la respuesta
+            if user.Usuario_contrasena == password:  # ⚠️ texto plano
+                # Obtener el rol
+                rol_x_usuario = RolesXUsuarios.objects.filter(usuario=user).first()
+                rol_nombre = rol_x_usuario.rol.Rol_nombre if rol_x_usuario else None
 
-    def put(self, request, pk): # Maneja las solicitudes PUT para actualizar un usuario específico
-        usuario = Usuario.objects.get(pk=pk) # Obtiene el objeto Usuario por su clave primaria (pk)
-        serializer = UsuarioSerializer(usuario, data=request.data) # Deserializa los datos recibidos para actualizar el objeto Usuario
-        if serializer.is_valid(): # Valida los datos
-            serializer.save() # Guarda los cambios en el objeto Usuario
-            return Response(serializer.data) # Devuelve los datos serializados en la respuesta
-        return Response(serializer.errors, status=400) # Devuelve los errores de validación con estado 400 (solicitud incorrecta)
+                return Response({
+                    "message": "Login exitoso",
+                    "usuario": f"{user.Usuario_nombre} {user.Usuario_apellido}",
+                    "id": user.Usuario_ID,
+                    "rol": rol_nombre
+                }, status=status.HTTP_200_OK)
+            else:
+                return Response({"error": "Contraseña incorrecta"}, status=status.HTTP_401_UNAUTHORIZED)
 
-    def delete(self, request, pk): # Maneja las solicitudes DELETE para eliminar un usuario específico
-        usuario = Usuario.objects.get(pk=pk) # Obtiene el objeto Usuario por su clave primaria (pk)
-        usuario.delete() # Elimina el objeto Usuario
-        return Response(status=204) # Devuelve una respuesta con estado 204 (sin contenido)
+        except Usuario.DoesNotExist:
+            return Response({"error": "Usuario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
 
-# View de Roles
-class RolList(APIView): # Define una vista para listar y crear roles
-    def get(self, request): # Maneja las solicitudes GET
-        roles = Rol.objects.all() # Obtiene todos los objetos Rol
-        serializer = RolSerializer(roles, many=True) # Serializa los objetos Rol
-        return Response(serializer.data) # Devuelve los datos serializados en la respuesta
+# Validación de correo para recuperación de contraseña
+class ValidarCorreoView(APIView):
+    def post(self, request):
+        logger.info(f"Datos recibidos en ValidarCorreoView: {request.data}")
 
-    def post(self, request): # Maneja las solicitudes POST
-        serializer = RolSerializer(data=request.data) # Deserializa los datos recibidos
-        if serializer.is_valid(): # Valida los datos
-            serializer.save() # Guarda el nuevo objeto Rol
-            return Response(serializer.data, status=201) # Devuelve los datos serializados con estado 201 (creado)
-        return Response(serializer.errors, status=400) # Devuelve los errores de validación con estado 400 (solicitud incorrecta)
+        email = request.data.get("email")
+        if not email:
+            logger.warning("No se recibió el campo 'email'")
+            return Response({"error": "El campo 'email' es obligatorio"}, status=400)
 
-class RolDetail(APIView): # Define una vista para obtener, actualizar o eliminar un rol específico
-    def get(self, request, pk): # Maneja las solicitudes GET para un rol específico
-        rol = Rol.objects.get(pk=pk) # Obtiene el objeto Rol por su clave primaria (pk)
-        serializer = RolSerializer(rol) # Serializa el objeto Rol
-        return Response(serializer.data) # Devuelve los datos serializados en la respuesta
+        try:
+            usuario = Usuario.objects.get(Usuario_email=email)
+            logger.info(f"Usuario encontrado: {usuario.Usuario_nombre} {usuario.Usuario_apellido}")
+            return Response({"message": "Correo válido", "usuario_id": usuario.Usuario_ID}, status=200)
+        except Usuario.DoesNotExist:
+            logger.warning(f"Correo no registrado: {email}")
+            return Response({"error": "Correo no registrado"}, status=404)
 
-    def put(self, request, pk): # Maneja las solicitudes PUT para actualizar un rol específico
-        rol = Rol.objects.get(pk=pk) # Obtiene el objeto Rol por su clave primaria (pk)
-        serializer = RolSerializer(rol, data=request.data) # Deserializa los datos recibidos para actualizar el objeto Rol
-        if serializer.is_valid(): # Valida los datos
-            serializer.save() # Guarda los cambios en el objeto Rol
-            return Response(serializer.data) # Devuelve los datos serializados en la respuesta
-        return Response(serializer.errors, status=400) # Devuelve los errores de validación con estado 400 (solicitud incorrecta)
+# CRUD Usuarios
+class UsuarioList(APIView):
+    def get(self, request):
+        usuarios = Usuario.objects.all()
+        serializer = UsuarioSerializer(usuarios, many=True)
+        return Response(serializer.data)
 
-    def delete(self, request, pk): # Maneja las solicitudes DELETE para eliminar un rol específico
-        rol = Rol.objects.get(pk=pk) # Obtiene el objeto Rol por su clave primaria (pk)
-        rol.delete() # Elimina el objeto Rol
-        return Response(status=204) # Devuelve una respuesta con estado 204 (sin contenido)
+    def post(self, request):
+        serializer = UsuarioSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
 
-# View de RolesXUsuarios
-class RolesXUsuariosList(APIView): # Define una vista para listar y crear asociaciones entre roles y usuarios
-    def get(self, request): # Maneja las solicitudes GET
-        roles_x_usuarios = RolesXUsuarios.objects.all() # Obtiene todos los objetos RolesXUsuarios
-        serializer = RolesXUsuariosSerializer(roles_x_usuarios, many=True) # Serializa los objetos RolesXUsuarios
-        return Response(serializer.data) # Devuelve los datos serializados en la respuesta
+class UsuarioDetail(APIView):
+    def get(self, request, pk):
+        usuario = Usuario.objects.get(pk=pk)
+        serializer = UsuarioSerializer(usuario)
+        return Response(serializer.data)
 
-    def post(self, request): # Maneja las solicitudes POST
-        serializer = RolesXUsuariosSerializer(data=request.data) # Deserializa los datos recibidos
-        if serializer.is_valid(): # Valida los datos
-            serializer.save() # Guarda el nuevo objeto RolesXUsuarios
-            return Response(serializer.data, status=201) # Devuelve los datos serializados con estado 201 (creado)
-        return Response(serializer.errors, status=400) # Devuelve los errores de validación con estado 400 (solicitud incorrecta)
+    def put(self, request, pk):
+        usuario = Usuario.objects.get(pk=pk)
+        serializer = UsuarioSerializer(usuario, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
 
-class RolesXUsuariosDetail(APIView): # Define una vista para obtener, actualizar o eliminar una asociación específica entre roles y usuarios
-    def get(self, request, pk): # Maneja las solicitudes GET para una asociación específica
-        rol_x_usuario = RolesXUsuarios.objects.get(pk=pk) # Obtiene el objeto RolesXUsuarios por su clave primaria (pk)
-        serializer = RolesXUsuariosSerializer(rol_x_usuario) # Serializa el objeto RolesXUsuarios
-        return Response(serializer.data) # Devuelve los datos serializados en la respuesta
+    def delete(self, request, pk):
+        usuario = Usuario.objects.get(pk=pk)
+        usuario.delete()
+        return Response(status=204)
 
-    def put(self, request, pk): # Maneja las solicitudes PUT para actualizar una asociación específica
-        rol_x_usuario = RolesXUsuarios.objects.get(pk=pk) # Obtiene el objeto RolesXUsuarios por su clave primaria (pk)
-        serializer = RolesXUsuariosSerializer(rol_x_usuario, data=request.data) # Deserializa los datos recibidos para actualizar el objeto RolesXUsuarios
-        if serializer.is_valid(): # Valida los datos
-            serializer.save() # Guarda los cambios en el objeto RolesXUsuarios
-            return Response(serializer.data) # Devuelve los datos serializados en la respuesta
-        return Response(serializer.errors, status=400) # Devuelve los errores de validación con estado 400 (solicitud incorrecta)
+# CRUD Roles
+class RolList(APIView):
+    def get(self, request):
+        roles = Rol.objects.all()
+        serializer = RolSerializer(roles, many=True)
+        return Response(serializer.data)
 
-    def delete(self, request, pk): # Maneja las solicitudes DELETE para eliminar una asociación específica
-        rol_x_usuario = RolesXUsuarios.objects.get(pk=pk) # Obtiene el objeto RolesXUsuarios por su clave primaria (pk)
-        rol_x_usuario.delete() # Elimina el objeto RolesXUsuarios
-        return Response(status=204) # Devuelve una respuesta con estado 204 (sin contenido)
+    def post(self, request):
+        serializer = RolSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
+
+class RolDetail(APIView):
+    def get(self, request, pk):
+        rol = Rol.objects.get(pk=pk)
+        serializer = RolSerializer(rol)
+        return Response(serializer.data)
+
+    def put(self, request, pk):
+        rol = Rol.objects.get(pk=pk)
+        serializer = RolSerializer(rol, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+    def delete(self, request, pk):
+        rol = Rol.objects.get(pk=pk)
+        rol.delete()
+        return Response(status=204)
+
+# CRUD RolesXUsuarios
+class RolesXUsuariosList(APIView):
+    def get(self, request):
+        roles_x_usuarios = RolesXUsuarios.objects.all()
+        serializer = RolesXUsuariosSerializer(roles_x_usuarios, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = RolesXUsuariosSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
+
+class RolesXUsuariosDetail(APIView):
+    def get(self, request, pk):
+        rol_x_usuario = RolesXUsuarios.objects.get(pk=pk)
+        serializer = RolesXUsuariosSerializer(rol_x_usuario)
+        return Response(serializer.data)
+
+    def put(self, request, pk):
+        rol_x_usuario = RolesXUsuarios.objects.get(pk=pk)
+        serializer = RolesXUsuariosSerializer(rol_x_usuario, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+    def delete(self, request, pk):
+        rol_x_usuario = RolesXUsuarios.objects.get(pk=pk)
+        rol_x_usuario.delete()
+        return Response(status=204)
