@@ -1,0 +1,50 @@
+[
+    {
+        "model": "clasificaciones.MarcasXPrendas",
+        "pk": 1,
+        "fields": {
+            "marca": 1,
+            "prenda": 1
+        }
+    },
+    {
+        "model": "clasificaciones.MarcasXPrendas",
+        "pk": 2,
+        "fields": {
+            "marca": 2,
+            "prenda": 2
+        }
+    },
+    {
+        "model": "clasificaciones.MarcasXPrendas",
+        "pk": 3,
+        "fields": {
+            "marca": 3,
+            "prenda": 3
+        }
+    },
+    {
+        "model": "clasificaciones.MarcasXPrendas",
+        "pk": 4,
+        "fields": {
+            "marca": 4,
+            "prenda": 4
+        }
+    },
+    {
+        "model": "clasificaciones.MarcasXPrendas",
+        "pk": 5,
+        "fields": {
+            "marca": 5,
+            "prenda": 5
+        }
+    },
+    {
+        "model": "clasificaciones.MarcasXPrendas",
+        "pk": 6,
+        "fields": {
+            "marca": 6,
+            "prenda": 6
+        }
+    }
+]

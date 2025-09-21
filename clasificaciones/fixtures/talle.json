@@ -1,0 +1,44 @@
+[
+    {
+        "model": "clasificaciones.Talle",
+        "pk": 1,
+        "fields": {
+            "Talle_codigo": "XS"
+        }
+    },
+    {
+        "model": "clasificaciones.Talle",
+        "pk": 2,
+        "fields": {
+            "Talle_codigo": "S"
+        }
+    },
+    {
+        "model": "clasificaciones.Talle",
+        "pk": 3,
+        "fields": {
+            "Talle_codigo": "M"
+        }
+    },
+    {
+        "model": "clasificaciones.Talle",
+        "pk": 4,
+        "fields": {
+            "Talle_codigo": "L"
+        }
+    },
+    {
+        "model": "clasificaciones.Talle",
+        "pk": 5,
+        "fields": {
+            "Talle_codigo": "XL"
+        }
+    },
+    {
+        "model": "clasificaciones.Talle",
+        "pk": 6,
+        "fields": {
+            "Talle_codigo": "XXL"
+        }
+    }
+]

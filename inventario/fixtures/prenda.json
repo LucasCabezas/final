@@ -1,0 +1,50 @@
+[
+    {
+        "model": "inventario.Prenda",
+        "pk": 1,
+        "fields": {
+            "Prenda_nombre": "Buzo Oversize Liso",
+            "Prenda_precio_unitario": 1320.0
+        }
+    },
+    {
+        "model": "inventario.Prenda",
+        "pk": 2,
+        "fields": {
+            "Prenda_nombre": "Buzo Oversize Estampado",
+            "Prenda_precio_unitario": 1150.0
+        }
+    },
+    {
+        "model": "inventario.Prenda",
+        "pk": 3,
+        "fields": {
+            "Prenda_nombre": "Remera Oversize Lisa",
+            "Prenda_precio_unitario": 1920.0
+        }
+    },
+    {
+        "model": "inventario.Prenda",
+        "pk": 4,
+        "fields": {
+            "Prenda_nombre": "Remera Oversize Estampada",
+            "Prenda_precio_unitario": 3150.0
+        }
+    },
+    {
+        "model": "inventario.Prenda",
+        "pk": 5,
+        "fields": {
+            "Prenda_nombre": "Remera Lisa",
+            "Prenda_precio_unitario": 740.0
+        }
+    },
+    {
+        "model": "inventario.Prenda",
+        "pk": 6,
+        "fields": {
+            "Prenda_nombre": "Remera Estampada",
+            "Prenda_precio_unitario": 1100.0
+        }
+    }
+]

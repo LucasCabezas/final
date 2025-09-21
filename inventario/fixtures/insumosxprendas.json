@@ -1,0 +1,57 @@
+[
+    {
+        "model": "inventario.InsumosXPrendas",
+        "pk": 1,
+        "fields": {
+            "insumo": 1,
+            "prenda": 1,
+            "Insumo_prenda_cantidad_utilizada": 10,
+            "Insumo_prenda_unidad_medida": "KG",
+            "Insumo_prenda_costo_total": 1200.0
+        }
+    },
+    {
+        "model": "inventario.InsumosXPrendas",
+        "pk": 2,
+        "fields": {
+            "insumo": 2,
+            "prenda": 2,
+            "Insumo_prenda_cantidad_utilizada": 10,
+            "Insumo_prenda_unidad_medida": "KG",
+            "Insumo_prenda_costo_total": 1000.0
+        }
+    },
+    {
+        "model": "inventario.InsumosXPrendas",
+        "pk": 3,
+        "fields": {
+            "insumo": 3,
+            "prenda": 3,
+            "Insumo_prenda_cantidad_utilizada": 10,
+            "Insumo_prenda_unidad_medida": "KG",
+            "Insumo_prenda_costo_total": 1500.0
+        }
+    },
+    {
+        "model": "inventario.InsumosXPrendas",
+        "pk": 4,
+        "fields": {
+            "insumo": 4,
+            "prenda": 4,
+            "Insumo_prenda_cantidad_utilizada": 10,
+            "Insumo_prenda_unidad_medida": "KG",
+            "Insumo_prenda_costo_total": 3000.0
+        }
+    },
+    {
+        "model": "inventario.InsumosXPrendas",
+        "pk": 5,
+        "fields": {
+            "insumo": 5,
+            "prenda": 5,
+            "Insumo_prenda_cantidad_utilizada": 10,
+            "Insumo_prenda_unidad_medida": "KG",
+            "Insumo_prenda_costo_total": 500.0
+        }
+    }
+]

@@ -1,0 +1,93 @@
+[
+    {
+        "model": "clasificaciones.Marca",
+        "pk": 1,
+        "fields": {
+            "Marca_nombre": "Amiri"
+        }
+    },
+    {
+        "model": "clasificaciones.Marca",
+        "pk": 2,
+        "fields": {
+            "Marca_nombre": "Balenciaga"
+        }
+    },
+    {
+        "model": "clasificaciones.Marca",
+        "pk": 3,
+        "fields": {
+            "Marca_nombre": "Burberry"
+        }
+    },
+    {
+        "model": "clasificaciones.Marca",
+        "pk": 4,
+        "fields": {
+            "Marca_nombre": "Dolce Gabbana"
+        }
+    },
+    {
+        "model": "clasificaciones.Marca",
+        "pk": 5,
+        "fields": {
+            "Marca_nombre": "Gucci"
+        }
+    },
+    {
+        "model": "clasificaciones.Marca",
+        "pk": 6,
+        "fields": {
+            "Marca_nombre": "Kenzo"
+        }
+    },
+    {
+        "model": "clasificaciones.Marca",
+        "pk": 7,
+        "fields": {
+            "Marca_nombre": "Louis Vuitton"
+        }
+    },
+    {
+        "model": "clasificaciones.Marca",
+        "pk": 8,
+        "fields": {
+            "Marca_nombre": "Moncler"
+        }
+    },
+    {
+        "model": "clasificaciones.Marca",
+        "pk": 9,
+        "fields": {
+            "Marca_nombre": "Moschino"
+        }
+    },
+    {
+        "model": "clasificaciones.Marca",
+        "pk": 10,
+        "fields": {
+            "Marca_nombre": "Philipp Plein"
+        }
+    },
+    {
+        "model": "clasificaciones.Marca",
+        "pk": 11,
+        "fields": {
+            "Marca_nombre": "Prada"
+        }
+    },
+    {
+        "model": "clasificaciones.Marca",
+        "pk": 12,
+        "fields": {
+            "Marca_nombre": "Versace"
+        }
+    },
+    {
+        "model": "clasificaciones.Marca",
+        "pk": 13,
+        "fields": {
+            "Marca_nombre": "The North Face"
+        }
+    }
+]
