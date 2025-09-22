@@ -2,6 +2,7 @@ import React from "react";
 import { Routes, Route } from "react-router-dom";
 import Login from "./components/Login";
 import Dueno from "./components/Dueno"; // ✅ Importa tu Dueno.js real
+import Componente from "./components/componente";import AgregarUsuario from "./components/AgregarUsuario"; //
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
           />
         }
       />
+       <Route path="/agregarUsuario" element={<AgregarUsuario />} />
     </Routes>
   );
 }

@@ -1,163 +1,24 @@
-/* Contenedor principal */
-.dueno-dashboard {
-  display: flex;
-  min-height: 100vh;
-  font-family: Arial, sans-serif;
+/* Reutiliza los estilos del dashboard */
+@import "./AgregarUsuario.css";
+
+.contenedor {
+  background: #1e1f25;
   color: #fff;
-  background: url("./assets/fondo.png") no-repeat center center fixed;
-  background-size: cover;
-}
-
-/* Sidebar */
-.sidebar {
-  width: 250px;
-  background-color: rgba(20, 20, 20, 0.95);
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
-}
-
-.sidebar .logo {
-  width: 150px;
-  margin: 0 auto 30px;
-}
-
-/* Menu */
-.menu {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.menu li {
-  padding: 12px 10px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border-radius: 8px;
-  transition: background 0.2s;
-}
-
-.menu li:hover {
-  background-color: rgba(255, 215, 0, 0.2);
-}
-
-/* Submenu header */
-.submenu-item .submenu-header {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start; /* icono + texto alineados a la izq */
-  gap: 10px; /* espacio entre icono y texto */
-  cursor: pointer;
-}
-
-/* Título para pedidos */
-.submenu-title {
-  flex: 1; /* empuja la flecha al extremo derecho */
-}
-
-/* Chevron */
-.chevron {
-  transition: transform 0.3s;
-}
-.chevron.rotate {
-  transform: rotate(180deg);
-}
-
-/* Submenu */
-.submenu {
-  list-style: none;
-  padding-left: 35px;
-  margin-top: 5px;
-  overflow: hidden;
-  height: 0;
-  transition: height 0.3s ease;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.submenu li {
-  padding: 6px 0;
-  font-size: 0.9rem;
-}
-
-
-/* Chevron animación */
-.chevron {
-  transition: transform 0.3s;
-}
-
-.chevron.rotate {
-  transform: rotate(180deg);
-}
-
-/* Panel principal */
-.main-panel {
-  flex: 1;
   padding: 30px;
-  display: flex;
-  flex-direction: column;
-  gap: 30px;
+  border-radius: 5px;
+  max-width: 600px;
+  max-height: 400px;
+  margin: 20px auto;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
 }
 
-/* Header */
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 30px;
-}
-
-.header .welcome h2 {
-  margin: 0;
-  font-size: 1.5rem;
-}
-
-/* Header derecho */
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-
-/* Botón Cerrar sesión */
-.btn-logout {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  background-color: #e74c3c;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 8px;
-  cursor: pointer;
+.contenedor-formulario h2 {
+  margin-bottom: 20px;
+  font-size: 20px;
   font-weight: bold;
   color: #fff;
-  transition: background 0.2s;
 }
 
-.btn-logout:hover {
-  background-color: #c0392b;
-}
-
-/* Botón Avatar */
-.btn-avatar {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-}
-
-.btn-avatar .avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid #ffd700;
-}
 
 /* Resumen inventario */
 .resumen {
@@ -212,3 +73,5 @@
   padding: 10px 0;
   border-bottom: 1px solid #555;
 }
+
+

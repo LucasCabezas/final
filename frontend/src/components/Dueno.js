@@ -1,26 +1,15 @@
-import React, { useState, useEffect, useRef } from "react";
+// src/components/Dueno.js
+import React, { useState, useEffect } from "react";
 import "./Dueno.css";
-import avatar from "./assets/avatar.png";
-import logo from "./assets/logo.png";
-import {
-  FiChevronDown,
-  FiHome,
-  FiBox,
-  FiPackage,
-  FiClipboard,
-  FiLogOut,
-} from "react-icons/fi";
+import avatar from "./assets/avatar.png";   // ✅ corregido
+import { FiLogOut } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
+import Componente from "./componente.jsx";  // ✅ corregido
 
 function Dueno({ usuarioId }) {
-  const [openPedidos, setOpenPedidos] = useState(false);
   const [usuario, setUsuario] = useState(null);
   const navigate = useNavigate();
 
-  // Referencia al submenu para animación acordeón
-  const submenuRef = useRef(null);
-
-  // Traer datos del usuario desde la API
   useEffect(() => {
     if (!usuarioId) return;
 
@@ -37,59 +26,12 @@ function Dueno({ usuarioId }) {
     navigate("/");
   };
 
-  // Controla altura del submenu tipo acordeón
-  useEffect(() => {
-    if (submenuRef.current) {
-      if (openPedidos) {
-        submenuRef.current.style.height = `${submenuRef.current.scrollHeight}px`;
-      } else {
-        submenuRef.current.style.height = "0px";
-      }
-    }
-  }, [openPedidos]);
-
   return (
     <div className="dueno-dashboard">
       {/* Sidebar */}
-      <aside className="sidebar">
-        <img src={logo} alt="Logo" className="logo" />
-        <ul className="menu">
-          <li>
-            <FiHome /> Inicio
-          </li>
-          <li>
-            <FiBox /> Inventario
-          </li>
-          <li>
-            <FiPackage /> Insumos
-          </li>
+      <Componente /> 
 
-          {/* Submenu tipo acordeón */}
-          <li className="submenu-item">
-            <div
-              className="submenu-header"
-              onClick={() => setOpenPedidos(!openPedidos)}
-            >
-              <FiClipboard />
-              <span className="submenu-title">Pedidos</span>
-              <FiChevronDown
-                className={`chevron ${openPedidos ? "rotate" : ""}`}
-              />
-            </div>
-            <ul className="submenu" ref={submenuRef}>
-              <li>Pedidos Pendientes</li>
-              <li>Pedidos Completados</li>
-            </ul>
-          </li>
-
-          <li><FiBox />Prendas</li>
-        </ul>
-      </aside>
-
-      {/* Panel principal */}
-      <main className="main-panel">
-        {/* Header */}
-        <header className="header">
+      <div className="contendor">
           <div className="welcome">
             <h2>
               Bienvenido,{" "}
@@ -98,15 +40,6 @@ function Dueno({ usuarioId }) {
                 : "..."}
             </h2>
           </div>
-          <div className="header-right">
-            <button className="btn-logout" onClick={handleLogout}>
-              <FiLogOut /> Cerrar sesión
-            </button>
-            <button className="btn-avatar" onClick={handlePerfil}>
-              <img src={avatar} alt="avatar" className="avatar" />
-            </button>
-          </div>
-        </header>
 
         {/* Resumen */}
         <section className="resumen">
@@ -146,9 +79,10 @@ function Dueno({ usuarioId }) {
             <li>Insumos retrasados en entrega</li>
           </ul>
         </section>
-      </main>
+      </div>
     </div>
   );
 }
 
 export default Dueno;
+

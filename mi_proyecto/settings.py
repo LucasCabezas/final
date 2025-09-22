@@ -85,10 +85,10 @@ DATABASES = {  # Configuración de la base de datos
     'default': {
         'ENGINE': 'django.db.backends.mysql',  # Motor de base de datos (MySQL)
         'NAME': 'king_importados',      # Nombre de la base de datos
-        'USER': 'admin',       # Usuario de la base de datos
-        'PASSWORD': '123456',  # Contraseña de la base de datos
+        'USER': 'root',       # Usuario de la base de datos
+        'PASSWORD': '1234',  # Contraseña de la base de datos
         'HOST': 'localhost',              # Host de la base de datos
-        'PORT': '3307',                   # Puerto de la base de datos
+        'PORT': '3306',                   # Puerto de la base de datos
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'"  # Configuración adicional de MySQL
         }
