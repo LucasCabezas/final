@@ -1,0 +1,50 @@
+[
+    {
+        "model": "clasificaciones.ColoresXPrendas",
+        "pk": 1,
+        "fields": {
+            "color": 1,
+            "prenda": 1
+        }
+    },
+    {
+        "model": "clasificaciones.ColoresXPrendas",
+        "pk": 2,
+        "fields": {
+            "color": 2,
+            "prenda": 2
+        }
+    },
+    {
+        "model": "clasificaciones.ColoresXPrendas",
+        "pk": 3,
+        "fields": {
+            "color": 1,
+            "prenda": 3
+        }
+    },
+    {
+        "model": "clasificaciones.ColoresXPrendas",
+        "pk": 4,
+        "fields": {
+            "color": 2,
+            "prenda": 4
+        }
+    },
+    {
+        "model": "clasificaciones.ColoresXPrendas",
+        "pk": 5,
+        "fields": {
+            "color": 1,
+            "prenda": 5
+        }
+    },
+    {
+        "model": "clasificaciones.ColoresXPrendas",
+        "pk": 6,
+        "fields": {
+            "color": 2,
+            "prenda": 6
+        }
+    }
+]

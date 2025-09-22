@@ -15,7 +15,6 @@ class Insumo(models.Model): # Define el modelo Insumo
 class Prenda(models.Model): # Define el modelo Prenda
     Prenda_ID = models.AutoField(primary_key=True) # Campo de clave primaria
     Prenda_nombre = models.CharField(max_length=100) # Campo de nombre de la prenda
-    Prenda_stock = models.IntegerField() # Campo de stock de la prenda
     Prenda_precio_unitario = models.FloatField() # Campo de precio unitario de la prenda
 
     def __str__(self): # Método para representar el objeto como una cadena

@@ -1,0 +1,50 @@
+[
+    {
+        "model": "clasificaciones.ModelosXPrendas",
+        "pk": 1,
+        "fields": {
+            "modelo": 1,
+            "prenda": 1
+        }
+    },
+    {
+        "model": "clasificaciones.ModelosXPrendas",
+        "pk": 2,
+        "fields": {
+            "modelo": 4,
+            "prenda": 2
+        }
+    },
+    {
+        "model": "clasificaciones.ModelosXPrendas",
+        "pk": 3,
+        "fields": {
+            "modelo": 5,
+            "prenda": 3
+        }
+    },
+    {
+        "model": "clasificaciones.ModelosXPrendas",
+        "pk": 4,
+        "fields": {
+            "modelo": 7,
+            "prenda": 4
+        }
+    },
+    {
+        "model": "clasificaciones.ModelosXPrendas",
+        "pk": 5,
+        "fields": {
+            "modelo": 10,
+            "prenda": 5
+        }
+    },
+    {
+        "model": "clasificaciones.ModelosXPrendas",
+        "pk": 6,
+        "fields": {
+            "modelo": 11,
+            "prenda": 6
+        }
+    }
+]

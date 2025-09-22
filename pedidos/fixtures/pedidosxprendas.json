@@ -1,0 +1,52 @@
+[
+    {
+        "model": "pedidos.PedidosXPrendas",
+        "pk": 1,
+        "fields": {
+            "pedido": 1,
+            "prenda": 1,
+            "Pedido_prenda_cantidad": 10,
+            "Pedido_prenda_precio_total": 13200.0
+        }
+    },
+    {
+        "model": "pedidos.PedidosXPrendas",
+        "pk": 2,
+        "fields": {
+            "pedido": 2,
+            "prenda": 2,
+            "Pedido_prenda_cantidad": 2,
+            "Pedido_prenda_precio_total": 2300.0
+        }
+    },
+    {
+        "model": "pedidos.PedidosXPrendas",
+        "pk": 3,
+        "fields": {
+            "pedido": 3,
+            "prenda": 3,
+            "Pedido_prenda_cantidad": 5,
+            "Pedido_prenda_precio_total": 9600.0
+        }
+    },
+    {
+        "model": "pedidos.PedidosXPrendas",
+        "pk": 4,
+        "fields": {
+            "pedido": 4,
+            "prenda": 4,
+            "Pedido_prenda_cantidad": 4,
+            "Pedido_prenda_precio_total": 12600.0
+        }
+    },
+    {
+        "model": "pedidos.PedidosXPrendas",
+        "pk": 5,
+        "fields": {
+            "pedido": 5,
+            "prenda": 5,
+            "Pedido_prenda_cantidad": 15,
+            "Pedido_prenda_precio_total": 11100.0
+        }
+    }
+]

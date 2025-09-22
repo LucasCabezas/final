@@ -7,7 +7,7 @@ class InsumoAdmin(admin.ModelAdmin):  # Configuración del admin para el modelo 
     search_fields = ('Insumo_nombre',)  # Campos por los que se puede buscar
 
 class PrendaAdmin(admin.ModelAdmin):  # Configuración del admin para el modelo Prenda
-    list_display = ('Prenda_ID', 'Prenda_stock', 'Prenda_nombre', 'Prenda_precio_unitario')  # Campos a mostrar en la lista
+    list_display = ('Prenda_ID', 'Prenda_nombre', 'Prenda_precio_unitario')  # Campos a mostrar en la lista
     search_fields = ('Prenda_nombre',)  # Campos por los que se puede buscar
 
 class InsumosXPrendasAdmin(admin.ModelAdmin):  # Configuración del admin para el modelo InsumosXPrendas

@@ -1,0 +1,184 @@
+[
+    {
+        "model": "clasificaciones.Modelo",
+        "pk": 1,
+        "fields": {
+            "Modelo_nombre": "AMI001"
+        }
+    },
+    {
+        "model": "clasificaciones.Modelo",
+        "pk": 2,
+        "fields": {
+            "Modelo_nombre": "AMI002"
+        }
+    },
+    {
+        "model": "clasificaciones.Modelo",
+        "pk": 3,
+        "fields": {
+            "Modelo_nombre": "BAL001"
+        }
+    },
+    {
+        "model": "clasificaciones.Modelo",
+        "pk": 4,
+        "fields": {
+            "Modelo_nombre": "BAL002"
+        }
+    },
+    {
+        "model": "clasificaciones.Modelo",
+        "pk": 5,
+        "fields": {
+            "Modelo_nombre": "BUR001"
+        }
+    },
+    {
+        "model": "clasificaciones.Modelo",
+        "pk": 6,
+        "fields": {
+            "Modelo_nombre": "BUR002"
+        }
+    },
+    {
+        "model": "clasificaciones.Modelo",
+        "pk": 7,
+        "fields": {
+            "Modelo_nombre": "DG001"
+        }
+    },
+    {
+        "model": "clasificaciones.Modelo",
+        "pk": 8,
+        "fields": {
+            "Modelo_nombre": "DG002"
+        }
+    },
+    {
+        "model": "clasificaciones.Modelo",
+        "pk": 9,
+        "fields": {
+            "Modelo_nombre": "GUC001"
+        }
+    },
+    {
+        "model": "clasificaciones.Modelo",
+        "pk": 10,
+        "fields": {
+            "Modelo_nombre": "GUC002"
+        }
+    },
+    {
+        "model": "clasificaciones.Modelo",
+        "pk": 11,
+        "fields": {
+            "Modelo_nombre": "KEN001"
+        }
+    },
+    {
+        "model": "clasificaciones.Modelo",
+        "pk": 12,
+        "fields": {
+            "Modelo_nombre": "KEN002"
+        }
+    },
+    {
+        "model": "clasificaciones.Modelo",
+        "pk": 13,
+        "fields": {
+            "Modelo_nombre": "LV001"
+        }
+    },
+    {
+        "model": "clasificaciones.Modelo",
+        "pk": 14,
+        "fields": {
+            "Modelo_nombre":"LV002"
+        }
+    },
+    {
+        "model": "clasificaciones.Modelo",
+        "pk": 15,
+        "fields": {
+            "Modelo_nombre": "MON001"
+        }
+    },
+    {
+        "model": "clasificaciones.Modelo",
+        "pk": 16,
+        "fields": {
+            "Modelo_nombre": "MON002"
+        }
+    },
+    {
+        "model": "clasificaciones.Modelo",
+        "pk": 17,
+        "fields": {
+            "Modelo_nombre": "MOS001"
+        }
+    },
+    {
+        "model": "clasificaciones.Modelo",
+        "pk": 18,
+        "fields": {
+            "Modelo_nombre": "MOS002"
+        }
+    },
+    {
+        "model": "clasificaciones.Modelo",
+        "pk": 19,
+        "fields": {
+            "Modelo_nombre": "PP001"
+        }
+    },
+    {
+        "model": "clasificaciones.Modelo",
+        "pk": 20,
+        "fields": {
+            "Modelo_nombre": "PP002"
+        }
+    },
+    {
+        "model": "clasificaciones.Modelo",
+        "pk": 21,
+        "fields": {
+            "Modelo_nombre": "PRA001"
+        }
+    },
+    {
+        "model": "clasificaciones.Modelo",
+        "pk": 22,
+        "fields": {
+            "Modelo_nombre": "PRA002"
+        }
+    },
+    {
+        "model": "clasificaciones.Modelo",
+        "pk": 23,
+        "fields": {
+            "Modelo_nombre": "VER001"
+        }
+    },
+    {
+        "model": "clasificaciones.Modelo",
+        "pk": 24,
+        "fields": {
+            "Modelo_nombre": "VER002"
+        }
+    },
+    {
+        "model": "clasificaciones.Modelo",
+        "pk": 25,
+        "fields": {
+            "Modelo_nombre": "TNF001"
+        }
+    },
+    {
+        "model": "clasificaciones.Modelo",
+        "pk": 26,
+        "fields": {
+            "Modelo_nombre": "TNF002"
+        }
+    }
+]

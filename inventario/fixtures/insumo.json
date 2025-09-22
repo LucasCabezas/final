@@ -1,0 +1,57 @@
+[
+    {
+        "model": "inventario.insumo",
+        "pk": 1,
+        "fields": {
+            "Insumo_nombre": "Hilo",
+            "Insumo_precio_unitario": 120.0,
+            "Insumo_cantidad": 200,
+            "Insumo_unidad_medida": "KG",
+            "Insumo_precio_total": 24000.0
+        }
+    },
+    {
+        "model": "inventario.insumo",
+        "pk": 2,
+        "fields": {
+            "Insumo_nombre": "Tela",
+            "Insumo_precio_unitario": 100.0,
+            "Insumo_cantidad": 100,
+            "Insumo_unidad_medida": "KG",
+            "Insumo_precio_total": 10000.0
+        }
+    },
+    {
+        "model": "inventario.insumo",
+        "pk": 3,
+        "fields": {
+            "Insumo_nombre": "Algodon",
+            "Insumo_precio_unitario": 150.0,
+            "Insumo_cantidad": 500,
+            "Insumo_unidad_medida": "KG",
+            "Insumo_precio_total": 75000.0
+        }
+    },
+    {
+        "model": "inventario.insumo",
+        "pk": 4,
+        "fields": {
+            "Insumo_nombre": "Jean",
+            "Insumo_precio_unitario": 300.0,
+            "Insumo_cantidad": 80,
+            "Insumo_unidad_medida": "KG",
+            "Insumo_precio_total": 24000.0
+        }
+    },
+    {
+        "model": "inventario.insumo",
+        "pk": 5,
+        "fields": {
+            "Insumo_nombre": "Entretela",
+            "Insumo_precio_unitario": 50.0,
+            "Insumo_cantidad": 30,
+            "Insumo_unidad_medida": "KG",
+            "Insumo_precio_total": 1500.0
+        }
+    }
+]

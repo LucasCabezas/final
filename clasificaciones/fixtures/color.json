@@ -1,0 +1,16 @@
+[
+    {
+        "model": "clasificaciones.Color",
+        "pk": 1,
+        "fields": {
+            "Color_nombre": "Negro"
+        }
+    },
+    {
+        "model": "clasificaciones.Color",
+        "pk": 2,
+        "fields": {
+            "Color_nombre": "Blanco"
+        }
+    }
+]

@@ -1,0 +1,42 @@
+[
+    {
+        "model": "clasificaciones.TallesXPrendas",
+        "pk": 1,
+        "fields": {
+            "talle": 1,
+            "prenda": 1
+        }
+    },
+    {
+        "model": "clasificaciones.TallesXPrendas",
+        "pk": 2,
+        "fields": {
+            "talle": 2,
+            "prenda": 2
+        }
+    },
+    {
+        "model": "clasificaciones.TallesXPrendas",
+        "pk": 3,
+        "fields": {
+            "talle": 3,
+            "prenda": 3
+        }
+    },
+    {
+        "model": "clasificaciones.TallesXPrendas",
+        "pk": 4,
+        "fields": {
+            "talle": 4,
+            "prenda": 4
+        }
+    },
+    {
+        "model": "clasificaciones.TallesXPrendas",
+        "pk": 5,
+        "fields": {
+            "talle": 5,
+            "prenda": 5
+        }
+    }
+]
