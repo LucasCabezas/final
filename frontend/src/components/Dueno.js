@@ -1,10 +1,7 @@
-// src/components/Dueno.js
 import React, { useState, useEffect } from "react";
 import "./Dueno.css";
-import avatar from "./assets/avatar.png";   // ✅ corregido
-import { FiLogOut } from "react-icons/fi";
+import Componente from "./componente.jsx"; // Sidebar
 import { useNavigate } from "react-router-dom";
-import Componente from "./componente.jsx";  // ✅ corregido
 
 function Dueno({ usuarioId }) {
   const [usuario, setUsuario] = useState(null);
@@ -19,27 +16,21 @@ function Dueno({ usuarioId }) {
       .catch((err) => console.error("Error al cargar usuario:", err));
   }, [usuarioId]);
 
-  const handlePerfil = () => navigate("/perfil");
-
-  const handleLogout = () => {
-    localStorage.clear();
-    navigate("/");
-  };
-
   return (
     <div className="dueno-dashboard">
       {/* Sidebar */}
-      <Componente /> 
+      <Componente />
 
-      <div className="contendor">
-          <div className="welcome">
-            <h2>
-              Bienvenido,{" "}
-              {usuario
-                ? `${usuario.Usuario_nombre} ${usuario.Usuario_apellido}`
-                : "..."}
-            </h2>
-          </div>
+      {/* Contenido principal */}
+      <main className="contendor">
+        <div className="welcome">
+          <h2>
+            Bienvenido,{" "}
+            {usuario
+              ? `${usuario.Usuario_nombre} ${usuario.Usuario_apellido}`
+              : "..."}
+          </h2>
+        </div>
 
         {/* Resumen */}
         <section className="resumen">
@@ -79,10 +70,9 @@ function Dueno({ usuarioId }) {
             <li>Insumos retrasados en entrega</li>
           </ul>
         </section>
-      </div>
+      </main>
     </div>
   );
 }
 
 export default Dueno;
-

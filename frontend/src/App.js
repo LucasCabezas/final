@@ -1,18 +1,21 @@
 import React from "react";
 import { Routes, Route } from "react-router-dom";
 import Login from "./components/Login";
-import Dueno from "./components/Dueno"; // ✅ Importa tu Dueno.js real
-import Componente from "./components/componente";import AgregarUsuario from "./components/AgregarUsuario"; //
+import Dueno from "./components/Dueno";
+import AgregarUsuario from "./components/AgregarUsuario";
 
 function App() {
   return (
     <Routes>
+      {/* Página de login */}
       <Route path="/" element={<Login />} />
+
+      {/* Dashboard del dueño */}
       <Route
         path="/dueno"
         element={
           <Dueno
-            usuarioId={localStorage.getItem("usuarioId")} // ✅ pasa el ID guardado en el login
+            usuarioId={localStorage.getItem("usuarioId")}
             logout={() => {
               localStorage.clear();
               window.location.href = "/";
@@ -20,7 +23,9 @@ function App() {
           />
         }
       />
-       <Route path="/agregarUsuario" element={<AgregarUsuario />} />
+
+      {/* Página para agregar usuarios */}
+      <Route path="/agregarUsuario" element={<AgregarUsuario />} />
     </Routes>
   );
 }

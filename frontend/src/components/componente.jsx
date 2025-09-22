@@ -5,14 +5,10 @@ import {
   FaCalculator,
   FaUserPlus,
 } from "react-icons/fa";
-import {
-  MdKeyboardArrowDown,
-  MdKeyboardArrowLeft,
-  MdKeyboardArrowRight,
-} from "react-icons/md";
+import { MdKeyboardArrowDown, MdKeyboardArrowLeft, MdKeyboardArrowRight } from "react-icons/md";
 import { FiLogOut } from "react-icons/fi";
-import logo from "./assets/logo.png"; // ajusta la ruta
-import avatar from "./assets/avatar.png"; 
+import logo from "./assets/logo.png";
+import avatar from "./assets/avatar.png";
 import "./componente.css";
 
 function Componente() {
@@ -30,149 +26,76 @@ function Componente() {
   };
 
   return (
-    <div className="app-container">
-     <div className="buttons-top-right">
-  <button className="btn-logout" onClick={handleLogout}>
-    <FiLogOut /> Cerrar sesión
-  </button>
-  <button className="btn-avatar" onClick={handlePerfil}>
-    <img src={avatar} alt="avatar" className="avatar" />
-  </button>
-</div>
+    <aside className={`sidebar ${isCollapsed ? "collapsed" : ""}`}>
+      {/* Toggle */}
+      <button className="toggle-btn" onClick={() => setIsCollapsed(!isCollapsed)}>
+        {isCollapsed ? <MdKeyboardArrowRight /> : <MdKeyboardArrowLeft />}
+      </button>
 
+      {/* Logo */}
+      <div className="logo-container">
+        <img src={logo} alt="Logo" className="logo" />
+      </div>
 
-      {/* SIDEBAR */}
-      <aside className={`sidebar ${isCollapsed ? "collapsed" : ""}`}>
-        {/* Botón para colapsar/expandir */}
-        <button
-          className="toggle-btn"
-          onClick={() => setIsCollapsed(!isCollapsed)}
-        >
-          {isCollapsed ? <MdKeyboardArrowRight /> : <MdKeyboardArrowLeft />}
-        </button>
-
-        {/* Logo */}
-        <div className="logo-container">
-          <img src={logo} alt="Logo" className="logo" />
-        </div>
-
-        {/* MENÚ */}
-        <ul className="menu">
-          {/* INVENTARIO */}
-          <li className="menu-item">
-            <div
-              className="menu-label"
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpenInventario((v) => !v);
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <FaBoxOpen className="icon" />
-                {!isCollapsed && <span>Inventario</span>}
-              </div>
-              {!isCollapsed && (
-                <MdKeyboardArrowDown
-                  className={`arrow ${openInventario ? "open" : ""}`}
-                />
-              )}
+      {/* Menú */}
+      <ul className="menu">
+        <li className="menu-item">
+          <div className="menu-label" onClick={() => setOpenInventario(v => !v)}>
+            <div className="menu-title">
+              <FaBoxOpen className="icon" />
+              {!isCollapsed && <span>Inventario</span>}
             </div>
+            {!isCollapsed && <MdKeyboardArrowDown className={`arrow ${openInventario ? "open" : ""}`} />}
+          </div>
+          <ul className={`submenu ${openInventario ? "show" : ""}`}>
+            <li onClick={() => console.log("Insumos clicked")}>Insumos</li>
+            <li onClick={() => console.log("Prendas clicked")}>Prendas</li>
+          </ul>
+        </li>
 
-            {openInventario && !isCollapsed && (
-              <ul className="submenu">
-                <li
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    console.log("Insumos clicked");
-                  }}
-                >
-                  Insumos
-                </li>
-                <li
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    console.log("Prendas clicked");
-                  }}
-                >
-                  Prendas
-                </li>
-              </ul>
-            )}
-          </li>
-
-          {/* PEDIDOS */}
-          <li className="menu-item">
-            <div
-              className="menu-label"
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpenPedidos((v) => !v);
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <FaShoppingCart className="icon" />
-                {!isCollapsed && <span>Pedidos</span>}
-              </div>
-              {!isCollapsed && (
-                <MdKeyboardArrowDown
-                  className={`arrow ${openPedidos ? "open" : ""}`}
-                />
-              )}
+        <li className="menu-item">
+          <div className="menu-label" onClick={() => setOpenPedidos(v => !v)}>
+            <div className="menu-title">
+              <FaShoppingCart className="icon" />
+              {!isCollapsed && <span>Pedidos</span>}
             </div>
+            {!isCollapsed && <MdKeyboardArrowDown className={`arrow ${openPedidos ? "open" : ""}`} />}
+          </div>
+          <ul className={`submenu ${openPedidos ? "show" : ""}`}>
+            <li onClick={() => console.log("Realizar pedido clicked")}>Realizar pedido</li>
+            <li onClick={() => console.log("Aprobación de pedidos clicked")}>Aprobación de pedidos</li>
+          </ul>
+        </li>
 
-            {openPedidos && !isCollapsed && (
-              <ul className="submenu">
-                <li
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    console.log("Realizar pedido clicked");
-                  }}
-                >
-                  Realizar pedido
-                </li>
-                <li
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    console.log("Aprobación de pedidos clicked");
-                  }}
-                >
-                  Aprobación de pedidos
-                </li>
-              </ul>
-            )}
-          </li>
+        <li className="menu-item">
+          <div className="menu-label">
+            <FaCalculator className="icon" />
+            {!isCollapsed && <span>Calculador de costos</span>}
+          </div>
+        </li>
 
-          {/* CALCULADORA */}
-          <li className="menu-item">
-            <div className="menu-label">
-              <FaCalculator className="icon" />
-              {!isCollapsed && "Calculador de costos"}
-            </div>
-          </li>
+        <li className="menu-item">
+          <div className="menu-label">
+            <FaUserPlus className="icon" />
+            <a href="/agregarUsuario" style={{ color: "inherit", textDecoration: "none" }}>
+              {!isCollapsed && "Agregar usuario"}
+            </a>
+          </div>
+        </li>
 
-          {/* AGREGAR USUARIO */}
-          <li className="menu-item">
-            <div className="menu-label">
-              <FaUserPlus className="icon" />
-              <a
-                href="/Agregarusuario"
-                style={{ color: "inherit", textDecoration: "none" }}
-              >
-                {!isCollapsed && "Agregar usuario"}
-              </a>
-            </div>
-          </li>
-        </ul>
-      </aside>
+        <li className="menu-item top-logout">
+          <button className="btn-logout" onClick={handleLogout}>
+            <FiLogOut /> {!isCollapsed && "Cerrar sesión"}
+          </button>
+        </li>
+      </ul>
 
-      {/* CONTENIDO PRINCIPAL */}
-      <main className="main-content">
-        {/* Aquí van tus otras páginas o componentes */}
-      </main>
-    </div>
+      {/* Avatar */}
+      <button className="btn-avatar" onClick={handlePerfil}>
+        <img src={avatar} alt="avatar" className="avatar" />
+      </button>
+    </aside>
   );
 }
 
 export default Componente;
-
-

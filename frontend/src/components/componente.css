@@ -1,162 +1,123 @@
+/* Sidebar */
 .sidebar {
-  width: 260px;   /* subimos un poco */
+  width: 260px;
   background: #111;
   color: #fff;
   height: 100vh;
-  padding: 1rem;
+  padding: 1rem 0.5rem;
   position: fixed;
   left: 0;
   top: 0;
   overflow-y: auto;
   transition: width 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
-
-/* Sidebar colapsado */
+/* Colapsado */
 .sidebar.collapsed {
   width: 70px;
 }
 
-/* Botón flecha */
+/* Toggle button */
 .toggle-btn {
-  position: absolute;
-  top: 20px;
-  right:    20px;          /* empuja la flecha hacia afuera */
   background: white;
   border: none;
   color: black;
-  width: 40px;           /* más grande */
+  width: 40px;
   height: 40px;
   border-radius: 50%;
   cursor: pointer;
-  font-size: 24px;       /* icono grande */
+  font-size: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;         /* 👈 asegura que quede encima de todo */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-  transition: all 0.3s ease;
+  margin: 0 auto 20px;
 }
 
-.toggle-btn:hover {
-  background: #5a4bd8;
-}
-
-
-
+/* Logo */
 .logo-container {
   display: flex;
   align-items: center;
+  justify-content: center;
   margin-bottom: 2rem;
 }
-
 .logo {
-  width: 40px;
-  margin-right: 10px;
-}
-.title {
-  font-size: 1.1rem;
-  font-weight: bold;
-  color: #f9f9f9;
-  white-space: nowrap; /* evita cortes */
-  overflow: hidden;    /* evita scroll raro */
-  text-overflow: ellipsis; /* agrega ... si no entra */
+  width: 150px;
 }
 
+/* Menú */
 .menu {
   list-style: none;
   padding: 0;
   margin: 0;
+  flex: 1;
 }
-
 .menu-item {
+  display: block;
+}
+.menu-label {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  padding: 10px;
+  align-items: center;
+  padding: 10px 15px;
   cursor: pointer;
 }
-
-.menu-item:hover {
-  background: #675757;
-}
-
-.menu-label {
+.menu-title {
   display: flex;
   align-items: center;
   gap: 10px;
 }
-
 .icon {
   font-size: 18px;
 }
-
 .arrow {
   transition: transform 0.3s;
 }
-
 .arrow.open {
   transform: rotate(180deg);
 }
 
-/* Submenús */
+/* Submenu vertical */
 .submenu {
   list-style: none;
-  padding-left: 20px;
+  padding-left: 0;
+  margin: 0;
   max-height: 0;
   overflow: hidden;
-  transition: max-height 0.3s ease, opacity 0.3s ease;
   opacity: 0;
+  transition: max-height 0.3s ease, opacity 0.3s ease;
 }
-
 .submenu.show {
   max-height: 500px;
   opacity: 1;
 }
-
 .submenu li {
-  padding: 0.5rem 0;
+  padding: 0.5rem 1.5rem;
+  background: #1b1c22;
   cursor: pointer;
-  font-size: 0.9rem;
 }
-
 .submenu li:hover {
-  text-decoration: underline;
-}
-/* Contenedor del logo */
-.logo-container {
-  display: flex;
-  align-items: center;
-  margin-bottom: 2rem;
-  transition: all 0.3s ease;
+  background: #2b2c33;
 }
 
-/* Logo normal */
-.logo {
-  width: 40px;
-  margin-right: 10px;
-  transition: all 0.3s ease;
-}
-
-
-/* Cuando el menú está colapsado */
-.sidebar.collapsed .logo-container {
-  justify-content: center;   /* centra el logo */
-}
-
-.sidebar.collapsed .logo {
-  margin-right: 0;  /* quita el espacio del texto */
-  width: 35px;      /* lo haces un poco más chico */
-}
-/* Botón Avatar */
+/* Avatar */
 .btn-avatar {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0;
+  margin: 20px auto 0;
+}
+.btn-avatar .avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #ffd700;
+  object-fit: cover;
 }
 
-/* Botón Cerrar sesión */
+/* Logout button */
 .btn-logout {
   display: flex;
   align-items: center;
@@ -168,50 +129,7 @@
   cursor: pointer;
   font-weight: bold;
   color: #fff;
-  transition: background 0.2s;
 }
-
 .btn-logout:hover {
   background-color: #c0392b;
 }
-
-/* Botón Avatar */
-.btn-avatar {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-}
-
-.btn-avatar .avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid #ffd700;
-}
-/* Contenedor de botones fuera del sidebar */
-.buttons-top-right {
-  position: absolute;
-  top: 10px;       /* distancia desde arriba */
-  right: 20px;     /* distancia desde la derecha */
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  z-index: 1000;   /* para que quede encima del sidebar */
-}
-.dueno-dashboard {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  font-family: Arial, sans-serif;
-  color: #fff;
-  background: url("./assets/fondo.png") no-repeat center center fixed;
-  background-size: cover;
-}
-.sidebar .logo {
-  width: 150px;
-  margin: 0 auto 30px;
-}
-
