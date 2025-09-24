@@ -9,6 +9,7 @@
 
 /* Contenedor principal */
 .contendor {
+  
   flex: 1;
   margin-left: 260px; /* ancho del sidebar */
   padding: 30px;

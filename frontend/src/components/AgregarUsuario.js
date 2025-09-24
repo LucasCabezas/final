@@ -93,6 +93,8 @@ function AgregarUsuario() {
         <h2>Detalles del Usuario</h2>
         <form onSubmit={handleSubmit} className="form-usuario">
           <div className="fila">
+            <div className="campo">
+    <label htmlFor="nombre">Nombre</label>
             <input
               type="text"
               name="nombre"
@@ -101,6 +103,9 @@ function AgregarUsuario() {
               onChange={handleChange}
               required
             />
+            </div>
+             <div className="campo">
+            <label htmlFor="apellido">Apellido</label>
             <input
               type="text"
               name="apellido"
@@ -109,6 +114,9 @@ function AgregarUsuario() {
               onChange={handleChange}
               required
             />
+            </div>
+             <div className="campo">
+    <label htmlFor="dni">DNI</label>
             <input
               type="text"
               name="dni"
@@ -117,9 +125,12 @@ function AgregarUsuario() {
               onChange={handleChange}
               required
             />
+            </div>
           </div>
 
           <div className="fila">
+             <div className="campo">
+    <label htmlFor="email">Correo electrónico</label>
             <input
               type="email"
               name="email"
@@ -128,6 +139,9 @@ function AgregarUsuario() {
               onChange={handleChange}
               required
             />
+            </div>
+            <div className="campo">
+    <label htmlFor="password">Contraseña</label>
             <input
               type="password"
               name="password"
@@ -136,9 +150,12 @@ function AgregarUsuario() {
               onChange={handleChange}
               required
             />
+            </div>
           </div>
 
           <div className="fila">
+            <div className="campo">
+    <label htmlFor="rol">Seleccionar un rol</label>
             <select
               name="rol"
               value={formData.rol}
@@ -149,13 +166,21 @@ function AgregarUsuario() {
                 <option key={r.Rol_ID} value={r.Rol_ID}>{r.Rol_nombre}</option>
               ))}
             </select>
+            </div>
           </div>
-
+            <div className="botones">
+  <button
+    type="button"
+    onClick={() => navigate("/dueno")}
+  >
+    Volver
+  </button>
           <div className="botones">
             <button type="button" onClick={() => setFormData(initialFormData)}>
               Cancelar
             </button>
             <button type="submit">Guardar</button>
+          </div>
           </div>
         </form>
       </div>

@@ -90,4 +90,14 @@
 .botones button[type="submit"]:hover {
   background: #1462b4;
 }
+.campo {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 15px;
+}
+
+.campo label {
+  margin-bottom: 5px;
+  font-weight: bold;
+}
 

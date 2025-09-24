@@ -12,10 +12,8 @@
   transition: width 0.3s ease;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
 }
 
-/* Colapsado */
 .sidebar.collapsed {
   width: 70px;
 }
@@ -102,34 +100,86 @@
   background: #2b2c33;
 }
 
+/* Layout general */
+.layout {
+  display: flex;
+  height: 100vh;
+}
+
+/* --- Aseguramos que main-panel sea el contexto para posicionar el header-right --- */
+.main-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-left: 260px;               /* ya lo tenías */
+  transition: margin-left 0.3s ease;
+  position: relative;               /* <- importante */
+  min-height: 100vh;
+}
+
+/* Cuando el sidebar se colapsa */
+.sidebar.collapsed ~ .main-panel {
+  margin-left: 70px;
+}
+
+/* --- Header-right: lo colocamos ARRIBA a la DERECHA del main-panel --- */
+.header-right {
+  position: absolute;               /* posicion absoluto relativo a .main-panel */
+  top: 20px;                        /* distancia desde el borde superior del main-panel */
+  right: right;                      /* distancia desde el borde derecho del main-panel */
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 120;                     /* encima de contenido */
+  background: transparent;          /* sin caja blanca */
+  padding: 0;
+}
+
+/* Estilo del botón Cerrar sesión (píldora) */
+.btn-logout {
+  background-color: #dc3545;
+  color: #fff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+  font-weight: 600;
+}
+
+/* Hover */
+.btn-logout:hover {
+  background-color: #c82333;
+}
+
 /* Avatar */
 .btn-avatar {
   background: none;
   border: none;
+  padding: 0;
   cursor: pointer;
-  margin: 20px auto 0;
 }
 .btn-avatar .avatar {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  border: 2px solid #ffd700;
+  border: 3px solid #ffd700;
   object-fit: cover;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
 }
 
-/* Logout button */
-.btn-logout {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  background-color: #e74c3c;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: bold;
-  color: #fff;
+/* --- Responsive: si la pantalla es chica lo movemos a fixed para que siempre se vea --- */
+@media (max-width: 900px) {
+  .header-right {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    background: transparent;
+  }
+  /* opcional: ajustar margin-left en pantallas chicas si querés */
+  .main-panel { margin-left: 0; }
 }
-.btn-logout:hover {
-  background-color: #c0392b;
-}
+
