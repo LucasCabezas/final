@@ -1,30 +1,27 @@
-from django.db import models # Importa el módulo de modelos de Django
+from django.db import models
+from django.contrib.auth.models import User
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
-class Rol(models.Model): # Define el modelo Rol
-    Rol_ID = models.AutoField(primary_key=True) # Campo de clave primaria auto incrementable
-    Rol_nombre = models.CharField(max_length=20) # Campo de texto con longitud máxima de 20 caracteres
+# NUEVO MODELO: Perfil de Usuario para datos adicionales
+class PerfilUsuario(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='perfil')
+    dni = models.BigIntegerField(null=True, blank=True)
+    
+    def __str__(self):
+        return f"Perfil de {self.user.get_full_name()} - DNI: {self.dni}"
+    
+    class Meta:
+        verbose_name = "Perfil de Usuario"
+        verbose_name_plural = "Perfiles de Usuarios"
 
-    def __str__(self): # Método para representar el objeto como una cadena
-        return self.Rol_nombre # Retorna el nombre del rol
+# Signal para crear automáticamente el perfil cuando se crea un usuario
+@receiver(post_save, sender=User)
+def crear_perfil_usuario(sender, instance, created, **kwargs):
+    if created:
+        PerfilUsuario.objects.create(user=instance)
 
-    class Meta: # Metadatos del modelo
-        verbose_name = "Rol" # Nombre singular del modelo
-        verbose_name_plural = "Roles" # Nombre plural del modelo
-
-class Usuario(models.Model): # Define el modelo Usuario
-    Usuario_ID = models.AutoField(primary_key=True) # Campo de clave primaria auto incrementable
-    Usuario_nombre = models.CharField(max_length=20) # Campo de texto con longitud máxima de 20 caracteres
-    Usuario_apellido = models.CharField(max_length=20) # Campo de texto con longitud máxima de 20 caracteres
-    Usuario_email = models.CharField(max_length=40) # Campo de texto con longitud máxima de 40 caracteres
-    Usuario_dni = models.BigIntegerField() # Campo de número entero grande
-    Usuario_contrasena = models.CharField(max_length=30) # Campo de texto con longitud máxima de 30 caracteres
-
-    def __str__(self): # Método para representar el objeto como una cadena
-        return f"{self.Usuario_nombre} {self.Usuario_apellido} {self.Usuario_dni}" # Retorna una representación del usuario
-
-class RolesXUsuarios(models.Model): # Define el modelo intermedio RolesXUsuarios
-    rol = models.ForeignKey(Rol, on_delete=models.CASCADE) # Clave foránea al modelo Rol
-    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE) # Clave foránea al modelo Usuario
-
-    class Meta: # Metadatos del modelo
-        unique_together = ('rol', 'usuario') # Asegura que la combinación de rol y usuario sea única
+@receiver(post_save, sender=User)
+def guardar_perfil_usuario(sender, instance, **kwargs):
+    if hasattr(instance, 'perfil'):
+        instance.perfil.save()

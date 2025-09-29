@@ -64,7 +64,7 @@ function Recuperar({ volverAlLogin }) { // Define el componente funcional Recupe
     <div className="recuperar-container"> {/* Contenedor principal con fondo y centrado */}
       <img src={logo} alt="Logo" className="logo" /> {/* Muestra el logo arriba de la caja */}
       <div className="recuperar-box"> {/* Caja del formulario */}
-        <h3>Recuperación de Contraseña</h3> {/* Título de la vista */}
+        <h2>Recuperación de Contraseña</h2> {/* Título de la vista */}
         <p>Ingresa tu dirección de correo electrónico a continuación y te enviaremos un enlace para restablecer tu contraseña.</p>
         <form onSubmit={handleRecuperar}> {/* Formulario para ingresar el email */}
           <input
