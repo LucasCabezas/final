@@ -1,19 +1,64 @@
-from django.contrib import admin # Importa el módulo admin de Django
-from .models import Rol, Usuario, RolesXUsuarios # Importa los modelos definidos en models.py
+from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.models import User
+from .models import PerfilUsuario
 
-class RolAdmin(admin.ModelAdmin): # Configuración del admin para el modelo Rol
-    list_display = ('Rol_ID', 'Rol_nombre') # Campos a mostrar en la lista
-    search_fields = ('Rol_nombre',) # Campos por los que se puede buscar
+class PerfilUsuarioInline(admin.StackedInline):
+    model = PerfilUsuario
+    can_delete = False
+    verbose_name_plural = 'Perfil'
+    fields = ('dni',)
 
-class UsuarioAdmin(admin.ModelAdmin): # Configuración del admin para el modelo Usuario
-    list_display = ('Usuario_ID', 'Usuario_nombre', 'Usuario_apellido', 'Usuario_email', 'Usuario_dni', 'Usuario_contrasena') # Campos a mostrar en la lista
-    search_fields = ('Usuario_nombre', 'Usuario_apellido', 'Usuario_dni') # Campos por los que se puede buscar
+class UserAdmin(BaseUserAdmin):
+    inlines = (PerfilUsuarioInline,)
+    
+    # Campos a mostrar en la lista
+    list_display = (
+        'username', 
+        'email', 
+        'first_name', 
+        'last_name', 
+        'get_dni', 
+        'get_password_hash',  # Agregar este
+        'is_staff', 
+        'get_grupos'
+    )
+    
+    search_fields = ('username', 'email', 'first_name', 'last_name')
+    list_filter = ('is_staff', 'is_superuser', 'is_active', 'groups')
+    
+    def get_dni(self, obj):
+        return obj.perfil.dni if hasattr(obj, 'perfil') else '-'
+    get_dni.short_description = 'DNI'
+    
+    def get_grupos(self, obj):
+        return ', '.join([g.name for g in obj.groups.all()])
+    get_grupos.short_description = 'Roles'
+    
+    # Método para mostrar el hash de la contraseña
+    def get_password_hash(self, obj):
+        return obj.password[:50] + '...' if len(obj.password) > 50 else obj.password
+    get_password_hash.short_description = 'Password Hash'
+    
+    fieldsets = (
+        ('Información de acceso', {
+            'fields': ('username', 'password')
+        }),
+        ('Información personal', {
+            'fields': ('first_name', 'last_name', 'email')
+        }),
+        ('Permisos', {
+            'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')
+        }),
+        ('Fechas importantes', {
+            'fields': ('last_login', 'date_joined')
+        }),
+    )
 
-class RolesXUsuariosAdmin(admin.ModelAdmin): # Configuración del admin para el modelo RolesXUsuarios
-    list_display = ('rol', 'usuario') # Campos a mostrar en la lista
-    search_fields = ('rol', 'usuario') # Campos por los que se puede buscar
+admin.site.unregister(User)
+admin.site.register(User, UserAdmin)
 
-# Registramos los modelos para que aparezcan en el admin de Django
-admin.site.register(Rol, RolAdmin) # Registra el modelo Rol con su configuración
-admin.site.register(Usuario, UsuarioAdmin) # Registra el modelo Usuario con su configuración
-admin.site.register(RolesXUsuarios, RolesXUsuariosAdmin) # Registra el modelo RolesXUsuarios con su configuración
+@admin.register(PerfilUsuario)
+class PerfilUsuarioAdmin(admin.ModelAdmin):
+    list_display = ('user', 'dni')
+    search_fields = ('user__username', 'user__email', 'dni')
