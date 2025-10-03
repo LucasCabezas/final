@@ -22,7 +22,7 @@
 
 /* Logo */
 .logo {
-  width: 180px;
+  width: 230px;
   margin-bottom: 18px;
   opacity: 0.9;
   display: block;
@@ -66,14 +66,14 @@
 }
 
 .recuperar-box button[type="submit"]:hover {
-  background: #d49e01;
+  background: rgba(255, 215, 15, 0.40);
 }
 
 /* Botón volver */
 .recuperar-box .volver {
   background: none;
-  color: #2196f3 !important;   /* Fuerza el color celeste */
-  font-size: 0.95rem !important; /* Fuerza tamaño pequeño */
+  color: #2196f3 !important;  
+  font-size: 0.95rem !important; 
   margin-top: 18px;
   border: none;
   cursor: pointer;

@@ -1,9 +1,10 @@
+// src/components/Login.jsx
 import React, { useState } from "react";
-import "./Login.css";
-import logo from "./assets/logo.png";
-import { FiEye, FiEyeOff } from "react-icons/fi";
-import Recuperar from "./Recuperar";
 import { useNavigate } from "react-router-dom";
+import { FiEye, FiEyeOff } from "react-icons/fi";
+import logo from "./assets/logo.png";
+import "./Login.css";
+import Recuperar from "./Recuperar";
 
 function Login() {
   const navigate = useNavigate();
@@ -12,84 +13,99 @@ function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [mensaje, setMensaje] = useState("");
-  const [tipoMensaje, setTipoMensaje] = useState(""); // success | error | warning
+  const [tipoMensaje, setTipoMensaje] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [mostrarRecuperar, setMostrarRecuperar] = useState(false);
 
+  // Validación de campos
+  const validarCampos = () => {
+    const errores = {};
+    if (!username.trim()) errores.username = "⚠️ Usuario vacío";
+    if (!password.trim()) errores.password = "⚠️ Contraseña vacía";
+    else if (password.length < 4)
+      errores.password = "⚠️ La contraseña debe tener al menos 4 caracteres";
+
+    if (Object.keys(errores).length > 0) {
+      setMensaje(Object.values(errores).join(" | "));
+      setTipoMensaje("warning");
+      return false;
+    }
+    return true;
+  };
+
+  // Manejo del login
   const handleLogin = async (e) => {
     e.preventDefault();
+    if (!validarCampos()) return;
 
-    if (!username || !password) {
-      setMensaje("⚠️ Completa todos los campos");
-      setTipoMensaje("warning");
-      return;
-    }
+    const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/usuarios/login/", {
+      setLoading(true);
+      setMensaje("");
+
+      const response = await fetch(`${API_URL}/api/usuarios/login/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
 
       const data = await response.json();
-      console.log("Respuesta login:", data);
 
       if (response.ok) {
         if (!data.id) {
-          setMensaje("❌ Error: id de usuario no recibido del backend");
+          setMensaje("❌ Error: no se recibió el ID del usuario");
           setTipoMensaje("error");
           return;
         }
 
-        // Guardar datos del usuario en localStorage
+        // Guardar datos directamente
         localStorage.setItem("usuarioId", data.id);
         localStorage.setItem("usuarioNombre", data.usuario);
         localStorage.setItem("rol", data.rol);
 
-        setMensaje("✅ " + data.message);
+        setMensaje(`✅ Bienvenido ${data.usuario}`);
         setTipoMensaje("success");
 
-        // Redirigir según rol
-        switch (data.rol) {
-          case "Dueño":
-            navigate("/dueno");
-            break;
-          case "Vendedor":
-            navigate("/vendedor");
-            break;
-          case "Costurero":
-            navigate("/costurero");
-            break;
-          case "Estampador":
-            navigate("/estampador");
-            break;
-          default:
+        // Manejo de rutas según rol
+        const rutas = {
+          Dueño: "/dueno",
+          Vendedor: "/vendedor",
+          Costurero: "/costurero",
+          Estampador: "/estampador",
+        };
+
+        setTimeout(() => {
+          if (rutas[data.rol]) navigate(rutas[data.rol]);
+          else {
             setMensaje("❌ Rol no autorizado");
             setTipoMensaje("error");
-            break;
-        }
+          }
+        }, 1000);
       } else {
-        setMensaje("❌ " + (data.error || "Credenciales inválidas"));
+        setMensaje("❌ Usuario incorrecto");
         setTipoMensaje("error");
       }
     } catch (error) {
-      setMensaje("⚠️ Error de conexión con el servidor");
+      setMensaje("⚠️ No se pudo conectar con el servidor");
       setTipoMensaje("warning");
       console.error("Error login:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Vista de recuperar contraseña
+  // Vista de recuperación de contraseña
   if (mostrarRecuperar) {
     return <Recuperar volverAlLogin={() => setMostrarRecuperar(false)} />;
   }
 
   return (
     <div className="login-container">
+      <img src={logo} alt="Logo King Importados" className="logo" />
       <div className="login-box">
-        <img src={logo} alt="Logo" className="logo" />
-        <h3>Inicio de Sesión</h3>
+        <h1>Inicio de Sesión</h1>
 
         <form onSubmit={handleLogin}>
           <input
@@ -97,6 +113,7 @@ function Login() {
             placeholder="Usuario"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
+            aria-label="Usuario"
             required
           />
 
@@ -106,17 +123,21 @@ function Login() {
               placeholder="Contraseña"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              aria-label="Contraseña"
               required
             />
             <span
               className="eye-icon"
               onClick={() => setShowPassword(!showPassword)}
+              style={{ cursor: "pointer" }}
             >
               {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
             </span>
           </div>
 
-          <button type="submit">Ingresar</button>
+          <button type="submit" disabled={loading}>
+            {loading ? "🔄 Ingresando..." : "Ingresar"}
+          </button>
         </form>
 
         <button
@@ -126,7 +147,6 @@ function Login() {
           Recuperar Contraseña
         </button>
 
-        {/* Mensaje con clase dinámica */}
         {mensaje && <p className={`mensaje ${tipoMensaje}`}>{mensaje}</p>}
       </div>
     </div>

@@ -1,164 +1,197 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Usuario, Rol, RolesXUsuarios
-from .serializers import UsuarioSerializer, RolSerializer, RolesXUsuariosSerializer
+from django.contrib.auth.models import User, Group
+from django.contrib.auth import authenticate
 import logging
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from .models import RolesXUsuarios, Rol
 
-class RolesPorUsuarioView(APIView):
-    def get(self, request, usuario_id):
-        roles_x_usuarios = RolesXUsuarios.objects.filter(usuario_id=usuario_id)
-        data = []
-        for ru in roles_x_usuarios:
-            rol_obj = Rol.objects.get(pk=ru.rol_id)
-            data.append({
-                "rol_id": rol_obj.pk,
-                "rol_nombre": rol_obj.Rol_nombre
-            })
-        return Response(data)
 logger = logging.getLogger(__name__)
-# Login
+
+# Login ACTUALIZADO para usar Django Auth
 class LoginView(APIView):
     def post(self, request):
         username = request.data.get("username")
         password = request.data.get("password")
 
-        try:
-            user = Usuario.objects.get(Usuario_email=username)
+        # Intentar autenticar con Django
+        user = authenticate(username=username, password=password)
+        
+        if user is not None:
+            # Usuario autenticado correctamente
+            roles = [group.name for group in user.groups.all()]
+            rol_nombre = roles[0] if roles else None
 
-            if user.Usuario_contrasena == password:  # ⚠️ texto plano
-                # Obtener el rol
-                rol_x_usuario = RolesXUsuarios.objects.filter(usuario=user).first()
-                rol_nombre = rol_x_usuario.rol.Rol_nombre if rol_x_usuario else None
+            return Response({
+                "message": "Login exitoso",
+                "usuario": user.get_full_name(),
+                "id": user.id,
+                "rol": rol_nombre
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({"error": "Credenciales incorrectas"}, status=status.HTTP_401_UNAUTHORIZED)
 
-                return Response({
-                    "message": "Login exitoso",
-                    "usuario": f"{user.Usuario_nombre} {user.Usuario_apellido}",
-                    "id": user.Usuario_ID,
-                    "rol": rol_nombre
-                }, status=status.HTTP_200_OK)
-            else:
-                return Response({"error": "Contraseña incorrecta"}, status=status.HTTP_401_UNAUTHORIZED)
-
-        except Usuario.DoesNotExist:
-            return Response({"error": "Usuario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
-
-# Validación de correo para recuperación de contraseña
+# Validación de correo ACTUALIZADA
 class ValidarCorreoView(APIView):
     def post(self, request):
-        logger.info(f"Datos recibidos en ValidarCorreoView: {request.data}")
-
         email = request.data.get("email")
         if not email:
-            logger.warning("No se recibió el campo 'email'")
             return Response({"error": "El campo 'email' es obligatorio"}, status=400)
 
         try:
-            usuario = Usuario.objects.get(Usuario_email=email)
-            logger.info(f"Usuario encontrado: {usuario.Usuario_nombre} {usuario.Usuario_apellido}")
-            return Response({"message": "Correo válido", "usuario_id": usuario.Usuario_ID}, status=200)
-        except Usuario.DoesNotExist:
-            logger.warning(f"Correo no registrado: {email}")
+            usuario = User.objects.get(email=email)
+            return Response({"message": "Correo válido", "usuario_id": usuario.id}, status=200)
+        except User.DoesNotExist:
             return Response({"error": "Correo no registrado"}, status=404)
 
-# CRUD Usuarios
+# Roles por usuario ACTUALIZADO
+class RolesPorUsuarioView(APIView):
+    def get(self, request, usuario_id):
+        try:
+            user = User.objects.get(id=usuario_id)
+            roles = user.groups.all()
+            data = [{"rol_id": rol.id, "rol_nombre": rol.name} for rol in roles]
+            return Response(data)
+        except User.DoesNotExist:
+            return Response({"error": "Usuario no encontrado"}, status=404)
+
+# CRUD Usuarios ACTUALIZADO
 class UsuarioList(APIView):
     def get(self, request):
-        usuarios = Usuario.objects.all()
-        serializer = UsuarioSerializer(usuarios, many=True)
-        return Response(serializer.data)
+        users = User.objects.all()
+        data = [{
+            "id": u.id,
+            "nombre": u.first_name,
+            "apellido": u.last_name,
+            "email": u.email,
+            "dni": u.perfil.dni if hasattr(u, 'perfil') else None
+        } for u in users]
+        return Response(data)
 
     def post(self, request):
-        serializer = UsuarioSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=201)
-        return Response(serializer.errors, status=400)
+        try:
+            user = User.objects.create_user(
+                username=request.data.get('email'),
+                email=request.data.get('email'),
+                password=request.data.get('password'),
+                first_name=request.data.get('nombre'),
+                last_name=request.data.get('apellido')
+            )
+            
+            if hasattr(user, 'perfil'):
+                user.perfil.dni = request.data.get('dni')
+                user.perfil.save()
+            
+            rol_id = request.data.get('rol_id')
+            if rol_id:
+                group = Group.objects.get(id=rol_id)
+                user.groups.add(group)
+            
+            return Response({
+                "id": user.id,
+                "nombre": user.first_name,
+                "apellido": user.last_name,
+                "email": user.email
+            }, status=201)
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
 
 class UsuarioDetail(APIView):
     def get(self, request, pk):
-        usuario = Usuario.objects.get(pk=pk)
-        serializer = UsuarioSerializer(usuario)
-        return Response(serializer.data)
+        try:
+            user = User.objects.get(pk=pk)
+            return Response({
+                "id": user.id,
+                "nombre": user.first_name,
+                "apellido": user.last_name,
+                "email": user.email,
+                "dni": user.perfil.dni if hasattr(user, 'perfil') else None
+            })
+        except User.DoesNotExist:
+            return Response({"error": "Usuario no encontrado"}, status=404)
 
     def put(self, request, pk):
-        usuario = Usuario.objects.get(pk=pk)
-        serializer = UsuarioSerializer(usuario, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=400)
+        try:
+            user = User.objects.get(pk=pk)
+            user.first_name = request.data.get('nombre', user.first_name)
+            user.last_name = request.data.get('apellido', user.last_name)
+            user.email = request.data.get('email', user.email)
+            
+            if request.data.get('password'):
+                user.set_password(request.data.get('password'))
+            
+            user.save()
+            
+            if hasattr(user, 'perfil') and request.data.get('dni'):
+                user.perfil.dni = request.data.get('dni')
+                user.perfil.save()
+            
+            return Response({"message": "Usuario actualizado"})
+        except User.DoesNotExist:
+            return Response({"error": "Usuario no encontrado"}, status=404)
 
     def delete(self, request, pk):
-        usuario = Usuario.objects.get(pk=pk)
-        usuario.delete()
-        return Response(status=204)
+        try:
+            user = User.objects.get(pk=pk)
+            user.delete()
+            return Response(status=204)
+        except User.DoesNotExist:
+            return Response({"error": "Usuario no encontrado"}, status=404)
 
-# CRUD Roles
+# CRUD Roles ACTUALIZADO
 class RolList(APIView):
     def get(self, request):
-        roles = Rol.objects.all()
-        serializer = RolSerializer(roles, many=True)
-        return Response(serializer.data)
+        groups = Group.objects.all()
+        data = [{"id": g.id, "nombre": g.name} for g in groups]
+        return Response(data)
 
     def post(self, request):
-        serializer = RolSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=201)
-        return Response(serializer.errors, status=400)
+        group, created = Group.objects.get_or_create(name=request.data.get('nombre'))
+        return Response({"id": group.id, "nombre": group.name}, status=201 if created else 200)
 
 class RolDetail(APIView):
     def get(self, request, pk):
-        rol = Rol.objects.get(pk=pk)
-        serializer = RolSerializer(rol)
-        return Response(serializer.data)
+        try:
+            group = Group.objects.get(pk=pk)
+            return Response({"id": group.id, "nombre": group.name})
+        except Group.DoesNotExist:
+            return Response({"error": "Rol no encontrado"}, status=404)
 
     def put(self, request, pk):
-        rol = Rol.objects.get(pk=pk)
-        serializer = RolSerializer(rol, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=400)
+        try:
+            group = Group.objects.get(pk=pk)
+            group.name = request.data.get('nombre', group.name)
+            group.save()
+            return Response({"id": group.id, "nombre": group.name})
+        except Group.DoesNotExist:
+            return Response({"error": "Rol no encontrado"}, status=404)
 
     def delete(self, request, pk):
-        rol = Rol.objects.get(pk=pk)
-        rol.delete()
-        return Response(status=204)
+        try:
+            group = Group.objects.get(pk=pk)
+            group.delete()
+            return Response(status=204)
+        except Group.DoesNotExist:
+            return Response({"error": "Rol no encontrado"}, status=404)
 
-# CRUD RolesXUsuarios
+# Asignar roles a usuarios
 class RolesXUsuariosList(APIView):
-    def get(self, request):
-        roles_x_usuarios = RolesXUsuarios.objects.all()
-        serializer = RolesXUsuariosSerializer(roles_x_usuarios, many=True)
-        return Response(serializer.data)
-
     def post(self, request):
-        serializer = RolesXUsuariosSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=201)
-        return Response(serializer.errors, status=400)
+        try:
+            user = User.objects.get(id=request.data.get('usuario_id'))
+            group = Group.objects.get(id=request.data.get('rol_id'))
+            user.groups.add(group)
+            return Response({"message": "Rol asignado"}, status=201)
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
 
 class RolesXUsuariosDetail(APIView):
-    def get(self, request, pk):
-        rol_x_usuario = RolesXUsuarios.objects.get(pk=pk)
-        serializer = RolesXUsuariosSerializer(rol_x_usuario)
-        return Response(serializer.data)
-
-    def put(self, request, pk):
-        rol_x_usuario = RolesXUsuarios.objects.get(pk=pk)
-        serializer = RolesXUsuariosSerializer(rol_x_usuario, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=400)
-
     def delete(self, request, pk):
-        rol_x_usuario = RolesXUsuarios.objects.get(pk=pk)
-        rol_x_usuario.delete()
-        return Response(status=204)
+        # pk debería ser usuario_id y rol_id separados por guión
+        try:
+            usuario_id, rol_id = pk.split('-')
+            user = User.objects.get(id=usuario_id)
+            group = Group.objects.get(id=rol_id)
+            user.groups.remove(group)
+            return Response(status=204)
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
