@@ -1,7 +1,13 @@
-from django.urls import path, include # Importa la función path para definir rutas
-from .views import PedidoList, PedidoDetail # Importa las vistas desde el archivo views.py
+from django.urls import path, include
+from .views import PedidoList, PedidoDetail, crear_pedido, eliminar_item, finalizar_pedido
 
-urlpatterns = [ # Define la lista de rutas URL para la aplicación
-    path('pedidos/', PedidoList.as_view(), name='pedido-list'), # Ruta para listar y crear pedidos
-    path('pedidos/<int:pk>/', PedidoDetail.as_view(), name='pedido-detail'), # Ruta para obtener, actualizar o eliminar un pedido específico
+urlpatterns = [
+    # URLs de la API REST (las que ya tenías)
+    path('api/', PedidoList.as_view(), name='pedido-list'),
+    path('api/<int:pk>/', PedidoDetail.as_view(), name='pedido-detail'),
+    
+    # URLs del Frontend (nuevas)
+    path('crear/', crear_pedido, name='crear_pedido'),
+    path('eliminar/<int:item_id>/', eliminar_item, name='eliminar_item'),
+    path('finalizar/<int:pedido_id>/', finalizar_pedido, name='finalizar_pedido'),
 ]
