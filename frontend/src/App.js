@@ -3,6 +3,7 @@ import { Routes, Route } from "react-router-dom";
 import Login from "./components/Login";
 import Dueno from "./components/Dueno";
 import AgregarUsuario from "./components/AgregarUsuario";
+import RealizarPedido from "./components/RealizarPedido";
 
 function App() {
   return (
@@ -26,6 +27,9 @@ function App() {
 
       {/* Página para agregar usuarios */}
       <Route path="/agregarUsuario" element={<AgregarUsuario />} />
+
+
+      <Route path="/realizar-pedido" element={<RealizarPedido />} />
     </Routes>
   );
 }

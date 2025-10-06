@@ -1,0 +1,313 @@
+.realizar-pedido-container {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f5f5f5;
+}
+
+.contendor {
+  flex: 1;
+  padding: 2rem;
+  margin-left: 250px;
+  transition: margin-left 0.3s ease;
+}
+
+.sidebar.collapsed ~ .contendor {
+  margin-left: 70px;
+}
+
+/* Header */
+.page-header {
+  margin-bottom: 2rem;
+}
+
+.page-header h2 {
+  color: #2c3e50;
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.page-header p {
+  color: #7f8c8d;
+  font-size: 1rem;
+}
+
+/* Contenedor principal */
+.calculador-content {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Formulario */
+.calculador-form {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  color: #2c3e50;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.form-group select,
+.form-group input {
+  padding: 0.75rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  background-color: white;
+}
+
+.form-group select:focus,
+.form-group input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.form-group select:disabled,
+.form-group input:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Botones */
+.form-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+.btn-calcular {
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  color: white;
+  padding: 1rem 3rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+}
+
+.btn-calcular:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(52, 152, 219, 0.4);
+}
+
+.btn-calcular:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Mensajes de error */
+.error-message {
+  background-color: #fee;
+  color: #c33;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-top: 1rem;
+  border-left: 4px solid #e74c3c;
+}
+
+/* Contenedor de resultados */
+.resultado-container {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  animation: slideIn 0.4s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.resultado-container h3 {
+  color: #2c3e50;
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+/* Grid de resultados */
+.resultado-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.resultado-item {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-left: 4px solid #95a5a6;
+  transition: all 0.3s ease;
+}
+
+.resultado-item:hover {
+  transform: translateX(5px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.resultado-item .label {
+  color: #7f8c8d;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.resultado-item .value {
+  color: #2c3e50;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+/* Tipos de resultado */
+.resultado-item.destacado {
+  border-left-color: #f39c12;
+  background: #fef5e7;
+}
+
+.resultado-item.success {
+  border-left-color: #27ae60;
+  background: #eafaf1;
+}
+
+.resultado-item.total {
+  border-left-color: #9b59b6;
+  background: #f4ecf7;
+  grid-column: 1 / -1;
+}
+
+.resultado-item.total .label,
+.resultado-item.total .value {
+  font-size: 1.2rem;
+}
+
+.resultado-item.ganancia {
+  border-left-color: #16a085;
+  background: #e8f8f5;
+  grid-column: 1 / -1;
+}
+
+/* Desglose de talleres */
+.desglose-talleres {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.desglose-talleres h4 {
+  color: #2c3e50;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+}
+
+.talleres-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.taller-item {
+  background: white;
+  padding: 1rem;
+  border-radius: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-left: 3px solid #3498db;
+}
+
+.taller-nombre {
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.taller-costo {
+  color: #3498db;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+/* Botón confirmar */
+.confirmar-actions {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: center;
+}
+
+.btn-confirmar {
+  background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+  color: white;
+  padding: 1rem 3rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+}
+
+.btn-confirmar:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(39, 174, 96, 0.4);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .contendor {
+    margin-left: 70px;
+    padding: 1rem;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page-header h2 {
+    font-size: 1.5rem;
+  }
+
+  .resultado-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .resultado-item.total,
+  .resultado-item.ganancia {
+    grid-column: 1;
+  }
+}

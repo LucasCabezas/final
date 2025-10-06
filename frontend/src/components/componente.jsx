@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   FaBoxOpen,
   FaShoppingCart,
@@ -15,6 +16,8 @@ function Componente() {
   const [openInventario, setOpenInventario] = useState(false);
   const [openPedidos, setOpenPedidos] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  
+  const navigate = useNavigate();
 
   const handleLogout = () => {
     localStorage.clear();
@@ -22,7 +25,20 @@ function Componente() {
   };
 
   const handlePerfil = () => {
-    window.location.href = "/perfil";
+    navigate("/perfil");
+  };
+
+  // Funciones de navegación
+  const handleRealizarPedido = () => {
+    navigate("/realizar-pedido");
+  };
+
+  const handleCalculadorCostos = () => {
+    navigate("/realizar-pedido"); // Mismo componente que realizar pedido
+  };
+
+  const handleAprobacionPedidos = () => {
+    navigate("/aprobacion-pedidos");
   };
 
   return (
@@ -48,8 +64,8 @@ function Componente() {
             {!isCollapsed && <MdKeyboardArrowDown className={`arrow ${openInventario ? "open" : ""}`} />}
           </div>
           <ul className={`submenu ${openInventario ? "show" : ""}`}>
-            <li onClick={() => console.log("Insumos clicked")}>Insumos</li>
-            <li onClick={() => console.log("Prendas clicked")}>Prendas</li>
+            <li onClick={() => navigate("/insumos")}>Insumos</li>
+            <li onClick={() => navigate("/prendas")}>Prendas</li>
           </ul>
         </li>
 
@@ -62,13 +78,13 @@ function Componente() {
             {!isCollapsed && <MdKeyboardArrowDown className={`arrow ${openPedidos ? "open" : ""}`} />}
           </div>
           <ul className={`submenu ${openPedidos ? "show" : ""}`}>
-            <li onClick={() => console.log("Realizar pedido clicked")}>Realizar pedido</li>
-            <li onClick={() => console.log("Aprobación de pedidos clicked")}>Aprobación de pedidos</li>
+            <li onClick={handleRealizarPedido}>Realizar pedido</li>
+            <li onClick={handleAprobacionPedidos}>Aprobación de pedidos</li>
           </ul>
         </li>
 
         <li className="menu-item">
-          <div className="menu-label">
+          <div className="menu-label" onClick={handleCalculadorCostos}>
             <FaCalculator className="icon" />
             {!isCollapsed && <span>Calculador de costos</span>}
           </div>
