@@ -6,7 +6,7 @@ class TallerAdmin(admin.ModelAdmin): # Configuración del admin para el modelo T
     search_fields = ('Taller_nombre',) # Campos por los que se puede buscar
 
 class PrendasXTalleresAdmin(admin.ModelAdmin): # Configuración del admin para el modelo PrendasXTalleres
-    list_display = ('prenda', 'taller', 'insumo_x_prenda', 'Prenda_taller_mano_obra', 'Prenda_taller_total') # Campos a mostrar en la lista
+    list_display = ('prenda', 'taller', 'Prenda_taller_mano_obra', 'Prenda_taller_total') # Campos a mostrar en la lista
     search_fields = ('prenda', 'taller') # Campos por los que se puede buscar
 
 # Registramos los modelos para que aparezcan en el admin de Django

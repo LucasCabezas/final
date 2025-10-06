@@ -108,5 +108,5 @@ def finalizar_pedido(request, pedido_id):
     pedido = get_object_or_404(Pedido, Pedido_ID=pedido_id)
     pedido.Pedido_estado = True
     pedido.save()
-    messages.success(request, '¡Pedido finalizado exitosamente!')
+    messages.success(request, '¡Pedido realizado exitosamente!')
     return redirect('crear_pedido')
