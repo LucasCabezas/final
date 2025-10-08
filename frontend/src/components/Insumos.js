@@ -5,7 +5,7 @@ import fondoImg from './assets/fondo.png';
 
 const styles = {
   insumosContainer: {
-    marginLeft: '250px',
+    marginLeft: '150px',
     padding: '32px',
     minHeight: '100vh',
     backgroundSize: 'cover',
