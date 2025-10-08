@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import "./Dueno.css";
+import "./Inicio.css";
 import Componente from "./componente.jsx"; // Sidebar
 import { useNavigate } from "react-router-dom";
 
