@@ -1,40 +1,67 @@
-from rest_framework.views import APIView # Importa la clase base para las vistas de la API
-from rest_framework.response import Response # Importa la clase para manejar las respuestas HTTP
-from .models import Insumo, Prenda # Importa los modelos desde el archivo models.py
-from .serializers import InsumoSerializer, PrendaSerializer # Importa los serializadores desde el archivo serializers.py
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .models import Insumo, Prenda
+from .serializers import InsumoSerializer, PrendaSerializer
 
-# View de Insumos
-class InsumoList(APIView): # Vista para listar y crear insumos
-    def get(self, request): # Maneja las solicitudes GET
-        insumos = Insumo.objects.all() # Obtiene todos los insumos de la base de datos
-        serializer = InsumoSerializer(insumos, many=True) # Serializa los insumos
-        return Response(serializer.data) # Devuelve los datos serializados en la respuesta
+class InsumoList(APIView):
+    def get(self, request):
+        try:
+            insumos = Insumo.objects.all()
+            serializer = InsumoSerializer(insumos, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response(
+                {'error': str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
-    def post(self, request): # Maneja las solicitudes POST
-        serializer = InsumoSerializer(data=request.data) # Deserializa los datos recibidos
-        if serializer.is_valid(): # Valida los datos
-            serializer.save() # Guarda el nuevo insumo en la base de datos
-            return Response(serializer.data, status=201) # Devuelve los datos del nuevo insumo con estado 201 (creado)
-        return Response(serializer.errors, status=400) # Devuelve los errores de validación con estado 400 (solicitud incorrecta)
+    def post(self, request):
+        serializer = InsumoSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-class InsumoDetail(APIView): # Vista para obtener, actualizar o eliminar un insumo específico
-    def get(self, request, pk): # Maneja las solicitudes GET para un insumo específico
-        insumo = Insumo.objects.get(pk=pk) # Obtiene el insumo por su clave primaria (pk)
-        serializer = InsumoSerializer(insumo) # Serializa el insumo
-        return Response(serializer.data) # Devuelve los datos serializados en la respuesta
+class InsumoDetail(APIView):
+    def get_object(self, pk):
+        try:
+            return Insumo.objects.get(pk=pk)
+        except Insumo.DoesNotExist:
+            return None
 
-    def put(self, request, pk): # Maneja las solicitudes PUT para actualizar un insumo específico
-        insumo = Insumo.objects.get(pk=pk) # Obtiene el insumo por su clave primaria (pk)
-        serializer = InsumoSerializer(insumo, data=request.data) # Deserializa los datos recibidos para actualizar el insumo
-        if serializer.is_valid(): # Valida los datos
-            serializer.save() # Guarda los cambios en la base de datos
-            return Response(serializer.data) # Devuelve los datos actualizados del insumo
-        return Response(serializer.errors, status=400) # Devuelve los errores de validación con estado 400 (solicitud incorrecta)
+    def get(self, request, pk):
+        insumo = self.get_object(pk)
+        if insumo is None:
+            return Response(
+                {'error': 'Insumo no encontrado'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        serializer = InsumoSerializer(insumo)
+        return Response(serializer.data)
 
-    def delete(self, request, pk): # Maneja las solicitudes DELETE para eliminar un insumo específico
-        insumo = Insumo.objects.get(pk=pk) # Obtiene el insumo por su clave primaria (pk)
-        insumo.delete() # Elimina el insumo de la base de datos
-        return Response(status=204) # Devuelve una respuesta con estado 204 (sin contenido)
+    def put(self, request, pk):
+        insumo = self.get_object(pk)
+        if insumo is None:
+            return Response(
+                {'error': 'Insumo no encontrado'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        serializer = InsumoSerializer(insumo, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        insumo = self.get_object(pk)
+        if insumo is None:
+            return Response(
+                {'error': 'Insumo no encontrado'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        insumo.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 # View de Prendas    
 class PrendaList(APIView): # Vista para listar y crear prendas
