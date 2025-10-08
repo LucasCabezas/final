@@ -5,16 +5,12 @@ import fondoImg from './assets/fondo.png';
 
 const styles = {
   insumosContainer: {
-    marginLeft: '150px',
     padding: '32px',
     minHeight: '100vh',
     backgroundSize: 'cover',
     backgroundPosition: 'center',
     backgroundRepeat: 'no-repeat',
     transition: 'margin-left 0.3s ease'
-  },
-  insumosContainerCollapsed: {
-    marginLeft: '70px'
   },
   contentWrapper: {
     maxWidth: '1400px',
@@ -364,7 +360,6 @@ const styleSheet = `
 
 function Insumos() {
   const [isNavbarCollapsed, setIsNavbarCollapsed] = useState(false);
-  
   const [insumos, setInsumos] = useState([]);
 
   // Cargar insumos al montar el componente
@@ -463,7 +458,6 @@ function Insumos() {
       };
 
       if (confirmAction === 'edit') {
-        // Actualizar insumo existente
         const response = await fetch(`http://localhost:8000/api/inventario/insumos/${editingInsumo.Insumo_ID}/`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -483,7 +477,6 @@ function Insumos() {
         await cargarInsumos();
         showAlert(`Insumo "${confirmData.nombre}" actualizado exitosamente`, 'success');
       } else {
-        // Crear nuevo insumo
         const response = await fetch('http://localhost:8000/api/inventario/insumos/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -550,20 +543,14 @@ function Insumos() {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     
-    // Validar que nombre y unidad solo acepten letras y espacios
     if (name === 'nombre' || name === 'unidad') {
-      // Solo permitir letras (incluyendo tildes y ñ) y espacios
       const regex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/;
       if (!regex.test(value)) {
-        return; // No actualizar si contiene caracteres no permitidos
+        return;
       }
     }
     
     setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const precioTotal = (cantidad, precioUnitario) => {
-    return (cantidad * precioUnitario).toFixed(2);
   };
 
   const getConfirmModalContent = () => {
@@ -608,7 +595,7 @@ function Insumos() {
         <div style={{
           ...styles.insumosContainer,
           backgroundImage: `url(${fondoImg})`,
-          ...(isNavbarCollapsed ? styles.insumosContainerCollapsed : {})
+          marginLeft: isNavbarCollapsed ? '70px' : '250px'
         }}>
           <div style={styles.contentWrapper}>
             <div style={styles.header}>
