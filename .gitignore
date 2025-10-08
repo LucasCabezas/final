@@ -1,14 +1,28 @@
-# Entornos virtuales
+# Entornos virtuales Python
 venv/
 env/
 ENV/
 .venv/
 
-# Archivos de Python
+# Node modules
+node_modules/
+
+# Python
 __pycache__/
 *.py[cod]
+*.pyc
+*.pyo
+*.pyd
+.Python
 *.so
 *.egg
 *.egg-info/
 dist/
 build/
+
+# Base de datos
+*.sqlite3
+db.sqlite3
+
+# Variables de entorno
+.env
