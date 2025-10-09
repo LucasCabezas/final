@@ -1,16 +1,21 @@
 from django.db import models # Importa el módulo models de Django
 from clasificaciones.models import Talle, Color, Modelo, Marca # Importa los modelos de Clasificaciones
 
-class Insumo(models.Model): # Define el modelo Insumo
-    Insumo_ID = models.AutoField(primary_key=True) # Campo de clave primaria
-    Insumo_nombre = models.CharField(max_length=30) # Campo de nombre del insumo
-    Insumo_precio_unitario = models.FloatField() # Campo de precio unitario del insumo
-    Insumo_cantidad = models.IntegerField() # Campo de cantidad del insumo
-    Insumo_unidad_medida = models.CharField(max_length=10) # Campo de unidad de medida del insumo
-    Insumo_precio_total = models.FloatField() # Campo de precio total del insumo
+class Insumo(models.Model):
+    Insumo_ID = models.AutoField(primary_key=True)
+    Insumo_nombre = models.CharField(max_length=30)
+    Insumo_precio_unitario = models.FloatField()
+    Insumo_cantidad = models.IntegerField()
+    Insumo_unidad_medida = models.CharField(max_length=10)
+    Insumo_precio_total = models.FloatField(editable=False)  # No editable manualmente
 
-    def __str__(self): # Método para representar el objeto como una cadena
-        return self.Insumo_nombre # Retorna el nombre del insumo
+    def save(self, *args, **kwargs):
+        # Calcula automáticamente el precio total antes de guardar
+        self.Insumo_precio_total = self.Insumo_cantidad * self.Insumo_precio_unitario
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.Insumo_nombre
 
 class Prenda(models.Model): # Define el modelo Prenda
     Prenda_ID = models.AutoField(primary_key=True) # Campo de clave primaria
