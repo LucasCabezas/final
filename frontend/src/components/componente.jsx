@@ -6,6 +6,7 @@ import {
   FaUserPlus,
   FaHome,
   FaSignOutAlt,
+  FaUser,
 } from "react-icons/fa";
 import { MdKeyboardArrowDown, MdKeyboardArrowLeft, MdKeyboardArrowRight } from "react-icons/md";
 import logo from "./assets/logo.png";
@@ -35,6 +36,10 @@ function Componente({ onToggle }) {
     if (onToggle) {
       onToggle(newCollapsedState);
     }
+  };
+
+  const handlePerfil = () => {
+    navigate("/perfil");
   };
 
   const handleCerrarSesion = () => {
@@ -358,6 +363,27 @@ function Componente({ onToggle }) {
             <div style={styles.menuTitle}>
               <FaUserPlus style={styles.icon} />
               {!isCollapsed && <span style={styles.menuText}>Usuarios</span>}
+            </div>
+          </div>
+        </li>
+
+        {/* Perfil */}
+        <li style={styles.menuItem}>
+          <div 
+            style={styles.menuLabel}
+            onClick={handlePerfil}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 215, 15, 0.1)';
+              e.currentTarget.style.borderLeft = '3px solid rgba(255, 215, 15, 1)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.borderLeft = '3px solid transparent';
+            }}
+          >
+            <div style={styles.menuTitle}>
+              <FaUser style={styles.icon} />
+              {!isCollapsed && <span style={styles.menuText}>Perfil</span>}
             </div>
           </div>
         </li>

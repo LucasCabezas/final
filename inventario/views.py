@@ -1,8 +1,9 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Insumo, Prenda
-from .serializers import InsumoSerializer, PrendaSerializer
+from rest_framework.decorators import api_view
+from .models import Insumo, Prenda, AlertaStock
+from .serializers import InsumoSerializer, PrendaSerializer, AlertaStockSerializer
 
 class InsumoList(APIView):
     def get(self, request):
@@ -62,6 +63,34 @@ class InsumoDetail(APIView):
             )
         insumo.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+# NUEVO: Vista para obtener alertas de bajo stock activas
+class AlertaStockList(APIView):
+    def get(self, request):
+        try:
+            alertas = AlertaStock.objects.filter(estado='activa').order_by('-fecha_creacion')
+            serializer = AlertaStockSerializer(alertas, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response(
+                {'error': str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+# NUEVO: Endpoint para obtener insumos bajo stock
+@api_view(['GET'])
+def obtener_insumos_bajo_stock(request):
+    try:
+        insumos_bajo_stock = Insumo.objects.filter(
+            Insumo_cantidad__lte=models.F('Insumo_cantidad_minima')
+        )
+        serializer = InsumoSerializer(insumos_bajo_stock, many=True)
+        return Response(serializer.data)
+    except Exception as e:
+        return Response(
+            {'error': str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 # View de Prendas    
 class PrendaList(APIView): # Vista para listar y crear prendas

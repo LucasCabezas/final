@@ -8,6 +8,7 @@ class Insumo(models.Model):
     Insumo_cantidad = models.IntegerField()
     Insumo_unidad_medida = models.CharField(max_length=10)
     Insumo_precio_total = models.FloatField(editable=False)  # No editable manualmente
+    Insumo_cantidad_minima = models.IntegerField(default=10)  # NUEVO: Cantidad mínima para alerta
 
     def save(self, *args, **kwargs):
         # Calcula automáticamente el precio total antes de guardar
@@ -16,6 +17,30 @@ class Insumo(models.Model):
 
     def __str__(self):
         return self.Insumo_nombre
+
+    def esta_bajo_stock(self):  # NUEVO: Método para verificar si está bajo stock
+        return self.Insumo_cantidad <= self.Insumo_cantidad_minima
+
+
+class AlertaStock(models.Model):  # NUEVO: Modelo para registrar alertas de bajo stock
+    ESTADO_CHOICES = [
+        ('activa', 'Activa'),
+        ('resuelta', 'Resuelta'),
+    ]
+    
+    insumo = models.ForeignKey(Insumo, on_delete=models.CASCADE)
+    cantidad_actual = models.IntegerField()
+    cantidad_minima = models.IntegerField()
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='activa')
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_resolucion = models.DateTimeField(null=True, blank=True)
+    
+    def __str__(self):
+        return f"Alerta: {self.insumo.Insumo_nombre}"
+    
+    class Meta:
+        ordering = ['-fecha_creacion']
+
 
 class Prenda(models.Model): # Define el modelo Prenda
     Prenda_ID = models.AutoField(primary_key=True) # Campo de clave primaria

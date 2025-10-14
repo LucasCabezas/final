@@ -5,6 +5,7 @@ import Dueno from "./components/Dueno";
 import AgregarUsuario from "./components/AgregarUsuario";
 import RealizarPedido from "./components/RealizarPedido";
 import Insumos from "./components/Insumos";
+import Perfil from "./components/Perfil";
 
 function App() {
   const handleLogout = () => {
@@ -36,11 +37,11 @@ function App() {
 
       {/* Página para realizar pedido */}
       <Route path="/realizar-pedido" element={<RealizarPedido />} />
-
+     
       {/* Puedes agregar más rutas aquí */}
       {/* <Route path="/prendas" element={<Prendas />} /> */}
       {/* <Route path="/aprobacion-pedidos" element={<AprobacionPedidos />} /> */}
-      {/* <Route path="/perfil" element={<Perfil />} /> */}
+      <Route path="/perfil" element={<Perfil />} />
     </Routes>
   );
 }

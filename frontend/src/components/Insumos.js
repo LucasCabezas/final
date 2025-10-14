@@ -33,13 +33,13 @@ const styles = {
     gap: '16px'
   },
   searchContainer: {
-    position: 'relative'
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center'
   },
   searchIcon: {
     position: 'absolute',
     left: '12px',
-    top: '50%',
-    transform: 'translateY(-50%)',
     color: '#000',
     width: '20px',
     height: '20px',
@@ -47,7 +47,7 @@ const styles = {
   },
   searchInput: {
     paddingLeft: '40px',
-    paddingRight: '16px',
+    paddingRight: '36px',
     paddingTop: '8px',
     paddingBottom: '8px',
     backgroundColor: '#fff',
@@ -56,7 +56,32 @@ const styles = {
     border: '1px solid #d1d5db',
     outline: 'none',
     width: '256px',
-    transition: 'border-color 0.2s'
+    transition: 'border-color 0.2s',
+    fontSize: '14px'
+  },
+  clearButton: {
+    position: 'absolute',
+    right: '8px',
+    padding: '4px',
+    backgroundColor: 'transparent',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    color: '#999',
+    transition: 'color 0.2s',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  searchCounter: {
+    marginLeft: '12px',
+    padding: '6px 12px',
+    backgroundColor: 'rgba(255, 215, 15, 0.2)',
+    color: '#ffd70f',
+    borderRadius: '6px',
+    fontSize: '13px',
+    fontWeight: '600',
+    whiteSpace: 'nowrap'
   },
   addButton: {
     display: 'flex',
@@ -77,10 +102,11 @@ const styles = {
     justifyContent: 'flex-end'
   },
   tableContainer: {
-    backgroundColor: '#1f2937',
+    backgroundColor: 'transparent', 
     borderRadius: '8px',
     overflow: 'hidden',
-    border: '1px solid rgba(30, 30, 30, 0.9)'
+    border: '1px solid rgba(30, 30, 30, 0.9)',
+    minHeight: '100px'
   },
   table: {
     width: '100%',
@@ -186,6 +212,70 @@ const styles = {
     transition: 'border-color 0.2s',
     boxSizing: 'border-box'
   },
+  inputDisabled: {
+    width: '100%',
+    padding: '8px 16px',
+    backgroundColor: '#e5e7eb',
+    color: '#6b7280',
+    borderRadius: '8px',
+    border: '1px solid #d1d5db',
+    outline: 'none',
+    boxSizing: 'border-box'
+  },
+  toggleContainer: {
+    marginBottom: '16px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '12px',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: '8px'
+  },
+  toggleLabel: {
+    color: '#fff',
+    fontWeight: '600',
+    flex: 1
+  },
+  toggleSwitch: {
+    position: 'relative',
+    width: '50px',
+    height: '28px',
+    backgroundColor: '#4b5563',
+    borderRadius: '14px',
+    cursor: 'pointer',
+    transition: 'background-color 0.3s',
+    border: 'none',
+    padding: 0
+  },
+  toggleSwitchActive: {
+    backgroundColor: 'rgba(255, 215, 15, 1)'
+  },
+  toggleIndicator: {
+    position: 'absolute',
+    top: '2px',
+    left: '2px',
+    width: '24px',
+    height: '24px',
+    backgroundColor: '#fff',
+    borderRadius: '50%',
+    transition: 'left 0.3s',
+    pointerEvents: 'none'
+  },
+  toggleIndicatorActive: {
+    left: '24px'
+  },
+  quantityInfo: {
+    marginBottom: '16px',
+    padding: '12px',
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    borderRadius: '8px',
+    border: '1px solid rgba(59, 130, 246, 0.3)',
+    color: '#93c5fd'
+  },
+  quantityInfoText: {
+    fontSize: '14px',
+    margin: '0'
+  },
   modalActions: {
     display: 'flex',
     gap: '12px',
@@ -216,7 +306,8 @@ const styles = {
   emptyState: {
     textAlign: 'center',
     padding: '32px',
-    color: '#9ca3af'
+    color: '#9ca3af',
+    fontSize: '16px'
   },
   alert: {
     position: 'fixed',
@@ -346,6 +437,10 @@ const styleSheet = `
     background-color: #dc2626;
   }
   
+  .hover-clear:hover {
+    color: #666 !important;
+  }
+  
   @keyframes slideIn {
     from {
       transform: translateX(100%);
@@ -362,7 +457,6 @@ function Insumos() {
   const [isNavbarCollapsed, setIsNavbarCollapsed] = useState(false);
   const [insumos, setInsumos] = useState([]);
 
-  // Cargar insumos al montar el componente
   React.useEffect(() => {
     cargarInsumos();
   }, []);
@@ -387,6 +481,7 @@ function Insumos() {
     unidad: '',
     precioUnitario: ''
   });
+  const [isAddMode, setIsAddMode] = useState(false);
   const [alert, setAlert] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
@@ -399,7 +494,7 @@ function Insumos() {
     }, 3000);
   };
 
-  const filteredInsumos = insumos.filter(insumo => {
+  const filteredInsumos = searchTerm.trim() === '' ? [] : insumos.filter(insumo => {
     const search = searchTerm.toLowerCase();
     return (
       insumo.Insumo_nombre?.toLowerCase().includes(search) ||
@@ -418,9 +513,11 @@ function Insumos() {
         unidad: insumo.Insumo_unidad_medida,
         precioUnitario: insumo.Insumo_precio_unitario
       });
+      setIsAddMode(false);
     } else {
       setEditingInsumo(null);
       setFormData({ nombre: '', cantidad: '', unidad: '', precioUnitario: '' });
+      setIsAddMode(false);
     }
     setShowModal(true);
   };
@@ -429,6 +526,7 @@ function Insumos() {
     setShowModal(false);
     setEditingInsumo(null);
     setFormData({ nombre: '', cantidad: '', unidad: '', precioUnitario: '' });
+    setIsAddMode(false);
   };
 
   const handleSubmit = async () => {
@@ -450,9 +548,15 @@ function Insumos() {
 
   const handleConfirmSubmit = async () => {
     try {
+      let finalQuantity = Number(confirmData.cantidad);
+
+      if (isAddMode && editingInsumo) {
+        finalQuantity = editingInsumo.Insumo_cantidad + Number(confirmData.cantidad);
+      }
+
       const payload = {
         Insumo_nombre: confirmData.nombre,
-        Insumo_cantidad: Number(confirmData.cantidad),
+        Insumo_cantidad: finalQuantity,
         Insumo_unidad_medida: confirmData.unidad,
         Insumo_precio_unitario: Number(confirmData.precioUnitario)
       };
@@ -540,6 +644,10 @@ function Insumos() {
     setConfirmData(null);
   };
 
+  const handleClearSearch = () => {
+    setSearchTerm('');
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     
@@ -566,7 +674,9 @@ function Insumos() {
     } else if (confirmAction === 'edit') {
       return {
         title: 'Guardar Cambios',
-        message: '¿Está seguro que desea guardar los cambios realizados?',
+        message: isAddMode 
+          ? `¿Está seguro que desea agregar ${confirmData.cantidad} unidades? (Total: ${editingInsumo.Insumo_cantidad + Number(confirmData.cantidad)})`
+          : '¿Está seguro que desea guardar los cambios realizados?',
         buttonText: 'Guardar',
         buttonStyle: styles.confirmActionButton,
         buttonClass: 'hover-confirm-action',
@@ -605,13 +715,29 @@ function Insumos() {
                   <Search style={styles.searchIcon} />
                   <input
                     type="text"
-                    placeholder="Buscar..."
+                    placeholder="Buscar insumo..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     style={styles.searchInput}
                     className="search-input"
+                    autoFocus
                   />
+                  {searchTerm && (
+                    <button
+                      onClick={handleClearSearch}
+                      style={styles.clearButton}
+                      className="hover-clear"
+                      title="Limpiar búsqueda"
+                    >
+                      <X style={{ width: '18px', height: '18px' }} />
+                    </button>
+                  )}
                 </div>
+                {searchTerm && (
+                  <div style={styles.searchCounter}>
+                    {filteredInsumos.length} de {insumos.length}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -628,10 +754,16 @@ function Insumos() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredInsumos.length === 0 ? (
+                  {searchTerm.trim() === '' ? (
                     <tr>
                       <td colSpan="6" style={styles.emptyState}>
-                        No se encontraron insumos
+                        Comienza a escribir en el buscador para ver los insumos
+                      </td>
+                    </tr>
+                  ) : filteredInsumos.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" style={styles.emptyState}>
+                        No se encontraron insumos que coincidan con "{searchTerm}"
                       </td>
                     </tr>
                   ) : (
@@ -705,11 +837,41 @@ function Insumos() {
                         style={styles.input}
                         className="form-input"
                         placeholder="Ej: Algodón Premium"
+                        disabled={editingInsumo}
                       />
                     </div>
 
+                    {editingInsumo && (
+                      <div style={styles.toggleContainer}>
+                        <label style={styles.toggleLabel}>Agregar más cantidad</label>
+                        <button
+                          onClick={() => {
+                            setIsAddMode(!isAddMode);
+                            setFormData(prev => ({ ...prev, cantidad: '' }));
+                          }}
+                          style={{
+                            ...styles.toggleSwitch,
+                            ...(isAddMode && styles.toggleSwitchActive)
+                          }}
+                        >
+                          <div style={{
+                            ...styles.toggleIndicator,
+                            ...(isAddMode && styles.toggleIndicatorActive)
+                          }} />
+                        </button>
+                      </div>
+                    )}
+
+                    {editingInsumo && isAddMode && (
+                      <div style={styles.quantityInfo}>
+                        <p style={styles.quantityInfoText}>
+                          Cantidad actual: <strong>{editingInsumo.Insumo_cantidad}</strong>
+                        </p>
+                      </div>
+                    )}
+
                     <div style={styles.formGroup}>
-                      <label style={styles.label}>Cantidad</label>
+                      <label style={styles.label}>{isAddMode && editingInsumo ? 'Cantidad a agregar' : 'Cantidad'}</label>
                       <input
                         type="number"
                         name="cantidad"
@@ -730,9 +892,10 @@ function Insumos() {
                         name="unidad"
                         value={formData.unidad}
                         onChange={handleInputChange}
-                        style={styles.input}
+                        style={editingInsumo ? styles.inputDisabled : styles.input}
                         className="form-input"
                         placeholder="Ej: KG, metros, unidades"
+                        disabled={editingInsumo}
                       />
                     </div>
 

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Insumo, Prenda, InsumosXPrendas
+from .models import Insumo, Prenda, InsumosXPrendas, AlertaStock
 
 class InsumoSerializer(serializers.ModelSerializer):
     # Campo calculado solo para lectura
@@ -28,3 +28,25 @@ class InsumosXPrendasSerializer(serializers.ModelSerializer): # Define un serial
     class Meta: # Clase Meta para definir la configuración del serializador
         model = InsumosXPrendas # Especifica el modelo que se va a serializar
         fields = '__all__' # Incluye todos los campos del modelo en la serialización
+
+class AlertaStockSerializer(serializers.ModelSerializer):
+    insumo_nombre = serializers.CharField(source='insumo.Insumo_nombre', read_only=True)
+    insumo_id = serializers.IntegerField(source='insumo.Insumo_ID', read_only=True)
+    
+    class Meta:
+        model = AlertaStock
+        fields = [
+            'id',
+            'insumo_id',
+            'insumo_nombre',
+            'cantidad_actual',
+            'cantidad_minima',
+            'estado',
+            'fecha_creacion',
+            'fecha_resolucion'
+        ]
+        read_only_fields = [
+            'id',
+            'fecha_creacion',
+            'fecha_resolucion'
+        ]
