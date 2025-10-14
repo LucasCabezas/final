@@ -3,8 +3,8 @@ from .views import PedidoList, PedidoDetail, crear_pedido, eliminar_item, finali
 
 urlpatterns = [
     # URLs de la API REST (las que ya tenías)
-    path('api/', PedidoList.as_view(), name='pedido-list'),
-    path('api/<int:pk>/', PedidoDetail.as_view(), name='pedido-detail'),
+    path('', PedidoList.as_view(), name='pedido-list'),        # /api/pedidos/
+    path('<int:pk>/', PedidoDetail.as_view(), name='pedido-detail'),  # /api/pedidos/1/
     
     # URLs del Frontend (nuevas)
     path('crear/', crear_pedido, name='crear_pedido'),

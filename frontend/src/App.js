@@ -5,6 +5,8 @@ import Dueno from "./components/Dueno";
 import AgregarUsuario from "./components/AgregarUsuario";
 import RealizarPedido from "./components/RealizarPedido";
 import Insumos from "./components/Insumos";
+import Prendas from "./components/Prendas"; // ya está importado
+import DetallePedidos from "./components/DetallesPedidos";
 
 function App() {
   const handleLogout = () => {
@@ -14,10 +16,7 @@ function App() {
 
   return (
     <Routes>
-      {/* Página de login */}
       <Route path="/" element={<Login />} />
-
-      {/* Dashboard del dueño (página principal con navbar) */}
       <Route
         path="/Dueno"
         element={
@@ -27,20 +26,13 @@ function App() {
           />
         }
       />
-
-      {/* Página de Insumos */}
       <Route path="/Insumos" element={<Insumos />} />
-
-      {/* Página para agregar usuarios */}
       <Route path="/agregarUsuario" element={<AgregarUsuario />} />
-
-      {/* Página para realizar pedido */}
       <Route path="/realizar-pedido" element={<RealizarPedido />} />
+      <Route path="/detalle-pedidos" element={<DetallePedidos />} />
 
-      {/* Puedes agregar más rutas aquí */}
-      {/* <Route path="/prendas" element={<Prendas />} /> */}
-      {/* <Route path="/aprobacion-pedidos" element={<AprobacionPedidos />} /> */}
-      {/* <Route path="/perfil" element={<Perfil />} /> */}
+      {/* Página de prendas */}
+      <Route path="/prendas" element={<Prendas />} />
     </Routes>
   );
 }

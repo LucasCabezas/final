@@ -4,9 +4,10 @@ from inventario.models import Prenda
 
 class Pedido(models.Model):
     Pedido_ID = models.AutoField(primary_key=True)
-    Usuario = models.ForeignKey(User, on_delete=models.CASCADE, null=True)  
+    Usuario = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
     Pedido_fecha = models.DateField()
     Pedido_estado = models.BooleanField()
+
 
     def __str__(self):
         return f"Pedido {self.Pedido_ID} - {self.Usuario} - {self.Pedido_fecha}"
