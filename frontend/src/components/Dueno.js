@@ -12,6 +12,8 @@ function Dueno({ usuarioId }) {
 
   const COLORS = ["#3498db", "#f39c12", "#e74c3c", "#2ecc71", "#9b59b6", "#1abc9c", "#e67e22", "#95a5a6"];
 
+  const navbarWidth = isNavbarCollapsed ? 70 : 250;
+
   useEffect(() => {
     if (!usuarioId) return;
 
@@ -45,15 +47,23 @@ function Dueno({ usuarioId }) {
   }));
 
   const styles = {
-    insumosContainer: {
-      padding: "32px",
+    container: {
+      display: "flex",
       minHeight: "100vh",
+      width: "100%",
+    },
+    insumosContainer: {
+      marginLeft: `${navbarWidth}px`,
+      padding: "32px",
       backgroundImage: `url(${fondoImg})`,
       backgroundSize: "cover",
       backgroundPosition: "center",
       backgroundRepeat: "no-repeat",
+      backgroundAttachment: "fixed",
+      overflowY: "auto",
+      flex: 1,
       transition: "margin-left 0.3s ease",
-      marginLeft: isNavbarCollapsed ? "70px" : "250px",
+      width: `calc(100% - ${navbarWidth}px)`,
     },
     contentWrapper: {
       maxWidth: "1400px",
@@ -125,135 +135,130 @@ function Dueno({ usuarioId }) {
       marginBottom: "10px",
       color: "#d1d5db",
     },
-    alertaItemWarning: {
-      borderLeftColor: "#f39c12",
-    },
   };
 
   return (
-    <>
-      <div style={{ display: "flex" }}>
-        <Componente onToggle={setIsNavbarCollapsed} />
+    <div style={styles.container}>
+      <Componente onToggle={setIsNavbarCollapsed} />
 
-        <main style={styles.insumosContainer}>
-          <div style={styles.contentWrapper}>
-            <div style={styles.header}>
-              <h2 style={styles.title}>
-                ¡Bienvenido!{" "}
-                {usuario
-                  ? `${usuario.Usuario_nombre} ${usuario.Usuario_apellido}`
-                  : ""}
-              </h2>
-            </div>
+      <main style={styles.insumosContainer}>
+        <div style={styles.contentWrapper}>
+          <div style={styles.header}>
+            <h2 style={styles.title}>
+              ¡Bienvenido!{" "}
+              {usuario
+                ? `${usuario.Usuario_nombre} ${usuario.Usuario_apellido}`
+                : ""}
+            </h2>
+          </div>
 
-            {/* Resumen General */}
-            <section style={{ marginBottom: "40px" }}>
-              <h3 style={{ ...styles.title, fontSize: "20px", marginBottom: "8px" }}>
-                Resumen General de Inventario de Insumos
-              </h3>
-              <p style={styles.subtitle}>
-                Visión general del valor y la distribución del stock actual de insumos.
-              </p>
+          {/* Resumen General */}
+          <section style={{ marginBottom: "40px" }}>
+            <h3 style={{ ...styles.title, fontSize: "20px", marginBottom: "8px" }}>
+              Resumen General de Inventario de Insumos
+            </h3>
+            <p style={styles.subtitle}>
+              Visión general del valor y la distribución del stock actual de insumos.
+            </p>
 
-              <div style={styles.resumenGrid}>
-                {/* Card 1: Valor Total */}
-                <div style={styles.resumenCard}>
-                  <h4 style={styles.cardLabel}>Valor Total del Stock de Insumo</h4>
-                  <p style={styles.cardValue}>${totalValor.toLocaleString()}</p>
-                </div>
-
-                {/* Card 2: Artículos Bajo Stock */}
-                <div style={styles.resumenCard}>
-                  <h4 style={styles.cardLabel}>Artículos en Bajo Stock</h4>
-                  <p style={styles.cardValue}>{bajoStock}</p>
-                </div>
-
-                {/* Card 3: Gráfico de Distribución */}
-                <div style={styles.resumenCard}>
-                  <h4 style={styles.cardLabel}>Distribución de Cantidad por Insumo</h4>
-                  {datosGrafico.length > 0 ? (
-                    <div style={styles.graficoContainer}>
-                      <ResponsiveContainer width="100%" height={250}>
-                        <PieChart>
-                          <Pie
-                            data={datosGrafico}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={60}
-                            outerRadius={100}
-                            paddingAngle={2}
-                            dataKey="value"
-                          >
-                            {datosGrafico.map((entry, index) => (
-                              <Cell
-                                key={`cell-${index}`}
-                                fill={COLORS[index % COLORS.length]}
-                              />
-                            ))}
-                          </Pie>
-                          <Tooltip
-                            formatter={(value) => `${value} unidades`}
-                            contentStyle={{
-                              backgroundColor: "rgba(30, 30, 30, 0.95)",
-                              border: "1px solid rgba(255, 255, 255, 0.2)",
-                              borderRadius: "8px",
-                              color: "#ffffff",
-                            }}
-                          />
-                          <Legend
-                            wrapperStyle={{ color: "#ffffff", paddingTop: "20px" }}
-                            formatter={(value) => (
-                              <span style={{ fontSize: "12px" }}>{value}</span>
-                            )}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <p style={{ color: "#9ca3af", textAlign: "center" }}>
-                      Cargando datos...
-                    </p>
-                  )}
-                </div>
+            <div style={styles.resumenGrid}>
+              {/* Card 1: Valor Total */}
+              <div style={styles.resumenCard}>
+                <h4 style={styles.cardLabel}>Valor Total del Stock de Insumo</h4>
+                <p style={styles.cardValue}>${totalValor.toLocaleString()}</p>
               </div>
-            </section>
 
-            {/* Alertas Recientes */}
-            <section style={styles.alertasSection}>
-              <h3 style={styles.alertasTitle}>Alertas Recientes</h3>
-              <ul style={styles.alertasList}>
-                {bajoStock > 0 && (
-                  <li
-                    style={{
-                      ...styles.alertaItem,
-                      borderLeftColor: "#e74c3c",
-                    }}
-                  >
-                    ⚠️ {bajoStock} artículos con bajo stock
-                  </li>
+              {/* Card 2: Artículos Bajo Stock */}
+              <div style={styles.resumenCard}>
+                <h4 style={styles.cardLabel}>Artículos en Bajo Stock</h4>
+                <p style={styles.cardValue}>{bajoStock}</p>
+              </div>
+
+              {/* Card 3: Gráfico de Distribución */}
+              <div style={styles.resumenCard}>
+                <h4 style={styles.cardLabel}>Distribución de Cantidad por Insumo</h4>
+                {datosGrafico.length > 0 ? (
+                  <div style={styles.graficoContainer}>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <PieChart>
+                        <Pie
+                          data={datosGrafico}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={100}
+                          paddingAngle={2}
+                          dataKey="value"
+                        >
+                          {datosGrafico.map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={COLORS[index % COLORS.length]}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(value) => `${value} unidades`}
+                          contentStyle={{
+                            backgroundColor: "rgba(30, 30, 30, 0.95)",
+                            border: "1px solid rgba(255, 255, 255, 0.2)",
+                            borderRadius: "8px",
+                            color: "#ffffff",
+                          }}
+                        />
+                        <Legend
+                          wrapperStyle={{ color: "#ffffff", paddingTop: "20px" }}
+                          formatter={(value) => (
+                            <span style={{ fontSize: "12px" }}>{value}</span>
+                          )}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <p style={{ color: "#9ca3af", textAlign: "center" }}>
+                    Cargando datos...
+                  </p>
                 )}
-                <li
-                  style={{
-                    ...styles.alertaItem,
-                    borderLeftColor: "#f39c12",
-                  }}
-                >
-                  📦 Nuevo pedido recibido
-                </li>
+              </div>
+            </div>
+          </section>
+
+          {/* Alertas Recientes */}
+          <section style={styles.alertasSection}>
+            <h3 style={styles.alertasTitle}>Alertas Recientes</h3>
+            <ul style={styles.alertasList}>
+              {bajoStock > 0 && (
                 <li
                   style={{
                     ...styles.alertaItem,
                     borderLeftColor: "#e74c3c",
                   }}
                 >
-                  🚚 Insumos retrasados en entrega
+                  ⚠️ {bajoStock} artículos con bajo stock
                 </li>
-              </ul>
-            </section>
-          </div>
-        </main>
-      </div>
-    </>
+              )}
+              <li
+                style={{
+                  ...styles.alertaItem,
+                  borderLeftColor: "#f39c12",
+                }}
+              >
+                📦 Nuevo pedido recibido
+              </li>
+              <li
+                style={{
+                  ...styles.alertaItem,
+                  borderLeftColor: "#e74c3c",
+                }}
+              >
+                🚚 Insumos retrasados en entrega
+              </li>
+            </ul>
+          </section>
+        </div>
+      </main>
+    </div>
   );
 }
 

@@ -397,6 +397,45 @@ const styles = {
     fontWeight: '600',
     transition: 'background-color 0.2s',
     fontSize: '14px'
+  },
+  alertasContainer: {
+    marginBottom: '20px',
+    padding: '16px',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    border: '1px solid #ef4444',
+    borderRadius: '8px'
+  },
+  alertasHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    marginBottom: '12px'
+  },
+  alertasTitle: {
+    color: '#fca5a5',
+    fontWeight: '600',
+    fontSize: '16px'
+  },
+  alertasGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+    gap: '12px'
+  },
+  alertCard: {
+    padding: '12px',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: '6px',
+    border: '1px solid rgba(239, 68, 68, 0.3)'
+  },
+  alertCardName: {
+    margin: '0 0 8px 0',
+    color: '#fca5a5',
+    fontWeight: '600'
+  },
+  alertCardStock: {
+    margin: '0',
+    color: '#fecaca',
+    fontSize: '14px'
   }
 };
 
@@ -456,9 +495,13 @@ const styleSheet = `
 function Insumos() {
   const [isNavbarCollapsed, setIsNavbarCollapsed] = useState(false);
   const [insumos, setInsumos] = useState([]);
+  const [alertas, setAlertas] = useState([]);
 
   React.useEffect(() => {
     cargarInsumos();
+    cargarAlertas();
+    const interval = setInterval(cargarAlertas, 300000);
+    return () => clearInterval(interval);
   }, []);
 
   const cargarInsumos = async () => {
@@ -469,6 +512,16 @@ function Insumos() {
     } catch (error) {
       console.error('Error cargando insumos:', error);
       showAlert('Error al cargar los insumos', 'error');
+    }
+  };
+
+  const cargarAlertas = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/api/inventario/alertas-stock/');
+      const data = await response.json();
+      setAlertas(data);
+    } catch (error) {
+      console.error('Error cargando alertas:', error);
     }
   };
 
@@ -579,6 +632,7 @@ function Insumos() {
         }
 
         await cargarInsumos();
+        await cargarAlertas();
         showAlert(`Insumo "${confirmData.nombre}" actualizado exitosamente`, 'success');
       } else {
         const response = await fetch('http://localhost:8000/api/inventario/insumos/', {
@@ -598,6 +652,7 @@ function Insumos() {
         }
 
         await cargarInsumos();
+        await cargarAlertas();
         showAlert(`Insumo "${confirmData.nombre}" agregado exitosamente`, 'success');
       }
       
@@ -628,6 +683,7 @@ function Insumos() {
       }
 
       await cargarInsumos();
+      await cargarAlertas();
       showAlert(`Insumo "${confirmData.Insumo_nombre}" eliminado exitosamente`, 'success');
       setShowConfirmModal(false);
       setConfirmAction(null);
@@ -708,6 +764,25 @@ function Insumos() {
           marginLeft: isNavbarCollapsed ? '70px' : '250px'
         }}>
           <div style={styles.contentWrapper}>
+            {alertas.length > 0 && (
+              <div style={styles.alertasContainer}>
+                <div style={styles.alertasHeader}>
+                  <AlertCircle style={{ width: '24px', height: '24px', color: '#ef4444' }} />
+                  <span style={styles.alertasTitle}>
+                    ⚠️ {alertas.length} {alertas.length === 1 ? 'insumo' : 'insumos'} con bajo stock
+                  </span>
+                </div>
+                <div style={styles.alertasGrid}>
+                  {alertas.map((alerta) => (
+                    <div key={alerta.id} style={styles.alertCard}>
+                      <p style={styles.alertCardName}>{alerta.insumo_nombre}</p>
+                      <p style={styles.alertCardStock}>Stock: {alerta.cantidad_actual} / Mínimo: {alerta.cantidad_minima}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div style={styles.header}>
               <h1 style={styles.title}>Insumos</h1>
               <div style={styles.headerActions}>
