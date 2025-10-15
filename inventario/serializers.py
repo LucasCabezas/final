@@ -72,11 +72,27 @@ class InsumosXPrendasSerializer(serializers.ModelSerializer):
 # === PRENDA ===
 class PrendaSerializer(serializers.ModelSerializer):
     Prenda_imagen = serializers.ImageField(required=False)
+    # 🔥 Campo que devuelve la URL completa de la imagen
+    Prenda_imagen_url = serializers.SerializerMethodField()
     insumos_prendas = InsumosXPrendasSerializer(many=True, required=False)
 
     class Meta:
         model = Prenda
         fields = '__all__'
+
+    # 🔥 CORREGIDO: Método para construir la URL completa de la imagen
+    def get_Prenda_imagen_url(self, obj):
+        """Devuelve la URL completa de la imagen si existe"""
+        if obj.Prenda_imagen:
+            request = self.context.get('request')
+            if request is not None:
+                # Construir URL absoluta con el dominio
+                return request.build_absolute_uri(obj.Prenda_imagen.url)
+            else:
+                # Si no hay request, devolver la URL relativa
+                # El frontend la completará con el CDN
+                return obj.Prenda_imagen.url
+        return None
 
     # --- CREAR PRENDA CON INSUMOS ---
     def create(self, validated_data):

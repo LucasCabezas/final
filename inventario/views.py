@@ -10,10 +10,7 @@ import json
 from .models import Insumo, Prenda, InsumosXPrendas, AlertaStock
 from .serializers import InsumoSerializer, PrendaSerializer, AlertaStockSerializer
 
-
-# ============================================================
 # ------------------------ INSUMOS ----------------------------
-# ============================================================
 
 class InsumoList(APIView):
     """Listar y crear insumos"""
@@ -112,7 +109,8 @@ class PrendaList(APIView):
     def get(self, request):
         try:
             prendas = Prenda.objects.all()
-            serializer = PrendaSerializer(prendas, many=True)
+            # 🔥 AGREGADO: context={'request': request} para construir URLs completas
+            serializer = PrendaSerializer(prendas, many=True, context={'request': request})
             return Response(serializer.data)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -129,8 +127,8 @@ class PrendaList(APIView):
             except json.JSONDecodeError:
                 return Response({'error': 'Error al decodificar insumos_prendas'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Crear la prenda base
-        serializer = PrendaSerializer(data=data)
+        # Crear la prenda base - 🔥 AGREGADO: context
+        serializer = PrendaSerializer(data=data, context={'request': request})
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -153,7 +151,8 @@ class PrendaList(APIView):
             except Exception:
                 continue
 
-        return Response(PrendaSerializer(prenda).data, status=status.HTTP_201_CREATED)
+        # 🔥 AGREGADO: context al devolver la prenda creada
+        return Response(PrendaSerializer(prenda, context={'request': request}).data, status=status.HTTP_201_CREATED)
 
 
 class PrendaDetail(APIView):
@@ -171,8 +170,8 @@ class PrendaDetail(APIView):
         if not prenda:
             return Response({'error': 'Prenda no encontrada'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Serializar prenda e incluir insumos asociados
-        data = PrendaSerializer(prenda).data
+        # 🔥 AGREGADO: context al serializar
+        data = PrendaSerializer(prenda, context={'request': request}).data
         relaciones = InsumosXPrendas.objects.filter(prenda=prenda).select_related('insumo')
 
         data["insumos_prendas"] = [
@@ -203,8 +202,8 @@ class PrendaDetail(APIView):
             except json.JSONDecodeError:
                 return Response({'error': 'Error al decodificar insumos_prendas'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Actualizar prenda
-        serializer = PrendaSerializer(prenda, data=data)
+        # 🔥 AGREGADO: context al actualizar
+        serializer = PrendaSerializer(prenda, data=data, context={'request': request})
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -228,7 +227,8 @@ class PrendaDetail(APIView):
             except Exception:
                 continue
 
-        return Response(PrendaSerializer(prenda).data)
+        # 🔥 AGREGADO: context al devolver
+        return Response(PrendaSerializer(prenda, context={'request': request}).data)
 
     @transaction.atomic
     def delete(self, request, pk):

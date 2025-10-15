@@ -111,7 +111,7 @@ export default function DetallePedidos() {
         }}
       >
         <div style={styles.content}>
-          <h1 style={styles.title}>Aprobación de pedidos</h1>
+          <h1 style={styles.title}>Detalles de Pedidos</h1>
           <p style={styles.subtitle}>Lista de los últimos pedidos pendientes por aprobar</p>
 
           {loading ? (

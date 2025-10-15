@@ -46,7 +46,7 @@ const styles = {
     boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
     position: "relative",
   },
-  cardImage: { width: "100%", height: 220, objectFit: "cover" },
+  cardImage: { width: "100%", height: 220, objectFit: "cover", backgroundColor: "#1a1a1a" },
   cardBody: { padding: 14, color: "#fff" },
   cardTitle: { fontWeight: 700, marginBottom: 6 },
   price: { color: "rgba(255,215,15,1)", fontWeight: 700 },
@@ -118,15 +118,26 @@ function Prendas() {
   }, []);
 
   const cargarPrendas = async () => {
-    const res = await fetch(`${CDN}/api/inventario/prendas/`);
-    const data = await res.json();
-    setPrendas(Array.isArray(data) ? data : []);
+    try {
+      const res = await fetch(`${CDN}/api/inventario/prendas/`);
+      const data = await res.json();
+      console.log('Prendas cargadas:', data); // Para debug
+      setPrendas(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error al cargar prendas:', error);
+      setPrendas([]);
+    }
   };
 
   const cargarInsumos = async () => {
-    const res = await fetch(`${CDN}/api/inventario/insumos/`);
-    const data = await res.json();
-    setInsumos(Array.isArray(data) ? data : []);
+    try {
+      const res = await fetch(`${CDN}/api/inventario/insumos/`);
+      const data = await res.json();
+      setInsumos(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error al cargar insumos:', error);
+      setInsumos([]);
+    }
   };
 
   const insumoPorId = useMemo(() => {
@@ -140,12 +151,36 @@ function Prendas() {
     (p.Prenda_nombre || "").toLowerCase().includes(search.toLowerCase())
   );
 
+  // 🔥 FUNCIÓN PARA OBTENER LA URL DE LA IMAGEN
+  const getImageUrl = (prenda) => {
+    // 1. Intenta usar la URL completa del serializer
+    if (prenda.Prenda_imagen_url) {
+      return prenda.Prenda_imagen_url;
+    }
+    // 2. Si tiene imagen pero no la URL completa, construirla
+    if (prenda.Prenda_imagen) {
+      // Si ya viene con http:// o https://, usar directamente
+      if (prenda.Prenda_imagen.startsWith('http')) {
+        return prenda.Prenda_imagen;
+      }
+      // Si es una ruta relativa, agregar el CDN
+      return `${CDN}${prenda.Prenda_imagen}`;
+    }
+    // 3. Imagen por defecto - SVG inline
+    return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='220'%3E%3Crect fill='%231a1a1a' width='240' height='220'/%3E%3Ctext fill='%23666' font-family='Arial' font-size='16' x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle'%3ESin Imagen%3C/text%3E%3C/svg%3E";
+  };
+
   // DETALLE
   const abrirDetalle = async (p) => {
-    const res = await fetch(`${CDN}/api/inventario/prendas/${p.Prenda_ID}/`);
-    const det = await res.json();
-    setDetalle(det);
-    setShowDetail(true);
+    try {
+      const res = await fetch(`${CDN}/api/inventario/prendas/${p.Prenda_ID}/`);
+      const det = await res.json();
+      console.log('Detalle de prenda:', det); // Para debug
+      setDetalle(det);
+      setShowDetail(true);
+    } catch (error) {
+      console.error('Error al cargar detalle:', error);
+    }
   };
 
   const cerrarDetalle = () => {
@@ -162,30 +197,39 @@ function Prendas() {
   };
 
   const abrirEditar = async (p) => {
-    const res = await fetch(`${CDN}/api/inventario/prendas/${p.Prenda_ID}/`);
-    const det = await res.json();
-    setEditing(p);
-    setForm({
-      nombre: det.Prenda_nombre || "",
-      marca: det.Prenda_marca || "",
-      modelo: det.Prenda_modelo || "",
-      color: det.Prenda_color || "",
-      precioUnitario: det.Prenda_precio_unitario || "",
-      imagen: null,
-    });
-    setInsumosPrenda(
-      (det.insumos_prendas || []).map((row) => ({
-        insumo: row.Insumo_ID ?? row.insumo ?? "",
-        cantidad: row.Insumo_prenda_cantidad_utilizada ?? 0,
-      }))
-    );
-    setShowModal(true);
+    try {
+      const res = await fetch(`${CDN}/api/inventario/prendas/${p.Prenda_ID}/`);
+      const det = await res.json();
+      setEditing(p);
+      setForm({
+        nombre: det.Prenda_nombre || "",
+        marca: det.Prenda_marca || "",
+        modelo: det.Prenda_modelo || "",
+        color: det.Prenda_color || "",
+        precioUnitario: det.Prenda_precio_unitario || "",
+        imagen: null,
+      });
+      setInsumosPrenda(
+        (det.insumos_prendas || []).map((row) => ({
+          insumo: row.Insumo_ID ?? row.insumo ?? "",
+          cantidad: row.Insumo_prenda_cantidad_utilizada ?? 0,
+        }))
+      );
+      setShowModal(true);
+    } catch (error) {
+      console.error('Error al cargar prenda para editar:', error);
+    }
   };
 
   const eliminarPrenda = async (id) => {
     if (!window.confirm("¿Eliminar esta prenda?")) return;
-    await fetch(`${CDN}/api/inventario/prendas/${id}/`, { method: "DELETE" });
-    cargarPrendas();
+    try {
+      await fetch(`${CDN}/api/inventario/prendas/${id}/`, { method: "DELETE" });
+      cargarPrendas();
+    } catch (error) {
+      console.error('Error al eliminar prenda:', error);
+      alert('Error al eliminar la prenda');
+    }
   };
 
   const handleChange = (e) => {
@@ -202,29 +246,37 @@ function Prendas() {
   };
 
   const onSubmit = async () => {
-    const fd = new FormData();
-    fd.append("Prenda_nombre", form.nombre);
-    fd.append("Prenda_marca", form.marca);
-    fd.append("Prenda_modelo", form.modelo);
-    fd.append("Prenda_color", form.color);
-    fd.append("Prenda_precio_unitario", form.precioUnitario);
-    if (form.imagen) fd.append("Prenda_imagen", form.imagen);
+    try {
+      const fd = new FormData();
+      fd.append("Prenda_nombre", form.nombre);
+      fd.append("Prenda_marca", form.marca);
+      fd.append("Prenda_modelo", form.modelo);
+      fd.append("Prenda_color", form.color);
+      fd.append("Prenda_precio_unitario", form.precioUnitario);
+      if (form.imagen) fd.append("Prenda_imagen", form.imagen);
 
-    const payloadInsumos = insumosPrenda
-      .filter((r) => r.insumo && r.cantidad)
-      .map((r) => ({ insumo: Number(r.insumo), cantidad: Number(r.cantidad) }));
-    fd.append("insumos_prendas", JSON.stringify(payloadInsumos));
+      const payloadInsumos = insumosPrenda
+        .filter((r) => r.insumo && r.cantidad)
+        .map((r) => ({ insumo: Number(r.insumo), cantidad: Number(r.cantidad) }));
+      fd.append("insumos_prendas", JSON.stringify(payloadInsumos));
 
-    const url = editing
-      ? `${CDN}/api/inventario/prendas/${editing.Prenda_ID}/`
-      : `${CDN}/api/inventario/prendas/`;
-    const method = editing ? "PUT" : "POST";
+      const url = editing
+        ? `${CDN}/api/inventario/prendas/${editing.Prenda_ID}/`
+        : `${CDN}/api/inventario/prendas/`;
+      const method = editing ? "PUT" : "POST";
 
-    const res = await fetch(url, { method, body: fd });
-    if (!res.ok) alert("Error al guardar la prenda");
-    else {
-      setShowModal(false);
-      cargarPrendas();
+      const res = await fetch(url, { method, body: fd });
+      if (!res.ok) {
+        const error = await res.json();
+        console.error('Error del servidor:', error);
+        alert("Error al guardar la prenda");
+      } else {
+        setShowModal(false);
+        cargarPrendas();
+      }
+    } catch (error) {
+      console.error('Error al guardar prenda:', error);
+      alert("Error al guardar la prenda");
     }
   };
 
@@ -266,9 +318,12 @@ function Prendas() {
           {prendasFiltradas.map((p) => (
             <div key={p.Prenda_ID} style={styles.card}>
               <img
-                src={p.Prenda_imagen ? `${CDN}${p.Prenda_imagen}` : "/placeholder.png"}
+                src={getImageUrl(p)}
                 alt={p.Prenda_nombre}
                 style={styles.cardImage}
+                onError={(e) => {
+                  e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='220'%3E%3Crect fill='%231a1a1a' width='240' height='220'/%3E%3Ctext fill='%23666' font-family='Arial' font-size='16' x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle'%3EError al cargar%3C/text%3E%3C/svg%3E";
+                }}
               />
               <div style={styles.cardActions}>
                 <button title="Ver" style={styles.iconBtn} onClick={() => abrirDetalle(p)}>
@@ -300,7 +355,7 @@ function Prendas() {
         width: "95%",
         maxHeight: "90vh",
         overflowY: "auto",
-        overflowX: "hidden", // 🚫 elimina scroll lateral
+        overflowX: "hidden",
         borderRadius: "12px",
         padding: "24px 20px 10px",
         display: "flex",
@@ -467,7 +522,7 @@ function Prendas() {
       {/* Imagen */}
       <div style={{ textAlign: "center" }}>
         <img
-          src={detalle.Prenda_imagen ? `${CDN}${detalle.Prenda_imagen}` : "/placeholder.png"}
+          src={getImageUrl(detalle)}
           alt={detalle.Prenda_nombre}
           style={{
             width: "100%",
@@ -477,6 +532,9 @@ function Prendas() {
             marginBottom: "20px",
             backgroundColor: "#111",
             padding: "8px",
+          }}
+          onError={(e) => {
+            e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='350'%3E%3Crect fill='%231a1a1a' width='400' height='350'/%3E%3Ctext fill='%23666' font-family='Arial' font-size='18' x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle'%3EError al cargar%3C/text%3E%3C/svg%3E";
           }}
         />
       </div>
