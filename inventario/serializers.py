@@ -72,13 +72,20 @@ class InsumosXPrendasSerializer(serializers.ModelSerializer):
 # === PRENDA ===
 class PrendaSerializer(serializers.ModelSerializer):
     Prenda_imagen = serializers.ImageField(required=False)
-    # 🔥 Campo que devuelve la URL completa de la imagen
     Prenda_imagen_url = serializers.SerializerMethodField()
     insumos_prendas = InsumosXPrendasSerializer(many=True, required=False)
-
+    talles = serializers.SerializerMethodField()  # 🔥 CAMBIADO de talles_disponibles a talles
+    
     class Meta:
         model = Prenda
         fields = '__all__'
+    
+    # 🔥 CAMBIADO: Método renombrado y simplificado
+    def get_talles(self, obj):
+        """Devuelve solo los códigos de los talles"""
+        from clasificaciones.models import TallesXPrendas
+        talles = TallesXPrendas.objects.filter(prenda=obj).select_related('talle')
+        return [t.talle.Talle_codigo for t in talles]
 
     # 🔥 CORREGIDO: Método para construir la URL completa de la imagen
     def get_Prenda_imagen_url(self, obj):

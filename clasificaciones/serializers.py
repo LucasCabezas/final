@@ -6,10 +6,13 @@ class TalleSerializer(serializers.ModelSerializer): # Define un serializador par
         model = Talle # Especifica el modelo que se va a serializar
         fields = '__all__' # Incluye todos los campos del modelo en la serialización
 
-class TallesXPrendasSerializer(serializers.ModelSerializer): # Define un serializador para el modelo TallesXPrendas
-    class Meta: # Clase Meta para definir la configuración del serializador
-        model = TallesXPrendas # Especifica el modelo que se va a serializar
-        fields = '__all__' # Incluye todos los campos del modelo en la serialización
+class TallesXPrendasSerializer(serializers.ModelSerializer):
+    talle_codigo = serializers.CharField(source='talle.Talle_codigo', read_only=True)
+    talle_id = serializers.IntegerField(source='talle.Talle_ID', read_only=True)
+    
+    class Meta:
+        model = TallesXPrendas
+        fields = ['id', 'talle', 'talle_id', 'talle_codigo', 'prenda']  # 🔥 ELIMINADO: 'stock', 'stock_minimo'
 
 class ColorSerializer(serializers.ModelSerializer): # Define un serializador para el modelo Color
     class Meta: # Clase Meta para definir la configuración del serializador

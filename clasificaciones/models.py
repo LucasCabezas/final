@@ -7,12 +7,16 @@ class Talle(models.Model): # Define el modelo Talle
     def __str__(self): # Define la representación en cadena del objeto
         return self.Talle_codigo # Retorna el código del talle
 
-class TallesXPrendas(models.Model): # Define el modelo intermedio para la relación muchos a muchos entre Talle y Prenda
-    talle = models.ForeignKey(Talle, on_delete=models.CASCADE) # Clave foránea al modelo Talle
-    prenda = models.ForeignKey('inventario.Prenda', on_delete=models.CASCADE) # Clave foránea al modelo Prenda
-
-    class Meta: # Define metadatos para el modelo
-        unique_together = ('talle', 'prenda') # Asegura que la combinación de talle y prenda sea única
+class TallesXPrendas(models.Model):
+    talle = models.ForeignKey(Talle, on_delete=models.CASCADE)
+    prenda = models.ForeignKey('inventario.Prenda', on_delete=models.CASCADE, related_name='talles_disponibles')
+    # 🔥 ELIMINADO: stock = models.IntegerField(default=0)
+    
+    class Meta:
+        unique_together = ('talle', 'prenda')
+    
+    def __str__(self):
+        return f"{self.prenda.Prenda_nombre} - Talle {self.talle.Talle_codigo}"
 
 class Color(models.Model): # Define el modelo Color
     Color_ID = models.AutoField(primary_key=True) # Campo ID autoincremental y clave primaria
