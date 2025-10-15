@@ -20,14 +20,15 @@ from inventario.models import Prenda, InsumosXPrendas, Insumo
 class PedidoList(APIView):
     """
     API: Listar o crear pedidos desde el frontend React.
-    Permite enviar un JSON con las prendas seleccionadas,
-    crea el pedido y descuenta stock automáticamente.
     """
 
     def get(self, request):
-        pedidos = Pedido.objects.all().order_by('-Pedido_fecha')
-        serializer = PedidoSerializer(pedidos, many=True)
-        return Response(serializer.data)
+        try:
+            pedidos = Pedido.objects.all().order_by('-Pedido_fecha')
+            serializer = PedidoSerializer(pedidos, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @transaction.atomic
     def post(self, request):
@@ -36,8 +37,8 @@ class PedidoList(APIView):
         {
             "usuario": 1,
             "prendas": [
-                {"id_prenda": 3, "cantidad": 2, "tipo": "LISA"},
-                {"id_prenda": 5, "cantidad": 1, "tipo": "ESTAMPADA"}
+                {"id_prenda": 3, "cantidad": 2, "talle": "M", "tipo": "LISA"},
+                {"id_prenda": 5, "cantidad": 1, "talle": "L", "tipo": "ESTAMPADA"}
             ]
         }
         """
@@ -46,25 +47,112 @@ class PedidoList(APIView):
             usuario_id = data.get("usuario", 1)
             prendas = data.get("prendas", [])
 
-            if not prendas:
-                return Response({"error": "No se enviaron prendas."}, status=status.HTTP_400_BAD_REQUEST)
+            print(f"📦 Recibiendo pedido con {len(prendas)} prendas")
 
-            # Crear pedido principal
+            if not prendas:
+                return Response({
+                    "error": "No se enviaron prendas.",
+                    "tipo": "sin_prendas"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Obtener el usuario
+            try:
+                usuario = User.objects.get(pk=usuario_id)
+            except User.DoesNotExist:
+                return Response({
+                    "error": "Usuario no encontrado.",
+                    "tipo": "usuario_no_encontrado"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # 🔍 VALIDAR STOCK DE INSUMOS ANTES DE CREAR EL PEDIDO
+            insumos_faltantes = []
+            
+            print("🔍 Iniciando validación de stock...")
+            
+            for item in prendas:
+                prenda_id = item.get("id_prenda")
+                cantidad = int(item.get("cantidad", 0))
+
+                try:
+                    prenda = Prenda.objects.get(pk=prenda_id)
+                    print(f"   ✓ Validando prenda: {prenda.Prenda_nombre} (x{cantidad})")
+                except Prenda.DoesNotExist:
+                    return Response({
+                        "error": f"La prenda con ID {prenda_id} no existe.",
+                        "tipo": "prenda_no_encontrada"
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+                # Verificar insumos necesarios
+                relaciones = InsumosXPrendas.objects.filter(prenda=prenda)
+                
+                if not relaciones.exists():
+                    print(f"   ⚠️ Prenda sin insumos configurados: {prenda.Prenda_nombre}")
+                    insumos_faltantes.append({
+                        "prenda": prenda.Prenda_nombre,
+                        "mensaje": f"La prenda '{prenda.Prenda_nombre}' no tiene insumos configurados."
+                    })
+                    continue
+
+                for rel in relaciones:
+                    insumo = rel.insumo
+                    cantidad_necesaria = rel.Insumo_prenda_cantidad_utilizada * cantidad
+                    cantidad_disponible = insumo.Insumo_cantidad
+
+                    print(f"      - Insumo: {insumo.Insumo_nombre}")
+                    print(f"        Disponible: {cantidad_disponible} | Necesaria: {cantidad_necesaria}")
+
+                    if cantidad_disponible < cantidad_necesaria:
+                        print(f"        ❌ STOCK INSUFICIENTE!")
+                        insumos_faltantes.append({
+                            "prenda": prenda.Prenda_nombre,
+                            "insumo": insumo.Insumo_nombre,
+                            "necesaria": float(cantidad_necesaria),
+                            "disponible": float(cantidad_disponible),
+                            "faltante": float(cantidad_necesaria - cantidad_disponible)
+                        })
+
+            # ❌ Si hay insumos faltantes, NO CREAR EL PEDIDO y devolver error
+            if insumos_faltantes:
+                print(f"❌ Pedido RECHAZADO - {len(insumos_faltantes)} problemas de stock detectados")
+                
+                mensajes = []
+                for falta in insumos_faltantes:
+                    if "insumo" in falta:
+                        mensajes.append(
+                            f"⚠️ {falta['prenda']}: Falta {falta['faltante']:.2f} unidades de '{falta['insumo']}' "
+                            f"(Disponible: {falta['disponible']:.2f}, Necesaria: {falta['necesaria']:.2f})"
+                        )
+                    else:
+                        mensajes.append(f"⚠️ {falta['mensaje']}")
+
+                # IMPORTANTE: Hacer rollback explícito
+                transaction.set_rollback(True)
+                
+                return Response({
+                    "error": "Stock insuficiente para completar el pedido",
+                    "tipo": "stock_insuficiente",
+                    "detalles": insumos_faltantes,
+                    "mensajes": mensajes
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # ✅ Si llegamos aquí, HAY STOCK SUFICIENTE - Crear el pedido
+            print("✅ Stock verificado - Creando pedido...")
+            
             pedido = Pedido.objects.create(
-                Usuario_id=usuario_id,
+                Usuario=usuario,
                 Pedido_fecha=timezone.now().date(),
                 Pedido_estado=False
             )
+
+            print(f"📦 Pedido creado con ID: {pedido.Pedido_ID}")
 
             total_pedido = 0
 
             for item in prendas:
                 prenda_id = item.get("id_prenda")
                 cantidad = int(item.get("cantidad", 0))
+                talle = item.get("talle", "")
                 tipo = item.get("tipo", "LISA")
-
-                if not prenda_id or cantidad <= 0:
-                    raise ValueError("Datos de prenda inválidos o cantidad incorrecta.")
 
                 prenda = Prenda.objects.get(pk=prenda_id)
 
@@ -74,44 +162,52 @@ class PedidoList(APIView):
                     prenda=prenda,
                     cantidad=cantidad,
                     tipo=tipo,
-                    talle_id=1,   # temporales
-                    color_id=1,
-                    modelo_id=1,
-                    marca_id=1,
+                    talle_id=1,   # Ajusta según tu modelo
+                    color_id=1,   # Ajusta según tu modelo
+                    modelo_id=1,  # Ajusta según tu modelo
+                    marca_id=1,   # Ajusta según tu modelo
                 )
 
                 total_pedido += detalle.precio_total
+                print(f"   + Agregado: {prenda.Prenda_nombre} x{cantidad}")
 
                 # 🔥 Descontar insumos utilizados
                 relaciones = InsumosXPrendas.objects.filter(prenda=prenda)
                 for rel in relaciones:
                     insumo = rel.insumo
                     cantidad_usada = rel.Insumo_prenda_cantidad_utilizada * cantidad
-
-                    if insumo.Insumo_cantidad < cantidad_usada:
-                        raise Exception(
-                            f"Stock insuficiente: {insumo.Insumo_nombre} "
-                            f"(Disponible: {insumo.Insumo_cantidad}, Requiere: {cantidad_usada})"
-                        )
-
+                    stock_anterior = insumo.Insumo_cantidad
                     insumo.Insumo_cantidad -= cantidad_usada
                     insumo.save()
+                    print(f"      Descuento: {insumo.Insumo_nombre} {stock_anterior} → {insumo.Insumo_cantidad}")
 
             # Guardar pedido final
             pedido.Pedido_estado = True
             pedido.save()
 
+            print(f"✅ Pedido {pedido.Pedido_ID} completado exitosamente")
+
             return Response({
                 "mensaje": "✅ Pedido creado correctamente.",
+                "tipo": "exito",
                 "pedido_id": pedido.Pedido_ID,
                 "total": round(total_pedido, 2)
             }, status=status.HTTP_201_CREATED)
 
-        except Prenda.DoesNotExist:
-            return Response({"error": "Una de las prendas no existe."}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
+        except ValueError as e:
+            print(f"❌ Error de validación: {str(e)}")
             transaction.set_rollback(True)
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                "error": str(e),
+                "tipo": "error_validacion"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print(f"❌ Error del servidor: {str(e)}")
+            transaction.set_rollback(True)
+            return Response({
+                "error": str(e),
+                "tipo": "error_servidor"
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class PedidoDetail(APIView):
@@ -143,7 +239,7 @@ class PedidoDetail(APIView):
 def crear_pedido(request):
     """Permite crear un pedido manualmente desde el panel de administración."""
 
-    usuario = User.objects.first()  # Temporal hasta integrar login
+    usuario = User.objects.first()
 
     pedido_actual = Pedido.objects.filter(Usuario=usuario, Pedido_estado=False).first()
     if not pedido_actual:

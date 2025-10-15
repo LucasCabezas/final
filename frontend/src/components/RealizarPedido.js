@@ -150,18 +150,19 @@ const styles = {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1000,
-    padding: '20px'
+    padding: '20px',
+    overflowY: 'auto'
   },
   modalContent: {
     backgroundColor: 'rgba(20, 20, 20, 0.98)',
     borderRadius: '16px',
     padding: '32px',
-    maxWidth: '900px',
+    maxWidth: '1200px',
     width: '100%',
     maxHeight: '90vh',
     overflowY: 'auto',
@@ -188,6 +189,75 @@ const styles = {
     cursor: 'pointer',
     padding: '4px'
   },
+  searchPrendaContainer: {
+    position: 'relative',
+    marginBottom: '24px'
+  },
+  searchPrendaInput: {
+    width: '100%',
+    padding: '14px 45px 14px 14px',
+    borderRadius: '10px',
+    border: '1px solid #4b5563',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    color: '#fff',
+    fontSize: '15px'
+  },
+  searchIcon: {
+    position: 'absolute',
+    right: '14px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    color: '#9ca3af'
+  },
+  prendasGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+    gap: '16px',
+    marginBottom: '24px',
+    maxHeight: '400px',
+    overflowY: 'auto',
+    padding: '8px'
+  },
+  prendaCard: {
+    backgroundColor: 'rgba(30,30,30,0.8)',
+    border: '2px solid rgba(255,255,255,0.1)',
+    borderRadius: '12px',
+    overflow: 'hidden',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease'
+  },
+  prendaCardSelected: {
+    backgroundColor: 'rgba(255,215,15,0.15)',
+    border: '2px solid #ffd70f',
+    transform: 'scale(1.03)',
+    boxShadow: '0 4px 12px rgba(255,215,15,0.3)'
+  },
+  prendaImage: {
+    width: '100%',
+    height: '140px',
+    objectFit: 'cover'
+  },
+  prendaInfo: {
+    padding: '12px',
+    textAlign: 'center'
+  },
+  prendaNombre: {
+    color: '#fff',
+    fontSize: '14px',
+    fontWeight: '600',
+    marginBottom: '4px'
+  },
+  prendaDetalle: {
+    color: '#9ca3af',
+    fontSize: '11px',
+    marginBottom: '2px'
+  },
+  prendaPrecio: {
+    color: '#ffd70f',
+    fontSize: '13px',
+    fontWeight: '700',
+    marginTop: '6px'
+  },
   formContainer: {
     backgroundColor: 'rgba(30, 30, 30, 0.6)',
     borderRadius: '12px',
@@ -197,7 +267,7 @@ const styles = {
   },
   formGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
     gap: '16px',
     alignItems: 'end'
   },
@@ -219,18 +289,14 @@ const styles = {
     color: '#fff',
     fontSize: '14px'
   },
-  selectPrenda: {
+  selectTalle: {
     padding: '10px 14px',
     borderRadius: '8px',
     border: '1px solid #4b5563',
     backgroundColor: 'rgba(0,0,0,0.4)',
     color: '#fff',
     fontSize: '14px',
-    cursor: 'pointer',
-    appearance: 'none',
-    backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%23ffffff\' d=\'M6 9L1 4h10z\'/%3E%3C/svg%3E")',
-    backgroundRepeat: 'no-repeat',
-    backgroundPosition: 'right 12px center'
+    cursor: 'pointer'
   },
   addBtn: {
     backgroundColor: '#ffd70f',
@@ -245,16 +311,37 @@ const styles = {
     gap: '6px',
     color: '#000'
   },
+  pedidosList: {
+    marginTop: '20px'
+  },
   pedidoCard: {
     backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    padding: '12px 20px',
+    padding: '14px 20px',
     borderRadius: '10px',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: '12px',
+    marginBottom: '10px',
     border: '1px solid rgba(255, 255, 255, 0.1)',
     color: 'white'
+  },
+  pedidoInfo: {
+    flex: 1
+  },
+  pedidoNombre: {
+    fontWeight: '600',
+    fontSize: '14px'
+  },
+  pedidoDetalles: {
+    fontSize: '12px',
+    color: '#9ca3af',
+    marginTop: '4px'
+  },
+  pedidoPrecio: {
+    fontSize: '16px',
+    fontWeight: '700',
+    color: '#ffd70f',
+    marginRight: '12px'
   },
   resultadoContainer: {
     backgroundColor: 'rgba(30, 30, 30, 0.8)',
@@ -309,11 +396,14 @@ const styles = {
     padding: '16px 24px',
     borderRadius: '8px',
     display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: '8px',
     zIndex: 3000,
-    minWidth: '300px',
-    boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
+    minWidth: '350px',
+    maxWidth: '500px',
+    boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
+    whiteSpace: 'pre-line'
   },
   alertSuccess: { backgroundColor: '#10b981', color: '#fff' },
   alertError: { backgroundColor: '#ef4444', color: '#fff' },
@@ -321,16 +411,6 @@ const styles = {
     textAlign: 'center',
     padding: '60px 20px',
     color: '#9ca3af'
-  },
-  searchPrendaInput: {
-    width: '100%',
-    padding: '10px 14px',
-    borderRadius: '8px',
-    border: '1px solid #4b5563',
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    color: '#fff',
-    fontSize: '14px',
-    marginBottom: '12px'
   }
 };
 
@@ -340,7 +420,7 @@ export default function PedidosView() {
   const [prendas, setPrendas] = useState([]);
   const [pedidosFiltrados, setPedidosFiltrados] = useState([]);
   const [pedido, setPedido] = useState([]);
-  const [selectedPrenda, setSelectedPrenda] = useState("");
+  const [selectedPrenda, setSelectedPrenda] = useState(null);
   const [searchPrenda, setSearchPrenda] = useState("");
   const [formData, setFormData] = useState({
     cantidad: 1,
@@ -376,7 +456,6 @@ export default function PedidosView() {
       try {
         const res = await fetch("http://localhost:8000/api/pedidos/");
         const data = await res.json();
-        // Solo mostrar pedidos pendientes por defecto
         const pendientes = data.filter(p => p.Estado === "Pendiente");
         setPedidosFiltrados(pendientes);
       } catch (err) {
@@ -388,11 +467,13 @@ export default function PedidosView() {
 
   const showAlert = (message, type = "success") => {
     setAlert({ message, type });
-    setTimeout(() => setAlert(null), 3000);
+    setTimeout(() => setAlert(null), 5000); // 5 segundos para alertas con más info
   };
 
   const prendasFiltradas = prendas.filter(p =>
-    p.Prenda_nombre.toLowerCase().includes(searchPrenda.toLowerCase())
+    p.Prenda_nombre.toLowerCase().includes(searchPrenda.toLowerCase()) ||
+    p.Prenda_marca?.toLowerCase().includes(searchPrenda.toLowerCase()) ||
+    p.Prenda_modelo?.toLowerCase().includes(searchPrenda.toLowerCase())
   );
 
   const agregarPrenda = () => {
@@ -401,7 +482,12 @@ export default function PedidosView() {
       return;
     }
 
-    const prendaBase = prendas.find(p => p.Prenda_ID === parseInt(selectedPrenda));
+    if (!formData.talle) {
+      showAlert("Seleccioná un talle", "error");
+      return;
+    }
+
+    const prendaBase = prendas.find(p => p.Prenda_ID === selectedPrenda.Prenda_ID);
     if (!prendaBase) return;
 
     const recargo = formData.talle.toUpperCase().includes("XL") ? formData.recargoTalle / 100 : 0;
@@ -416,9 +502,8 @@ export default function PedidosView() {
     };
 
     setPedido([...pedido, nueva]);
-    setSelectedPrenda("");
+    setSelectedPrenda(null);
     setFormData({ ...formData, cantidad: 1, talle: "" });
-    setSearchPrenda("");
   };
 
   const eliminarPrendaPedido = (index) => {
@@ -443,9 +528,12 @@ export default function PedidosView() {
         prendas: pedido.map(p => ({
           id_prenda: p.Prenda_ID,
           cantidad: p.cantidad,
+          talle: p.talle,
           tipo: "LISA"
         }))
       };
+
+      console.log("Enviando pedido:", data);
 
       const res = await fetch("http://localhost:8000/api/pedidos/", {
         method: "POST",
@@ -453,13 +541,25 @@ export default function PedidosView() {
         body: JSON.stringify(data)
       });
 
+      const responseData = await res.json();
+      console.log("Respuesta del servidor:", responseData);
+
       if (!res.ok) {
-        const errorData = await res.json();
-        showAlert(`Error al realizar pedido: ${errorData.error}`, "error");
+        // Manejar diferentes tipos de errores
+        if (responseData.tipo === "stock_insuficiente") {
+          // Mostrar alerta detallada de stock insuficiente
+          const detallesHTML = responseData.mensajes.join('\n');
+          showAlert(`❌ Stock Insuficiente:\n\n${detallesHTML}`, "error");
+        } else if (responseData.tipo === "sin_prendas") {
+          showAlert("⚠️ No se enviaron prendas en el pedido", "error");
+        } else if (responseData.tipo === "prenda_no_encontrada") {
+          showAlert(`⚠️ ${responseData.error}`, "error");
+        } else {
+          showAlert(`❌ Error: ${responseData.error || 'Error al realizar pedido'}`, "error");
+        }
         return;
       }
 
-      await res.json();
       showAlert("✅ Pedido realizado correctamente", "success");
 
       // Recargar pedidos
@@ -472,7 +572,8 @@ export default function PedidosView() {
       setResultado(null);
       setModalOpen(false);
     } catch (err) {
-      showAlert("Error al conectar con el servidor", "error");
+      console.error("Error al confirmar pedido:", err);
+      showAlert("❌ Error al conectar con el servidor", "error");
     }
   };
 
@@ -492,7 +593,6 @@ export default function PedidosView() {
       if (filtros.estado) {
         filtrados = filtrados.filter(p => p.Estado === filtros.estado);
       } else if (!filtros.id && !filtros.fecha) {
-        // Si no hay filtros activos, mostrar solo pendientes
         filtrados = filtrados.filter(p => p.Estado === "Pendiente");
       }
 
@@ -526,6 +626,11 @@ export default function PedidosView() {
       showAlert("Error al conectar con el servidor", "error");
     }
   };
+
+  // Obtener talles disponibles de la prenda seleccionada
+  const tallesDisponibles = selectedPrenda 
+    ? (selectedPrenda.Prenda_talles || "S,M,L,XL,XXL").split(',').map(t => t.trim())
+    : [];
 
   return (
     <>
@@ -653,120 +758,215 @@ export default function PedidosView() {
                 </button>
               </div>
 
-              <div style={styles.formContainer}>
+              {/* BUSCADOR DE PRENDAS */}
+              <div style={styles.searchPrendaContainer}>
                 <input
                   type="text"
-                  placeholder="🔍 Buscar prenda..."
+                  placeholder="🔍 Buscar prenda por nombre, marca o modelo..."
                   value={searchPrenda}
                   onChange={(e) => setSearchPrenda(e.target.value)}
                   style={styles.searchPrendaInput}
                 />
+                <Search style={styles.searchIcon} size={20} />
+              </div>
 
-                <div style={styles.formGrid}>
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>Prenda</label>
-                    <select
-                      value={selectedPrenda}
-                      onChange={(e) => setSelectedPrenda(e.target.value)}
-                      style={styles.selectPrenda}
-                    >
-                      <option value="">Seleccionar prenda...</option>
-                      {prendasFiltradas.map((p) => (
-                        <option key={p.Prenda_ID} value={p.Prenda_ID}>
-                          {p.Prenda_nombre} - ${p.Prenda_precio_unitario}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+              {/* GRID DE PRENDAS - Solo muestra si hay búsqueda */}
+              {searchPrenda.trim() !== "" && (
+                <>
+                  {prendasFiltradas.length > 0 ? (
+                    <div style={styles.prendasGrid}>
+                      {prendasFiltradas.map((prenda) => {
+                        // Construir la URL de la imagen correctamente
+                        const imagenUrl = prenda.Prenda_imagen 
+                          ? (prenda.Prenda_imagen.startsWith('http') 
+                              ? prenda.Prenda_imagen 
+                              : `http://localhost:8000${prenda.Prenda_imagen}`)
+                          : 'https://via.placeholder.com/160x140?text=Sin+Imagen';
+                        
+                        console.log('URL de imagen:', imagenUrl, 'para prenda:', prenda.Prenda_nombre);
+                        
+                        return (
+                          <div
+                            key={prenda.Prenda_ID}
+                            style={{
+                              ...styles.prendaCard,
+                              ...(selectedPrenda?.Prenda_ID === prenda.Prenda_ID ? styles.prendaCardSelected : {})
+                            }}
+                            onClick={() => setSelectedPrenda(prenda)}
+                          >
+                            <img
+                              src={imagenUrl}
+                              alt={prenda.Prenda_nombre}
+                              style={styles.prendaImage}
+                              onError={(e) => {
+                                console.error('Error cargando imagen:', imagenUrl);
+                                e.target.onerror = null;
+                                e.target.src = 'https://via.placeholder.com/160x140?text=Sin+Imagen';
+                              }}
+                              onLoad={() => {
+                                console.log('Imagen cargada exitosamente:', imagenUrl);
+                              }}
+                            />
+                            <div style={styles.prendaInfo}>
+                              <div style={styles.prendaNombre}>{prenda.Prenda_nombre}</div>
+                              <div style={styles.prendaDetalle}>{prenda.Prenda_marca || 'Sin marca'}</div>
+                              <div style={styles.prendaDetalle}>{prenda.Prenda_modelo || 'Sin modelo'}</div>
+                              <div style={styles.prendaPrecio}>${prenda.Prenda_precio_unitario}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{ 
+                      textAlign: 'center', 
+                      padding: '40px 20px', 
+                      color: '#9ca3af',
+                      backgroundColor: 'rgba(30,30,30,0.6)',
+                      borderRadius: '12px',
+                      marginBottom: '24px'
+                    }}>
+                      <Package size={48} color="#4b5563" style={{ margin: '0 auto 12px' }} />
+                      <p style={{ margin: 0 }}>No se encontraron prendas con "{searchPrenda}"</p>
+                    </div>
+                  )}
+                </>
+              )}
 
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>Talle</label>
-                    <input
-                      type="text"
-                      placeholder="Ej: M, XL, XXL"
-                      value={formData.talle}
-                      onChange={(e) => setFormData({ ...formData, talle: e.target.value })}
-                      style={styles.input}
-                    />
-                  </div>
-
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>Cantidad</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={formData.cantidad}
-                      onChange={(e) => setFormData({ ...formData, cantidad: e.target.value })}
-                      style={styles.input}
-                    />
-                  </div>
-
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>Recargo XL (%)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={formData.recargoTalle}
-                      onChange={(e) => setFormData({ ...formData, recargoTalle: e.target.value })}
-                      style={styles.input}
-                    />
-                  </div>
-
-                  <button onClick={agregarPrenda} style={styles.addBtn}>
-                    <Plus size={18} /> Agregar
-                  </button>
+              {/* MENSAJE INICIAL cuando no hay búsqueda */}
+              {searchPrenda.trim() === "" && !selectedPrenda && (
+                <div style={{ 
+                  textAlign: 'center', 
+                  padding: '60px 20px', 
+                  color: '#9ca3af',
+                  backgroundColor: 'rgba(30,30,30,0.6)',
+                  borderRadius: '12px',
+                  marginBottom: '24px',
+                  border: '2px dashed rgba(255,255,255,0.1)'
+                }}>
+                  <Search size={64} color="#4b5563" style={{ margin: '0 auto 16px' }} />
+                  <h3 style={{ color: '#d1d5db', marginBottom: '8px', fontSize: '18px' }}>
+                    Comienza a buscar una prenda
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '14px' }}>
+                    Escribe el nombre, marca o modelo en el buscador
+                  </p>
                 </div>
+              )}
 
-                {pedido.map((p, index) => (
-                  <div key={index} style={styles.pedidoCard}>
-                    <span>{p.Prenda_nombre} ({p.talle}) x {p.cantidad}</span>
-                    <span>${(p.precioUnitario * p.cantidad).toFixed(2)}</span>
-                    <button onClick={() => eliminarPrendaPedido(index)} style={styles.btnEliminar}>
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                ))}
-
-                <div style={{ marginTop: '20px' }}>
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>Porcentaje de Ganancia (%)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={formData.porcentajeGanancia}
-                      onChange={(e) => setFormData({ ...formData, porcentajeGanancia: e.target.value })}
-                      style={styles.input}
-                    />
-                  </div>
-                </div>
-
-                <button onClick={calcularTotales} style={{ ...styles.addBtn, marginTop: '20px', width: '100%' }}>
-                  <Package size={18} /> Calcular Totales
-                </button>
-
-                {resultado && (
-                  <div style={styles.resultadoContainer}>
-                    <div style={styles.resultadoGrid}>
-                      <div style={styles.resultadoItem}>
-                        <div style={styles.resultadoLabel}>Subtotal</div>
-                        <div style={styles.resultadoValue}>${resultado.subtotal.toFixed(2)}</div>
-                      </div>
-                      <div style={styles.resultadoItem}>
-                        <div style={styles.resultadoLabel}>Ganancia</div>
-                        <div style={styles.resultadoValue}>${resultado.ganancia.toFixed(2)}</div>
-                      </div>
-                      <div style={styles.resultadoItem}>
-                        <div style={styles.resultadoLabel}>Total Final</div>
-                        <div style={styles.resultadoValue}>${resultado.total.toFixed(2)}</div>
-                      </div>
+              {/* FORMULARIO DE PEDIDO */}
+              {selectedPrenda && (
+                <div style={styles.formContainer}>
+                  <div style={styles.formGrid}>
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Talle</label>
+                      <select
+                        value={formData.talle}
+                        onChange={(e) => setFormData({ ...formData, talle: e.target.value })}
+                        style={styles.selectTalle}
+                      >
+                        <option value="">Seleccionar talle...</option>
+                        {tallesDisponibles.map((talle, idx) => (
+                          <option key={idx} value={talle}>
+                            {talle}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
-                    <button onClick={confirmarPedido} style={styles.btnConfirmar}>
-                      <CheckCircle size={20} /> Confirmar Pedido
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Cantidad</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={formData.cantidad}
+                        onChange={(e) => setFormData({ ...formData, cantidad: e.target.value })}
+                        style={styles.input}
+                      />
+                    </div>
+
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Recargo XL (%)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={formData.recargoTalle}
+                        onChange={(e) => setFormData({ ...formData, recargoTalle: e.target.value })}
+                        style={styles.input}
+                      />
+                    </div>
+
+                    <button onClick={agregarPrenda} style={styles.addBtn}>
+                      <Plus size={18} /> Agregar
                     </button>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
+
+              {/* LISTA DE PRENDAS AGREGADAS */}
+              {pedido.length > 0 && (
+                <div style={styles.pedidosList}>
+                  <h3 style={{ color: '#fff', marginBottom: '12px', fontSize: '18px' }}>
+                    Prendas en el pedido ({pedido.length})
+                  </h3>
+                  {pedido.map((p, index) => (
+                    <div key={index} style={styles.pedidoCard}>
+                      <div style={styles.pedidoInfo}>
+                        <div style={styles.pedidoNombre}>{p.Prenda_nombre}</div>
+                        <div style={styles.pedidoDetalles}>
+                          Talle: {p.talle} | Cantidad: {p.cantidad} | Precio unit: ${p.precioUnitario.toFixed(2)}
+                        </div>
+                      </div>
+                      <div style={styles.pedidoPrecio}>
+                        ${(p.precioUnitario * p.cantidad).toFixed(2)}
+                      </div>
+                      <button onClick={() => eliminarPrendaPedido(index)} style={styles.btnEliminar}>
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  ))}
+
+                  <div style={{ marginTop: '20px' }}>
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Porcentaje de Ganancia (%)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={formData.porcentajeGanancia}
+                        onChange={(e) => setFormData({ ...formData, porcentajeGanancia: e.target.value })}
+                        style={styles.input}
+                      />
+                    </div>
+                  </div>
+
+                  <button onClick={calcularTotales} style={{ ...styles.addBtn, marginTop: '20px', width: '100%' }}>
+                    <Package size={18} /> Calcular Totales
+                  </button>
+
+                  {resultado && (
+                    <div style={styles.resultadoContainer}>
+                      <div style={styles.resultadoGrid}>
+                        <div style={styles.resultadoItem}>
+                          <div style={styles.resultadoLabel}>Subtotal</div>
+                          <div style={styles.resultadoValue}>${resultado.subtotal.toFixed(2)}</div>
+                        </div>
+                        <div style={styles.resultadoItem}>
+                          <div style={styles.resultadoLabel}>Ganancia ({formData.porcentajeGanancia}%)</div>
+                          <div style={styles.resultadoValue}>${resultado.ganancia.toFixed(2)}</div>
+                        </div>
+                        <div style={styles.resultadoItem}>
+                          <div style={styles.resultadoLabel}>Total Final</div>
+                          <div style={styles.resultadoValue}>${resultado.total.toFixed(2)}</div>
+                        </div>
+                      </div>
+
+                      <button onClick={confirmarPedido} style={styles.btnConfirmar}>
+                        <CheckCircle size={20} /> Confirmar Pedido
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -776,8 +976,12 @@ export default function PedidosView() {
             ...styles.alert,
             ...(alert.type === "success" ? styles.alertSuccess : styles.alertError)
           }}>
-            {alert.type === "success" ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
-            <span>{alert.message}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%' }}>
+              {alert.type === "success" ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+              <div style={{ flex: 1, fontSize: '14px', lineHeight: '1.5' }}>
+                {alert.message}
+              </div>
+            </div>
           </div>
         )}
       </div>
