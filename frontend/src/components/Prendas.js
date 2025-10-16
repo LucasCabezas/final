@@ -20,26 +20,34 @@ const styles = {
     alignItems: "center",
     gap: "16px",
   },
-  searchBox: { position: "relative", display: "flex", alignItems: "center" },
+  searchContainer: { 
+    position: "relative", 
+    display: "flex", 
+    alignItems: "center" 
+  },
   searchIcon: { 
     position: "absolute", 
-    left: 12, 
-    top: "50%", 
-    transform: "translateY(-50%)", 
+    left: "12px",
+    top: "50%",
+    transform: "translateY(-50%)",
     color: "#000", 
     width: "20px", 
     height: "20px", 
     pointerEvents: "none" 
   },
   searchInput: {
-    padding: "8px 16px 8px 40px",
+    paddingLeft: "40px",
+    paddingRight: "36px",
+    paddingTop: "8px",
+    paddingBottom: "8px",
     backgroundColor: "#fff",
-    borderRadius: 8,
+    borderRadius: "8px",
     border: "1px solid #d1d5db",
     outline: "none",
-    width: 260,
+    width: "256px",
     color: "#000",
     transition: "border-color 0.2s",
+    fontSize: "14px"
   },
   clearButton: {
     position: "absolute",
@@ -56,6 +64,7 @@ const styles = {
     justifyContent: "center",
   },
   searchCounter: {
+    marginLeft: "0",
     padding: "6px 12px",
     backgroundColor: "rgba(255, 215, 15, 0.2)",
     color: "#ffd70f",
@@ -67,14 +76,14 @@ const styles = {
   addBtn: {
     display: "flex",
     alignItems: "center",
-    gap: 8,
+    gap: "8px",
     backgroundColor: "rgba(255,215,15,1)",
     color: "#000",
     border: "none",
-    borderRadius: 8,
+    borderRadius: "8px",
     padding: "8px 16px",
     cursor: "pointer",
-    fontWeight: 600,
+    fontWeight: "600",
     transition: "opacity 0.2s",
   },
   grid: { 
@@ -788,7 +797,7 @@ function Prendas() {
         <div style={styles.header}>
           <h1 style={styles.title}>Prendas</h1>
           <div style={styles.headerActions}>
-            <div style={styles.searchBox}>
+            <div style={styles.searchContainer}>
               <Search style={styles.searchIcon} />
               <input
                 style={styles.searchInput}
@@ -815,7 +824,8 @@ function Prendas() {
               </div>
             )}
             <button style={styles.addBtn} className="hover-button" onClick={abrirCrear}>
-              <Plus /> Agregar Prenda
+              <Plus style={{ width: '20px', height: '20px' }} />
+              Agregar Prenda
             </button>
           </div>
         </div>

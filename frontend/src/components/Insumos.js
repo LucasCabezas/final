@@ -40,6 +40,8 @@ const styles = {
   searchIcon: {
     position: 'absolute',
     left: '12px',
+    top: '50%',
+    transform: 'translateY(-50%)',
     color: '#000',
     width: '20px',
     height: '20px',
@@ -74,7 +76,7 @@ const styles = {
     justifyContent: 'center'
   },
   searchCounter: {
-    marginLeft: '12px',
+    marginLeft: '0',
     padding: '6px 12px',
     backgroundColor: 'rgba(255, 215, 15, 0.2)',
     color: '#ffd70f',
