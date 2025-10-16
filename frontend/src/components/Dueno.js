@@ -15,29 +15,72 @@ function Dueno({ usuarioId }) {
   const navbarWidth = isNavbarCollapsed ? 70 : 250;
 
   useEffect(() => {
-    if (!usuarioId) return;
+    console.log("🔍 usuarioId recibido:", usuarioId);
+    
+    if (!usuarioId) {
+      console.warn("⚠️ No hay usuarioId, cargando solo insumos");
+      cargarInsumos();
+      return;
+    }
 
     fetch(`http://localhost:8000/api/usuarios/${usuarioId}`)
       .then((res) => res.json())
-      .then((data) => setUsuario(data))
-      .catch((err) => console.error("Error al cargar usuario:", err));
+      .then((data) => {
+        console.log("👤 Usuario cargado:", data);
+        setUsuario(data);
+      })
+      .catch((err) => console.error("❌ Error al cargar usuario:", err));
 
     cargarInsumos();
   }, [usuarioId]);
 
   const cargarInsumos = async () => {
     try {
+      console.log("🔄 Intentando cargar insumos...");
       const response = await fetch("http://localhost:8000/api/inventario/insumos/");
+      
+      if (!response.ok) {
+        console.error("❌ Error en la respuesta:", response.status, response.statusText);
+        return;
+      }
+      
       const data = await response.json();
+      
+      // 🔥 LOGS DE DIAGNÓSTICO
+      console.log("📦 Datos de insumos recibidos:", data);
+      console.log("📦 Cantidad de insumos:", data.length);
+      
+      if (data.length > 0) {
+        console.log("📦 Primer insumo (ejemplo):", data[0]);
+        console.log("📦 Estructura del primer insumo:", {
+          nombre: data[0].Insumo_nombre,
+          cantidad: data[0].Insumo_cantidad,
+          precio_unitario: data[0].Insumo_precio_unitario,
+          precio_total: data[0].Insumo_precio_total
+        });
+      }
+      
       setInsumos(data);
 
-      const total = data.reduce((sum, item) => sum + (item.Insumo_precio_unitario * item.Insumo_cantidad || 0), 0);
+      // Calcular valor total
+      const total = data.reduce((sum, item) => {
+        const precio = item.Insumo_precio_unitario || 0;
+        const cantidad = item.Insumo_cantidad || 0;
+        const subtotal = precio * cantidad;
+        return sum + subtotal;
+      }, 0);
+      
+      console.log("💰 Valor total calculado:", total);
       setTotalValor(total);
 
-      const bajos = data.filter((item) => item.Insumo_cantidad < 10).length;
+      // Calcular bajo stock
+      const bajos = data.filter((item) => item.Insumo_cantidad < item.Insumo_cantidad_minima).length;
+      console.log("⚠️ Insumos bajo stock:", bajos);
       setBajoStock(bajos);
+      
+      console.log("✅ Insumos cargados correctamente");
     } catch (error) {
-      console.error("Error cargando insumos:", error);
+      console.error("❌ Error cargando insumos:", error);
     }
   };
 
@@ -45,6 +88,8 @@ function Dueno({ usuarioId }) {
     name: item.Insumo_nombre,
     value: item.Insumo_cantidad,
   }));
+
+  console.log("📊 Datos para el gráfico:", datosGrafico);
 
   const styles = {
     container: {
@@ -165,7 +210,9 @@ function Dueno({ usuarioId }) {
               {/* Card 1: Valor Total */}
               <div style={styles.resumenCard}>
                 <h4 style={styles.cardLabel}>Valor Total del Stock de Insumo</h4>
-                <p style={styles.cardValue}>${totalValor.toLocaleString()}</p>
+                <p style={styles.cardValue}>
+                  ${totalValor.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
               </div>
 
               {/* Card 2: Artículos Bajo Stock */}
@@ -217,7 +264,7 @@ function Dueno({ usuarioId }) {
                   </div>
                 ) : (
                   <p style={{ color: "#9ca3af", textAlign: "center" }}>
-                    Cargando datos...
+                    {insumos.length === 0 ? "No hay insumos para mostrar" : "Cargando datos..."}
                   </p>
                 )}
               </div>
@@ -228,7 +275,7 @@ function Dueno({ usuarioId }) {
           <section style={styles.alertasSection}>
             <h3 style={styles.alertasTitle}>Alertas Recientes</h3>
             <ul style={styles.alertasList}>
-              {bajoStock > 0 && (
+              {bajoStock > 0 ? (
                 <li
                   style={{
                     ...styles.alertaItem,
@@ -236,6 +283,15 @@ function Dueno({ usuarioId }) {
                   }}
                 >
                   ⚠️ {bajoStock} artículos con bajo stock
+                </li>
+              ) : (
+                <li
+                  style={{
+                    ...styles.alertaItem,
+                    borderLeftColor: "#2ecc71",
+                  }}
+                >
+                  ✅ Todos los insumos tienen stock adecuado
                 </li>
               )}
               <li
@@ -249,10 +305,10 @@ function Dueno({ usuarioId }) {
               <li
                 style={{
                   ...styles.alertaItem,
-                  borderLeftColor: "#e74c3c",
+                  borderLeftColor: "#3498db",
                 }}
               >
-                🚚 Insumos retrasados en entrega
+                ℹ️ Sistema funcionando correctamente
               </li>
             </ul>
           </section>

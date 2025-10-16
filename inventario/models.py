@@ -45,14 +45,36 @@ class AlertaStock(models.Model):
 class Prenda(models.Model):
     Prenda_ID = models.AutoField(primary_key=True)
     Prenda_nombre = models.CharField(max_length=100)
-    Prenda_marca = models.CharField(max_length=100, blank=True, null=True)
-    Prenda_modelo = models.CharField(max_length=100, blank=True, null=True)
-    Prenda_color = models.CharField(max_length=50, blank=True, null=True)
+    
+    # 🔥 CAMBIADO: De CharField a ForeignKey
+    Prenda_marca = models.ForeignKey(
+        'clasificaciones.Marca',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='prendas'
+    )
+    Prenda_modelo = models.ForeignKey(
+        'clasificaciones.Modelo',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='prendas'
+    )
+    Prenda_color = models.ForeignKey(
+        'clasificaciones.Color',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='prendas'
+    )
+    
     Prenda_precio_unitario = models.FloatField()
     Prenda_imagen = models.ImageField(upload_to='prendas/', blank=True, null=True)
 
     def __str__(self):
-        return f"{self.Prenda_nombre} - {self.Prenda_marca or ''}"
+        marca_nombre = self.Prenda_marca.Marca_nombre if self.Prenda_marca else ''
+        return f"{self.Prenda_nombre} - {marca_nombre}"
 
 
 class InsumosXPrendas(models.Model):

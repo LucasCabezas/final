@@ -1,45 +1,64 @@
-from rest_framework import serializers # Importa el módulo serializers de Django REST Framework
-from .models import Talle, TallesXPrendas, Color, ColoresXPrendas, Modelo, ModelosXPrendas, Marca, MarcasXPrendas # Importa los modelos necesarios desde el archivo models.py
+# clasificaciones/serializers.py
 
-class TalleSerializer(serializers.ModelSerializer): # Define un serializador para el modelo Talle
-    class Meta: # Clase Meta para definir la configuración del serializador
-        model = Talle # Especifica el modelo que se va a serializar
-        fields = '__all__' # Incluye todos los campos del modelo en la serialización
+from rest_framework import serializers
+from .models import Talle, TallesXPrendas, Color, Modelo, Marca
 
+
+# ========================================
+# SERIALIZER PARA TALLE
+# ========================================
+class TalleSerializer(serializers.ModelSerializer):
+    """Serializador para el modelo Talle"""
+    class Meta:
+        model = Talle
+        fields = '__all__'
+
+
+# ========================================
+# SERIALIZER PARA TALLES X PRENDAS
+# ========================================
 class TallesXPrendasSerializer(serializers.ModelSerializer):
+    """Serializador para la relación Talle-Prenda con stock"""
     talle_codigo = serializers.CharField(source='talle.Talle_codigo', read_only=True)
     talle_id = serializers.IntegerField(source='talle.Talle_ID', read_only=True)
+    prenda_nombre = serializers.CharField(source='prenda.Prenda_nombre', read_only=True)
     
     class Meta:
         model = TallesXPrendas
-        fields = ['id', 'talle', 'talle_id', 'talle_codigo', 'prenda']  # 🔥 ELIMINADO: 'stock', 'stock_minimo'
+        fields = ['id', 'talle', 'talle_id', 'talle_codigo', 'prenda', 'prenda_nombre', 'stock']
 
-class ColorSerializer(serializers.ModelSerializer): # Define un serializador para el modelo Color
-    class Meta: # Clase Meta para definir la configuración del serializador
-        model = Color # Especifica el modelo que se va a serializar
-        fields = '__all__' # Incluye todos los campos del modelo en la serialización
 
-class ColoresXPrendasSerializer(serializers.ModelSerializer): # Define un serializador para el modelo ColoresXPrendas
-    class Meta: # Clase Meta para definir la configuración del serializador
-        model = ColoresXPrendas # Especifica el modelo que se va a serializar
-        fields = '__all__' # Incluye todos los campos del modelo en la serialización
+# ========================================
+# SERIALIZER PARA COLOR
+# ========================================
+class ColorSerializer(serializers.ModelSerializer):
+    """Serializador para el modelo Color"""
+    cantidad_prendas = serializers.IntegerField(source='prendas.count', read_only=True)
+    
+    class Meta:
+        model = Color
+        fields = ['Color_ID', 'Color_nombre', 'cantidad_prendas']
 
-class ModeloSerializer(serializers.ModelSerializer): # Define un serializador para el modelo Modelo
-    class Meta: # Clase Meta para definir la configuración del serializador
-        model = Modelo # Especifica el modelo que se va a serializar
-        fields = '__all__' # Incluye todos los campos del modelo en la serialización
 
-class ModelosXPrendasSerializer(serializers.ModelSerializer): # Define un serializador para el modelo ModelosXPrendas
-    class Meta: # Clase Meta para definir la configuración del serializador
-        model = ModelosXPrendas # Especifica el modelo que se va a serializar
-        fields = '__all__' # Incluye todos los campos del modelo en la serialización
+# ========================================
+# SERIALIZER PARA MODELO
+# ========================================
+class ModeloSerializer(serializers.ModelSerializer):
+    """Serializador para el modelo Modelo"""
+    cantidad_prendas = serializers.IntegerField(source='prendas.count', read_only=True)
+    
+    class Meta:
+        model = Modelo
+        fields = ['Modelo_ID', 'Modelo_nombre', 'cantidad_prendas']
 
-class MarcaSerializer(serializers.ModelSerializer): # Define un serializador para el modelo Marca
-    class Meta: # Clase Meta para definir la configuración del serializador
-        model = Marca # Especifica el modelo que se va a serializar
-        fields = '__all__' # Incluye todos los campos del modelo en la serialización
 
-class MarcasXPrendasSerializer(serializers.ModelSerializer): # Define un serializador para el modelo MarcasXPrendas
-    class Meta: # Clase Meta para definir la configuración del serializador
-        model = MarcasXPrendas # Especifica el modelo que se va a serializar
-        fields = '__all__' # Incluye todos los campos del modelo en la serialización
+# ========================================
+# SERIALIZER PARA MARCA
+# ========================================
+class MarcaSerializer(serializers.ModelSerializer):
+    """Serializador para el modelo Marca"""
+    cantidad_prendas = serializers.IntegerField(source='prendas.count', read_only=True)
+    
+    class Meta:
+        model = Marca
+        fields = ['Marca_ID', 'Marca_nombre', 'cantidad_prendas']

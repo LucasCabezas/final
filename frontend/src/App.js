@@ -6,7 +6,6 @@ import AgregarUsuario from "./components/AgregarUsuario";
 import RealizarPedido from "./components/RealizarPedido";
 import Insumos from "./components/Insumos";
 import Prendas from "./components/Prendas"; // ya está importado
-import DetallePedidos from "./components/DetallesPedidos";
 import Perfil from "./components/Perfil";
 
 function App() {
@@ -30,7 +29,6 @@ function App() {
       <Route path="/Insumos" element={<Insumos />} />
       <Route path="/agregarUsuario" element={<AgregarUsuario />} />
       <Route path="/realizar-pedido" element={<RealizarPedido />} />
-      <Route path="/detalle-pedidos" element={<DetallePedidos />} />
       <Route path="/perfil" element={<Perfil />} />
       <Route path="/prendas" element={<Prendas />} />
     </Routes>

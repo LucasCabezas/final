@@ -138,13 +138,14 @@ class PedidoList(APIView):
             # ✅ Si llegamos aquí, HAY STOCK SUFICIENTE - Crear el pedido
             print("✅ Stock verificado - Creando pedido...")
             
+            # 🔥 CAMBIADO: Crear pedido con estado PENDIENTE
             pedido = Pedido.objects.create(
                 Usuario=usuario,
                 Pedido_fecha=timezone.now().date(),
-                Pedido_estado=False
+                Pedido_estado='PENDIENTE'  # <-- Ahora usa string 'PENDIENTE'
             )
 
-            print(f"📦 Pedido creado con ID: {pedido.Pedido_ID}")
+            print(f"📦 Pedido creado con ID: {pedido.Pedido_ID} - Estado: PENDIENTE")
 
             total_pedido = 0
 
@@ -181,16 +182,18 @@ class PedidoList(APIView):
                     insumo.save()
                     print(f"      Descuento: {insumo.Insumo_nombre} {stock_anterior} → {insumo.Insumo_cantidad}")
 
-            # Guardar pedido final
-            pedido.Pedido_estado = True
-            pedido.save()
+            # 🔥 ELIMINADO: Ya no cambiamos el estado a True aquí
+            # El pedido permanece en estado PENDIENTE
+            # pedido.Pedido_estado = True  <-- ESTA LÍNEA FUE ELIMINADA
+            # pedido.save()
 
-            print(f"✅ Pedido {pedido.Pedido_ID} completado exitosamente")
+            print(f"✅ Pedido {pedido.Pedido_ID} creado exitosamente con estado PENDIENTE")
 
             return Response({
                 "mensaje": "✅ Pedido creado correctamente.",
                 "tipo": "exito",
                 "pedido_id": pedido.Pedido_ID,
+                "estado": pedido.Pedido_estado,
                 "total": round(total_pedido, 2)
             }, status=status.HTTP_201_CREATED)
 
@@ -218,6 +221,48 @@ class PedidoDetail(APIView):
         serializer = PedidoSerializer(pedido)
         return Response(serializer.data)
 
+    # 🔥 NUEVO: Método PATCH para actualizar estado (cancelar, completar, etc.)
+    def patch(self, request, pk):
+        """
+        Permite actualizar parcialmente un pedido.
+        Usado principalmente para cambiar el estado del pedido.
+        
+        Ejemplo de request body:
+        { "estado": "CANCELADO" }
+        """
+        pedido = get_object_or_404(Pedido, pk=pk)
+        
+        # Obtener el nuevo estado del request
+        nuevo_estado = request.data.get('estado')
+        
+        if nuevo_estado:
+            # Validar que el estado sea válido
+            estados_validos = ['PENDIENTE', 'EN_PROCESO', 'COMPLETADO', 'CANCELADO']
+            
+            if nuevo_estado in estados_validos:
+                pedido.Pedido_estado = nuevo_estado
+                pedido.save()
+                
+                print(f"✅ Pedido {pedido.Pedido_ID} actualizado a estado: {nuevo_estado}")
+                
+                serializer = PedidoSerializer(pedido)
+                return Response(serializer.data)
+            else:
+                return Response(
+                    {
+                        "error": f"Estado '{nuevo_estado}' no válido. Estados permitidos: {', '.join(estados_validos)}",
+                        "tipo": "estado_invalido"
+                    }, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # Si no hay estado específico, actualizar con serializer normal
+        serializer = PedidoSerializer(pedido, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     def put(self, request, pk):
         pedido = get_object_or_404(Pedido, pk=pk)
         serializer = PedidoSerializer(pedido, data=request.data, partial=True)
@@ -241,12 +286,15 @@ def crear_pedido(request):
 
     usuario = User.objects.first()
 
-    pedido_actual = Pedido.objects.filter(Usuario=usuario, Pedido_estado=False).first()
+    # 🔥 CAMBIADO: Filtrar por estado 'PENDIENTE' en lugar de False
+    pedido_actual = Pedido.objects.filter(Usuario=usuario, Pedido_estado='PENDIENTE').first()
+    
     if not pedido_actual:
+        # 🔥 CAMBIADO: Crear con estado 'PENDIENTE'
         pedido_actual = Pedido.objects.create(
             Usuario=usuario,
             Pedido_fecha=timezone.now().date(),
-            Pedido_estado=False
+            Pedido_estado='PENDIENTE'
         )
 
     items_pedido = DetallePedido.objects.filter(pedido=pedido_actual)
@@ -283,7 +331,8 @@ def eliminar_item(request, item_id):
 def finalizar_pedido(request, pedido_id):
     """Finaliza un pedido manualmente en el panel Django."""
     pedido = get_object_or_404(Pedido, Pedido_ID=pedido_id)
-    pedido.Pedido_estado = True
+    # 🔥 CAMBIADO: Cambiar a estado 'COMPLETADO' en lugar de True
+    pedido.Pedido_estado = 'COMPLETADO'
     pedido.save()
     messages.success(request, '🎉 ¡Pedido realizado exitosamente!')
     return redirect('crear_pedido')

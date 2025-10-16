@@ -16,7 +16,6 @@ function Componente({ onToggle }) {
   const handleRealizarPedido = () => navigate("/realizar-pedido");
   const handleAprobacionPedidos = () => navigate("/aprobacion-pedidos");
   const handleUsuarios = () => navigate("/agregarUsuario");
-  const handleDetallePedidos = () => navigate("/detalle-pedidos");
   const handlePerfil = () => navigate("/perfil");
   const handleInsumos = () => navigate("/Insumos");
 
@@ -227,14 +226,7 @@ function Componente({ onToggle }) {
               >
                 Realizar pedido
               </li>
-              <li
-                style={styles.submenuItem}
-                onClick={handleDetallePedidos}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255, 215, 15, 1)")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "#ccc")}
-              >
-                Detalle de Pedidos
-              </li>
+              {/* ❌ ELIMINADO: Detalle de Pedidos */}
               <li
                 style={styles.submenuItem}
                 onClick={handleAprobacionPedidos}

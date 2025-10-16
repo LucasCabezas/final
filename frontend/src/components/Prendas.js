@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Plus, X, Search, Edit2, Trash2, Eye, CheckCircle, AlertCircle } from "lucide-react";
+import { Plus, X, Search, Edit2, Trash2, CheckCircle, AlertCircle } from "lucide-react";
 import Componente from "./componente.jsx";
 import fondoImg from "./assets/fondo.png";
 
@@ -89,6 +89,7 @@ const styles = {
     boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
     position: "relative",
     transition: "transform 0.2s",
+    cursor: "pointer",
   },
   cardImage: { 
     width: "100%", 
@@ -125,6 +126,7 @@ const styles = {
     background: "rgba(0,0,0,0.6)",
     padding: 6,
     borderRadius: 8,
+    zIndex: 10,
   },
   iconBtn: { 
     background: "transparent", 
@@ -461,8 +463,9 @@ function Prendas() {
     ? [] 
     : prendas.filter((p) =>
         (p.Prenda_nombre || "").toLowerCase().includes(search.toLowerCase()) ||
-        (p.Prenda_marca || "").toLowerCase().includes(search.toLowerCase()) ||
-        (p.Prenda_modelo || "").toLowerCase().includes(search.toLowerCase())
+        (p.Prenda_marca_nombre || "").toLowerCase().includes(search.toLowerCase()) ||
+        (p.Prenda_modelo_nombre || "").toLowerCase().includes(search.toLowerCase()) ||
+        (p.Prenda_color_nombre || "").toLowerCase().includes(search.toLowerCase())
       );
 
   const handleClearSearch = () => {
@@ -511,7 +514,8 @@ function Prendas() {
     setShowModal(true);
   };
 
-  const abrirEditar = async (p) => {
+  const abrirEditar = async (p, e) => {
+    e.stopPropagation();
     try {
       const res = await fetch(`${CDN}/api/inventario/prendas/${p.Prenda_ID}/`);
       const det = await res.json();
@@ -532,7 +536,6 @@ function Prendas() {
         }))
       );
       
-      // Cargar talles desde la respuesta del detalle
       const tallesArray = [];
       if (det.talles && Array.isArray(det.talles)) {
         det.talles.forEach(talle => {
@@ -552,7 +555,8 @@ function Prendas() {
     }
   };
 
-  const eliminarPrenda = (prenda) => {
+  const eliminarPrenda = (prenda, e) => {
+    e.stopPropagation();
     setConfirmAction("delete");
     setConfirmData(prenda);
     setShowConfirmModal(true);
@@ -578,11 +582,24 @@ function Prendas() {
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     
-    // Validar que solo se ingresen letras y espacios en ciertos campos
-    if (name === "nombre" || name === "marca" || name === "modelo" || name === "color") {
+    if (name === "nombre" || name === "color") {
       const regex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/;
       if (!regex.test(value)) {
-        return; // No actualizar si contiene caracteres no permitidos
+        return;
+      }
+    }
+    
+    if (name === "marca") {
+      const regex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/;
+      if (!regex.test(value)) {
+        return;
+      }
+    }
+    
+    if (name === "modelo") {
+      const regex = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]*$/;
+      if (!regex.test(value)) {
+        return;
       }
     }
     
@@ -600,7 +617,6 @@ function Prendas() {
   const addTalle = () => setTallesPrenda([...tallesPrenda, ""]);
   const removeTalle = (idx) => setTallesPrenda(tallesPrenda.filter((_, i) => i !== idx));
   const changeTalle = (idx, value) => {
-    // Validar que solo se ingresen letras, números y espacios
     const regex = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]*$/;
     if (!regex.test(value)) {
       return;
@@ -611,32 +627,27 @@ function Prendas() {
   };
 
   const onSubmit = () => {
-    // Validación de campos obligatorios
     if (!form.nombre || !form.marca || !form.modelo || !form.color || !form.precioUnitario) {
       showAlert("Por favor completa todos los campos obligatorios", "error");
       return;
     }
 
-    // Validación de insumos (solo para nuevas prendas)
     if (!editing && insumosPrenda.length === 0) {
       showAlert("Debes agregar al menos un insumo para esta prenda", "error");
       return;
     }
 
-    // Validación de insumos completos
     const insumosIncompletos = insumosPrenda.some(r => !r.insumo || !r.cantidad || r.cantidad <= 0);
     if (insumosPrenda.length > 0 && insumosIncompletos) {
       showAlert("Completa todos los insumos agregados o elimínalos", "error");
       return;
     }
 
-    // Validación de talles (solo para nuevas prendas)
     if (!editing && tallesPrenda.length === 0) {
       showAlert("Debes agregar al menos un talle para esta prenda", "error");
       return;
     }
 
-    // Validación de talles completos
     const tallesIncompletos = tallesPrenda.some(t => !t || t.trim() === "");
     if (tallesPrenda.length > 0 && tallesIncompletos) {
       showAlert("Completa todos los talles agregados o elimínalos", "error");
@@ -650,28 +661,58 @@ function Prendas() {
 
   const handleConfirmSubmit = async () => {
     try {
-      const fd = new FormData();
-      fd.append("Prenda_nombre", confirmData.nombre);
-      fd.append("Prenda_marca", confirmData.marca);
-      fd.append("Prenda_modelo", confirmData.modelo);
-      fd.append("Prenda_color", confirmData.color);
-      fd.append("Prenda_precio_unitario", confirmData.precioUnitario);
-      if (confirmData.imagen) fd.append("Prenda_imagen", confirmData.imagen);
-
       const payloadInsumos = insumosPrenda
         .filter((r) => r.insumo && r.cantidad)
-        .map((r) => ({ insumo: Number(r.insumo), cantidad: Number(r.cantidad) }));
-      fd.append("insumos_prendas", JSON.stringify(payloadInsumos));
+        .map((r) => ({ 
+          insumo: Number(r.insumo), 
+          cantidad: Number(r.cantidad) 
+        }));
 
       const payloadTalles = tallesPrenda.filter(t => t && t.trim() !== "");
-      fd.append("talles", JSON.stringify(payloadTalles));
+
+      const jsonData = {
+        Prenda_nombre: confirmData.nombre,
+        Prenda_marca: confirmData.marca,
+        Prenda_modelo: confirmData.modelo,
+        Prenda_color: confirmData.color,
+        Prenda_precio_unitario: Number(confirmData.precioUnitario),
+        insumos_prendas: payloadInsumos,
+        talles: payloadTalles
+      };
 
       const url = editing
         ? `${CDN}/api/inventario/prendas/${editing.Prenda_ID}/`
         : `${CDN}/api/inventario/prendas/`;
-      const method = editing ? "PUT" : "POST";
+      
+      let res;
 
-      const res = await fetch(url, { method, body: fd });
+      if (confirmData.imagen) {
+        const fd = new FormData();
+        fd.append("Prenda_nombre", confirmData.nombre);
+        fd.append("Prenda_marca", confirmData.marca);
+        fd.append("Prenda_modelo", confirmData.modelo);
+        fd.append("Prenda_color", confirmData.color);
+        fd.append("Prenda_precio_unitario", confirmData.precioUnitario);
+        fd.append("Prenda_imagen", confirmData.imagen);
+        fd.append("insumos_prendas", JSON.stringify(payloadInsumos));
+        fd.append("talles", JSON.stringify(payloadTalles));
+
+        const method = editing ? "PUT" : "POST";
+        res = await fetch(url, { 
+          method, 
+          body: fd 
+        });
+      } else {
+        const method = editing ? "PUT" : "POST";
+        res = await fetch(url, {
+          method,
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(jsonData),
+        });
+      }
+
       if (!res.ok) {
         const error = await res.json();
         console.error("Error del servidor:", error);
@@ -745,7 +786,7 @@ function Prendas() {
         }}
       >
         <div style={styles.header}>
-          <h1 style={styles.title}>Catálogo de Prendas</h1>
+          <h1 style={styles.title}>Prendas</h1>
           <div style={styles.headerActions}>
             <div style={styles.searchBox}>
               <Search style={styles.searchIcon} />
@@ -774,12 +815,11 @@ function Prendas() {
               </div>
             )}
             <button style={styles.addBtn} className="hover-button" onClick={abrirCrear}>
-              <Plus /> Nueva Prenda
+              <Plus /> Agregar Prenda
             </button>
           </div>
         </div>
 
-        {/* LISTA */}
         {search.trim() === "" ? (
           <div style={styles.emptyState}>
             Comienza a escribir en el buscador para ver las prendas
@@ -791,7 +831,12 @@ function Prendas() {
         ) : (
           <div style={styles.grid}>
             {prendasFiltradas.map((p) => (
-              <div key={p.Prenda_ID} style={styles.card} className="hover-card">
+              <div 
+                key={p.Prenda_ID} 
+                style={styles.card} 
+                className="hover-card"
+                onClick={() => abrirDetalle(p)}
+              >
                 <img
                   src={getImageUrl(p)}
                   alt={p.Prenda_nombre}
@@ -801,23 +846,30 @@ function Prendas() {
                   }}
                 />
                 <div style={styles.cardActions}>
-                  <button title="Ver" style={styles.iconBtn} className="hover-icon" onClick={() => abrirDetalle(p)}>
-                    <Eye color="#e5e7eb" size={18} />
-                  </button>
-                  <button title="Editar" style={styles.iconBtn} className="hover-icon" onClick={() => abrirEditar(p)}>
+                  <button 
+                    title="Editar" 
+                    style={styles.iconBtn} 
+                    className="hover-icon" 
+                    onClick={(e) => abrirEditar(p, e)}
+                  >
                     <Edit2 color="#60a5fa" size={18} />
                   </button>
-                  <button title="Eliminar" style={styles.iconBtn} className="hover-icon" onClick={() => eliminarPrenda(p)}>
+                  <button 
+                    title="Eliminar" 
+                    style={styles.iconBtn} 
+                    className="hover-icon" 
+                    onClick={(e) => eliminarPrenda(p, e)}
+                  >
                     <Trash2 color="#f87171" size={18} />
                   </button>
                 </div>
                 <div style={styles.cardBody}>
                   <div style={styles.cardTitle}>{p.Prenda_nombre}</div>
-                  {p.Prenda_marca && (
-                    <div style={styles.cardSubtitle}>Marca: {p.Prenda_marca}</div>
+                  {p.Prenda_marca_nombre && (
+                    <div style={styles.cardSubtitle}>Marca: {p.Prenda_marca_nombre}</div>
                   )}
-                  {p.Prenda_modelo && (
-                    <div style={styles.cardSubtitle}>Modelo: {p.Prenda_modelo}</div>
+                  {p.Prenda_modelo_nombre && (
+                    <div style={styles.cardSubtitle}>Modelo: {p.Prenda_modelo_nombre}</div>
                   )}
                   <div style={styles.price}>${p.Prenda_precio_unitario}</div>
                 </div>
@@ -864,7 +916,7 @@ function Prendas() {
                 onChange={handleChange} 
                 style={styles.input} 
                 className="form-input" 
-                placeholder="Ej: Nike"
+                placeholder="Ej: Gucci"
               />
 
               <label style={styles.label}>Modelo</label>
@@ -874,7 +926,7 @@ function Prendas() {
                 onChange={handleChange} 
                 style={styles.input} 
                 className="form-input" 
-                placeholder="Ej: Deportivo"
+                placeholder="Ej: GUC1"
               />
 
               <label style={styles.label}>Color</label>
@@ -895,7 +947,7 @@ function Prendas() {
                 onChange={handleChange}
                 style={styles.input}
                 className="form-input"
-                placeholder="0.00"
+                placeholder="1000.0"
                 min="0"
                 step="0.01"
               />
@@ -1052,9 +1104,9 @@ function Prendas() {
             </div>
 
             <div style={{ fontSize: "15px", lineHeight: "1.6", color: "#fff" }}>
-              <p><strong>Marca:</strong> {detalle.Prenda_marca || "-"}</p>
-              <p><strong>Modelo:</strong> {detalle.Prenda_modelo || "-"}</p>
-              <p><strong>Color:</strong> {detalle.Prenda_color || "-"}</p>
+              <p><strong>Marca:</strong> {detalle.Prenda_marca_nombre || "-"}</p>
+              <p><strong>Modelo:</strong> {detalle.Prenda_modelo_nombre || "-"}</p>
+              <p><strong>Color:</strong> {detalle.Prenda_color_nombre || "-"}</p>
               <p style={{ color: "rgba(255,215,15,1)", fontWeight: 700 }}>
                 Precio unitario: ${detalle.Prenda_precio_unitario}
               </p>

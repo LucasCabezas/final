@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { CheckCircle, AlertCircle, Package, Plus, Trash2, X, Search } from 'lucide-react';
+import { CheckCircle, AlertCircle, Package, Plus, Trash2, X, Search, XCircle } from 'lucide-react';
 import Componente from "./componente.jsx";
 import fondoImg from './assets/fondo.png';
 
@@ -87,6 +87,18 @@ const styles = {
     alignItems: 'center',
     gap: '8px'
   },
+  btnLimpiar: {
+    padding: '10px 24px',
+    backgroundColor: '#6b7280',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontWeight: '600',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
+  },
   tableContainer: {
     backgroundColor: 'rgba(30, 30, 30, 0.9)',
     borderRadius: '12px',
@@ -122,6 +134,19 @@ const styles = {
     fontSize: '13px',
     fontWeight: '500'
   },
+  btnCancelar: {
+    padding: '6px 16px',
+    backgroundColor: '#ef4444',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontSize: '13px',
+    fontWeight: '500',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px'
+  },
   estadoBadge: {
     padding: '4px 12px',
     borderRadius: '12px',
@@ -137,12 +162,25 @@ const styles = {
     backgroundColor: '#3b82f6',
     color: '#fff'
   },
+  estadoCompletado: {
+    backgroundColor: '#10b981',
+    color: '#fff'
+  },
+  estadoCancelado: {
+    backgroundColor: '#ef4444',
+    color: '#fff'
+  },
   btnEliminar: {
     background: 'none',
     border: 'none',
     cursor: 'pointer',
     color: '#ef4444',
     padding: '4px'
+  },
+  actionsContainer: {
+    display: 'flex',
+    gap: '8px',
+    alignItems: 'center'
   },
   modalOverlay: {
     position: 'fixed',
@@ -200,7 +238,8 @@ const styles = {
     border: '1px solid #4b5563',
     backgroundColor: 'rgba(0,0,0,0.4)',
     color: '#fff',
-    fontSize: '15px'
+    fontSize: '15px',
+    boxSizing: 'border-box'
   },
   searchIcon: {
     position: 'absolute',
@@ -214,9 +253,11 @@ const styles = {
     gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
     gap: '16px',
     marginBottom: '24px',
-    maxHeight: '400px',
+    maxHeight: '500px',
     overflowY: 'auto',
-    padding: '8px'
+    padding: '8px',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    borderRadius: '12px'
   },
   prendaCard: {
     backgroundColor: 'rgba(30,30,30,0.8)',
@@ -287,7 +328,8 @@ const styles = {
     border: '1px solid #4b5563',
     backgroundColor: 'rgba(0,0,0,0.4)',
     color: '#fff',
-    fontSize: '14px'
+    fontSize: '14px',
+    boxSizing: 'border-box'
   },
   selectTalle: {
     padding: '10px 14px',
@@ -296,7 +338,9 @@ const styles = {
     backgroundColor: 'rgba(0,0,0,0.4)',
     color: '#fff',
     fontSize: '14px',
-    cursor: 'pointer'
+    cursor: 'pointer',
+    boxSizing: 'border-box',
+    width: '100%'
   },
   addBtn: {
     backgroundColor: '#ffd70f',
@@ -411,6 +455,23 @@ const styles = {
     textAlign: 'center',
     padding: '60px 20px',
     color: '#9ca3af'
+  },
+  infoBox: {
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    border: '1px solid rgba(59, 130, 246, 0.3)',
+    borderRadius: '8px',
+    padding: '12px 16px',
+    marginBottom: '16px'
+  },
+  infoLabel: {
+    fontSize: '12px',
+    color: '#93c5fd',
+    marginBottom: '4px'
+  },
+  infoValue: {
+    fontSize: '16px',
+    color: '#fff',
+    fontWeight: '600'
   }
 };
 
@@ -435,6 +496,45 @@ export default function PedidosView() {
   });
   const [alert, setAlert] = useState(null);
   const [resultado, setResultado] = useState(null);
+  const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
+  const [modalDetallesOpen, setModalDetallesOpen] = useState(false);
+
+  // 🔥 Función para obtener el estado del pedido
+  const obtenerEstadoPedido = (pedido) => {
+    // Si tu backend tiene un campo específico para estado, úsalo
+    // Por ahora, asumimos que Pedido_estado puede ser:
+    // "PENDIENTE", "EN_PROCESO", "COMPLETADO", "CANCELADO"
+    // O si es booleano, lo mapeamos
+    
+    if (typeof pedido.Pedido_estado === 'string') {
+      return pedido.Pedido_estado.toUpperCase();
+    }
+    
+    // Si es booleano (legacy), mapear
+    if (pedido.Pedido_estado === true) {
+      return 'COMPLETADO';
+    } else if (pedido.Pedido_estado === false) {
+      return 'PENDIENTE';
+    }
+    
+    return 'PENDIENTE';
+  };
+
+  // 🔥 Función para obtener texto y estilo del badge
+  const obtenerEstiloEstado = (estado) => {
+    switch(estado) {
+      case 'PENDIENTE':
+        return { texto: 'Pendiente', estilo: styles.estadoPendiente };
+      case 'EN_PROCESO':
+        return { texto: 'En Proceso', estilo: styles.estadoEnProceso };
+      case 'COMPLETADO':
+        return { texto: 'Completado', estilo: styles.estadoCompletado };
+      case 'CANCELADO':
+        return { texto: 'Cancelado', estilo: styles.estadoCancelado };
+      default:
+        return { texto: 'Pendiente', estilo: styles.estadoPendiente };
+    }
+  };
 
   // Cargar prendas
   useEffect(() => {
@@ -450,15 +550,38 @@ export default function PedidosView() {
     fetchPrendas();
   }, []);
 
-  // Cargar pedidos pendientes por defecto
+  // 🔥 Cargar solo pedidos PENDIENTES por defecto
   useEffect(() => {
     const fetchPedidos = async () => {
       try {
+        console.log("🔄 Intentando cargar pedidos...");
         const res = await fetch("http://localhost:8000/api/pedidos/");
+        
+        if (!res.ok) {
+          console.error("❌ Error en la respuesta:", res.status, res.statusText);
+          showAlert("Error al cargar pedidos", "error");
+          return;
+        }
+        
         const data = await res.json();
-        const pendientes = data.filter(p => p.Estado === "Pendiente");
-        setPedidosFiltrados(pendientes);
+        console.log("📦 Pedidos recibidos del servidor:", data);
+        console.log("📦 Cantidad de pedidos:", data.length);
+        
+        if (data.length > 0) {
+          console.log("📦 Primer pedido (ejemplo):", data[0]);
+        }
+        
+        // 🔥 FILTRAR SOLO PEDIDOS PENDIENTES POR DEFECTO
+        const pedidosPendientes = data.filter(p => {
+          const estado = obtenerEstadoPedido(p);
+          return estado === 'PENDIENTE';
+        });
+        console.log("📦 Pedidos pendientes filtrados:", pedidosPendientes.length);
+        
+        setPedidosFiltrados(pedidosPendientes);
+        console.log("✅ Pedidos cargados en la tabla:", pedidosPendientes.length);
       } catch (err) {
+        console.error("❌ Error al cargar pedidos:", err);
         showAlert("Error al cargar pedidos", "error");
       }
     };
@@ -467,13 +590,13 @@ export default function PedidosView() {
 
   const showAlert = (message, type = "success") => {
     setAlert({ message, type });
-    setTimeout(() => setAlert(null), 5000); // 5 segundos para alertas con más info
+    setTimeout(() => setAlert(null), 5000);
   };
 
   const prendasFiltradas = prendas.filter(p =>
     p.Prenda_nombre.toLowerCase().includes(searchPrenda.toLowerCase()) ||
-    p.Prenda_marca?.toLowerCase().includes(searchPrenda.toLowerCase()) ||
-    p.Prenda_modelo?.toLowerCase().includes(searchPrenda.toLowerCase())
+    p.Prenda_marca_nombre?.toLowerCase().includes(searchPrenda.toLowerCase()) ||
+    p.Prenda_modelo_nombre?.toLowerCase().includes(searchPrenda.toLowerCase())
   );
 
   const agregarPrenda = () => {
@@ -545,9 +668,7 @@ export default function PedidosView() {
       console.log("Respuesta del servidor:", responseData);
 
       if (!res.ok) {
-        // Manejar diferentes tipos de errores
         if (responseData.tipo === "stock_insuficiente") {
-          // Mostrar alerta detallada de stock insuficiente
           const detallesHTML = responseData.mensajes.join('\n');
           showAlert(`❌ Stock Insuficiente:\n\n${detallesHTML}`, "error");
         } else if (responseData.tipo === "sin_prendas") {
@@ -562,11 +683,14 @@ export default function PedidosView() {
 
       showAlert("✅ Pedido realizado correctamente", "success");
 
-      // Recargar pedidos
+      // Recargar solo pedidos pendientes
       const resPedidos = await fetch("http://localhost:8000/api/pedidos/");
       const dataPedidos = await resPedidos.json();
-      const pendientes = dataPedidos.filter(p => p.Estado === "Pendiente");
-      setPedidosFiltrados(pendientes);
+      const pedidosPendientes = dataPedidos.filter(p => {
+        const estado = obtenerEstadoPedido(p);
+        return estado === 'PENDIENTE';
+      });
+      setPedidosFiltrados(pedidosPendientes);
 
       setPedido([]);
       setResultado(null);
@@ -577,59 +701,149 @@ export default function PedidosView() {
     }
   };
 
+  // 🔥 Búsqueda con los 4 estados
   const buscarPedidos = async () => {
     try {
+      console.log("🔍 Buscando con filtros:", filtros);
       const res = await fetch("http://localhost:8000/api/pedidos/");
       const data = await res.json();
+      console.log("📦 Total de pedidos recibidos:", data.length);
       
       let filtrados = data;
 
-      if (filtros.id) {
+      // Filtrar por ID
+      if (filtros.id && filtros.id.trim() !== "") {
+        console.log("Filtrando por ID:", filtros.id);
         filtrados = filtrados.filter(p => 
-          p.Pedido_ID.toString().includes(filtros.id)
+          p.Pedido_ID.toString().includes(filtros.id.trim())
         );
+        console.log("Resultados después de filtrar por ID:", filtrados.length);
       }
 
-      if (filtros.estado) {
-        filtrados = filtrados.filter(p => p.Estado === filtros.estado);
-      } else if (!filtros.id && !filtros.fecha) {
-        filtrados = filtrados.filter(p => p.Estado === "Pendiente");
+      // 🔥 Filtrar por estado (4 opciones)
+      if (filtros.estado && filtros.estado !== "") {
+        console.log("Filtrando por estado:", filtros.estado);
+        filtrados = filtrados.filter(p => {
+          const estado = obtenerEstadoPedido(p);
+          return estado === filtros.estado;
+        });
+        console.log("Resultados después de filtrar por estado:", filtrados.length);
+      } else {
+        // Si no se especifica estado, mostrar solo pendientes
+        filtrados = filtrados.filter(p => {
+          const estado = obtenerEstadoPedido(p);
+          return estado === 'PENDIENTE';
+        });
+        console.log("Mostrando solo pendientes (por defecto):", filtrados.length);
       }
 
-      if (filtros.fecha) {
-        filtrados = filtrados.filter(p => 
-          p.Fecha && p.Fecha.startsWith(filtros.fecha)
-        );
+      // Filtrar por fecha
+      if (filtros.fecha && filtros.fecha !== "") {
+        console.log("Filtrando por fecha:", filtros.fecha);
+        filtrados = filtrados.filter(p => {
+          if (!p.Pedido_fecha) return false;
+          const fechaPedido = p.Pedido_fecha.split('T')[0];
+          return fechaPedido === filtros.fecha;
+        });
+        console.log("Resultados después de filtrar por fecha:", filtrados.length);
       }
 
       setPedidosFiltrados(filtrados);
+      console.log("✅ Búsqueda completada, resultados finales:", filtrados.length);
+      
+      if (filtrados.length === 0) {
+        showAlert("No se encontraron pedidos con los filtros aplicados", "error");
+      }
     } catch (err) {
+      console.error("Error en buscarPedidos:", err);
       showAlert("Error al buscar pedidos", "error");
     }
   };
 
-  const eliminarPedido = async (id) => {
-    if (!window.confirm("¿Estás seguro de eliminar este pedido?")) return;
-    
+  // Limpiar filtros
+  const limpiarFiltros = async () => {
+    setFiltros({ id: "", estado: "", fecha: "" });
     try {
-      const res = await fetch(`http://localhost:8000/api/pedidos/${id}/`, {
-        method: "DELETE"
+      const res = await fetch("http://localhost:8000/api/pedidos/");
+      const data = await res.json();
+      const pedidosPendientes = data.filter(p => {
+        const estado = obtenerEstadoPedido(p);
+        return estado === 'PENDIENTE';
       });
-
-      if (res.ok) {
-        showAlert("Pedido eliminado correctamente", "success");
-        setPedidosFiltrados(pedidosFiltrados.filter(p => p.Pedido_ID !== id));
-      } else {
-        showAlert("Error al eliminar pedido", "error");
-      }
+      setPedidosFiltrados(pedidosPendientes);
+      showAlert("Filtros limpiados - Mostrando pedidos pendientes", "success");
     } catch (err) {
-      showAlert("Error al conectar con el servidor", "error");
+      showAlert("Error al limpiar filtros", "error");
     }
   };
 
-  // Obtener talles disponibles de la prenda seleccionada
+  // 🔥 Cancelar pedido (cambiar estado a CANCELADO)
+  const cancelarPedido = async (id) => {
+    if (!window.confirm("¿Estás seguro de cancelar este pedido?")) return;
+    
+    try {
+      console.log(`🔄 Intentando cancelar pedido ${id}...`);
+      
+      // 🔥 PATCH para cambiar el estado a CANCELADO
+      const res = await fetch(`http://localhost:8000/api/pedidos/${id}/`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estado: "CANCELADO" })
+      });
+
+      if (res.ok) {
+        showAlert("✅ Pedido cancelado correctamente", "success");
+        
+        // Recargar solo pedidos pendientes
+        const resPedidos = await fetch("http://localhost:8000/api/pedidos/");
+        const dataPedidos = await resPedidos.json();
+        const pedidosPendientes = dataPedidos.filter(p => {
+          const estado = obtenerEstadoPedido(p);
+          return estado === 'PENDIENTE';
+        });
+        setPedidosFiltrados(pedidosPendientes);
+        console.log("✅ Lista de pedidos actualizada");
+      } else {
+        const errorData = await res.json();
+        showAlert(`❌ Error al cancelar pedido: ${errorData.error || 'Error desconocido'}`, "error");
+      }
+    } catch (err) {
+      console.error("❌ Error al cancelar el pedido:", err);
+      showAlert("❌ Error al conectar con el servidor", "error");
+    }
+  };
+
+  // Ver detalles
+  const verDetallesPedido = async (pedido) => {
+    try {
+      console.log(`🔍 Cargando detalles del pedido ${pedido.Pedido_ID}...`);
+      const res = await fetch(`http://localhost:8000/api/pedidos/${pedido.Pedido_ID}/`);
+      
+      if (!res.ok) {
+        console.error("❌ Error al cargar detalles:", res.status);
+        showAlert("❌ Error al cargar detalles del pedido", "error");
+        return;
+      }
+      
+      const data = await res.json();
+      console.log("📋 Detalles del pedido recibidos:", data);
+      console.log("📋 Cantidad de items en detalles:", data.detalles?.length || 0);
+      
+      if (!data.detalles || data.detalles.length === 0) {
+        console.warn("⚠️ El pedido no tiene detalles o está vacío");
+      }
+      
+      setPedidoSeleccionado(data);
+      setModalDetallesOpen(true);
+      console.log("✅ Modal de detalles abierto");
+    } catch (err) {
+      console.error("❌ Error al cargar detalles del pedido:", err);
+      showAlert("❌ Error al cargar detalles del pedido", "error");
+    }
+  };
+
   const tallesDisponibles = selectedPrenda 
-    ? (selectedPrenda.Prenda_talles || "S,M,L,XL,XXL").split(',').map(t => t.trim())
+    ? (selectedPrenda.talles || [])
     : [];
 
   return (
@@ -645,8 +859,8 @@ export default function PedidosView() {
         <div style={styles.contentWrapper}>
           <div style={styles.header}>
             <div style={styles.headerLeft}>
-              <h1 style={styles.title}>pedidos</h1>
-              <p style={styles.subtitle}>Lista de los últimos pedidos y su estado actual.</p>
+              <h1 style={styles.title}>Pedidos</h1>
+              <p style={styles.subtitle}>Gestión de pedidos - Por defecto se muestran pedidos pendientes</p>
             </div>
             <button 
               style={styles.btnRealizarPedido}
@@ -656,7 +870,7 @@ export default function PedidosView() {
             </button>
           </div>
 
-          {/* BUSCADOR */}
+          {/* 🔥 FILTROS CON 4 ESTADOS */}
           <div style={styles.searchContainer}>
             <input
               type="text"
@@ -670,10 +884,11 @@ export default function PedidosView() {
               onChange={(e) => setFiltros({ ...filtros, estado: e.target.value })}
               style={styles.select}
             >
-              <option value="">Todos los estados</option>
-              <option value="Pendiente">Pendiente</option>
-              <option value="En proceso">En proceso</option>
-              <option value="Completado">Completado</option>
+              <option value="">Solo Pendientes</option>
+              <option value="PENDIENTE">Pendiente</option>
+              <option value="EN_PROCESO">En Proceso</option>
+              <option value="COMPLETADO">Completado</option>
+              <option value="CANCELADO">Cancelado</option>
             </select>
             <input
               type="date"
@@ -684,16 +899,17 @@ export default function PedidosView() {
             <button style={styles.btnBuscar} onClick={buscarPedidos}>
               <Search size={18} /> Buscar
             </button>
+            <button style={styles.btnLimpiar} onClick={limpiarFiltros}>
+              <X size={18} /> Limpiar
+            </button>
           </div>
 
-          {/* TABLA DE PEDIDOS */}
           {pedidosFiltrados.length > 0 ? (
             <div style={styles.tableContainer}>
               <table style={styles.table}>
                 <thead>
                   <tr>
                     <th style={styles.th}>Pedido ID</th>
-                    <th style={styles.th}>Cantidad</th>
                     <th style={styles.th}>Detalles</th>
                     <th style={styles.th}>Estado</th>
                     <th style={styles.th}>Fecha</th>
@@ -701,36 +917,47 @@ export default function PedidosView() {
                   </tr>
                 </thead>
                 <tbody>
-                  {pedidosFiltrados.map((p) => (
-                    <tr key={p.Pedido_ID}>
-                      <td style={styles.td}>PED{p.Pedido_ID.toString().padStart(3, '0')}</td>
-                      <td style={styles.td}>{p.Cantidad || 5}</td>
-                      <td style={styles.td}>
-                        <button style={styles.btnVerDetalles}>
-                          VER DETALLES
-                        </button>
-                      </td>
-                      <td style={styles.td}>
-                        <span style={{
-                          ...styles.estadoBadge,
-                          ...(p.Estado === "Pendiente" ? styles.estadoPendiente : styles.estadoEnProceso)
-                        }}>
-                          {p.Estado}
-                        </span>
-                      </td>
-                      <td style={styles.td}>
-                        {p.Fecha ? new Date(p.Fecha).toLocaleDateString('es-AR') : '3/9/2025'}
-                      </td>
-                      <td style={styles.td}>
-                        <button 
-                          style={styles.btnEliminar}
-                          onClick={() => eliminarPedido(p.Pedido_ID)}
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {pedidosFiltrados.map((p) => {
+                    const estado = obtenerEstadoPedido(p);
+                    const { texto, estilo } = obtenerEstiloEstado(estado);
+                    const puedeCancelar = estado === 'PENDIENTE' || estado === 'EN_PROCESO';
+                    
+                    return (
+                      <tr key={p.Pedido_ID}>
+                        <td style={styles.td}>PED{p.Pedido_ID.toString().padStart(3, '0')}</td>
+                        <td style={styles.td}>
+                          <button 
+                            style={styles.btnVerDetalles}
+                            onClick={() => verDetallesPedido(p)}
+                          >
+                            VER DETALLES
+                          </button>
+                        </td>
+                        <td style={styles.td}>
+                          <span style={{ ...styles.estadoBadge, ...estilo }}>
+                            {texto}
+                          </span>
+                        </td>
+                        <td style={styles.td}>
+                          {p.Pedido_fecha ? new Date(p.Pedido_fecha).toLocaleDateString('es-AR') : '-'}
+                        </td>
+                        <td style={styles.td}>
+                          <div style={styles.actionsContainer}>
+                            {puedeCancelar && (
+                              <button 
+                                style={styles.btnCancelar}
+                                onClick={() => cancelarPedido(p.Pedido_ID)}
+                                title="Cancelar pedido"
+                              >
+                                <XCircle size={16} />
+                                Cancelar
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -741,7 +968,7 @@ export default function PedidosView() {
                 No hay pedidos pendientes
               </h3>
               <p style={{ color: '#6b7280' }}>
-                Usa el buscador para ver todos los pedidos o realiza uno nuevo
+                Usa el buscador para ver pedidos con otros estados o realiza uno nuevo
               </p>
             </div>
           )}
@@ -758,7 +985,6 @@ export default function PedidosView() {
                 </button>
               </div>
 
-              {/* BUSCADOR DE PRENDAS */}
               <div style={styles.searchPrendaContainer}>
                 <input
                   type="text"
@@ -770,20 +996,16 @@ export default function PedidosView() {
                 <Search style={styles.searchIcon} size={20} />
               </div>
 
-              {/* GRID DE PRENDAS - Solo muestra si hay búsqueda */}
               {searchPrenda.trim() !== "" && (
                 <>
                   {prendasFiltradas.length > 0 ? (
                     <div style={styles.prendasGrid}>
                       {prendasFiltradas.map((prenda) => {
-                        // Construir la URL de la imagen correctamente
                         const imagenUrl = prenda.Prenda_imagen 
                           ? (prenda.Prenda_imagen.startsWith('http') 
                               ? prenda.Prenda_imagen 
                               : `http://localhost:8000${prenda.Prenda_imagen}`)
                           : 'https://via.placeholder.com/160x140?text=Sin+Imagen';
-                        
-                        console.log('URL de imagen:', imagenUrl, 'para prenda:', prenda.Prenda_nombre);
                         
                         return (
                           <div
@@ -799,18 +1021,14 @@ export default function PedidosView() {
                               alt={prenda.Prenda_nombre}
                               style={styles.prendaImage}
                               onError={(e) => {
-                                console.error('Error cargando imagen:', imagenUrl);
                                 e.target.onerror = null;
                                 e.target.src = 'https://via.placeholder.com/160x140?text=Sin+Imagen';
-                              }}
-                              onLoad={() => {
-                                console.log('Imagen cargada exitosamente:', imagenUrl);
                               }}
                             />
                             <div style={styles.prendaInfo}>
                               <div style={styles.prendaNombre}>{prenda.Prenda_nombre}</div>
-                              <div style={styles.prendaDetalle}>{prenda.Prenda_marca || 'Sin marca'}</div>
-                              <div style={styles.prendaDetalle}>{prenda.Prenda_modelo || 'Sin modelo'}</div>
+                              <div style={styles.prendaDetalle}>{prenda.Prenda_marca_nombre || 'Sin marca'}</div>
+                              <div style={styles.prendaDetalle}>{prenda.Prenda_modelo_nombre || 'Sin modelo'}</div>
                               <div style={styles.prendaPrecio}>${prenda.Prenda_precio_unitario}</div>
                             </div>
                           </div>
@@ -833,7 +1051,6 @@ export default function PedidosView() {
                 </>
               )}
 
-              {/* MENSAJE INICIAL cuando no hay búsqueda */}
               {searchPrenda.trim() === "" && !selectedPrenda && (
                 <div style={{ 
                   textAlign: 'center', 
@@ -854,7 +1071,6 @@ export default function PedidosView() {
                 </div>
               )}
 
-              {/* FORMULARIO DE PEDIDO */}
               {selectedPrenda && (
                 <div style={styles.formContainer}>
                   <div style={styles.formGrid}>
@@ -903,7 +1119,6 @@ export default function PedidosView() {
                 </div>
               )}
 
-              {/* LISTA DE PRENDAS AGREGADAS */}
               {pedido.length > 0 && (
                 <div style={styles.pedidosList}>
                   <h3 style={{ color: '#fff', marginBottom: '12px', fontSize: '18px' }}>
@@ -965,6 +1180,207 @@ export default function PedidosView() {
                       </button>
                     </div>
                   )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* MODAL DETALLES DEL PEDIDO */}
+        {modalDetallesOpen && pedidoSeleccionado && (
+          <div style={styles.modalOverlay} onClick={() => setModalDetallesOpen(false)}>
+            <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+              <div style={styles.modalHeader}>
+                <h2 style={styles.modalTitle}>
+                  Detalles del Pedido #{pedidoSeleccionado.Pedido_ID.toString().padStart(3, '0')}
+                </h2>
+                <button style={styles.btnClose} onClick={() => setModalDetallesOpen(false)}>
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div style={styles.infoBox}>
+                <div style={styles.infoLabel}>Usuario que realizó el pedido</div>
+                <div style={styles.infoValue}>
+                  Usuario #{pedidoSeleccionado.Pedido_usuario_id || pedidoSeleccionado.usuario || 'N/A'}
+                </div>
+              </div>
+
+              <div style={{
+                backgroundColor: 'rgba(30, 30, 30, 0.6)',
+                borderRadius: '12px',
+                padding: '20px',
+                marginBottom: '20px',
+                border: '1px solid rgba(255, 255, 255, 0.1)'
+              }}>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                  gap: '16px'
+                }}>
+                  <div>
+                    <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px' }}>
+                      Estado
+                    </div>
+                    {(() => {
+                      const estado = obtenerEstadoPedido(pedidoSeleccionado);
+                      const { texto, estilo } = obtenerEstiloEstado(estado);
+                      return (
+                        <span style={{ ...styles.estadoBadge, ...estilo }}>
+                          {texto}
+                        </span>
+                      );
+                    })()}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px' }}>
+                      Fecha
+                    </div>
+                    <div style={{ color: '#fff', fontSize: '16px', fontWeight: '600' }}>
+                      {pedidoSeleccionado.Pedido_fecha 
+                        ? new Date(pedidoSeleccionado.Pedido_fecha).toLocaleDateString('es-AR', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })
+                        : '-'}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px' }}>
+                      Total de Items
+                    </div>
+                    <div style={{ color: '#ffd70f', fontSize: '20px', fontWeight: 'bold' }}>
+                      {pedidoSeleccionado.detalles?.reduce((acc, d) => acc + d.cantidad, 0) || 0}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 style={{ 
+                  color: '#fff', 
+                  marginBottom: '16px', 
+                  fontSize: '18px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <Package size={20} />
+                  Prendas del Pedido
+                </h3>
+                
+                <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                  {pedidoSeleccionado.detalles && pedidoSeleccionado.detalles.length > 0 ? (
+                    pedidoSeleccionado.detalles.map((detalle, index) => (
+                      <div key={index} style={{
+                        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                        padding: '16px',
+                        borderRadius: '10px',
+                        marginBottom: '12px',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        display: 'grid',
+                        gridTemplateColumns: '1fr auto',
+                        gap: '16px',
+                        alignItems: 'center'
+                      }}>
+                        <div>
+                          <div style={{ 
+                            color: '#fff', 
+                            fontSize: '16px', 
+                            fontWeight: '600',
+                            marginBottom: '8px'
+                          }}>
+                            {detalle.prenda_nombre || 'Prenda sin nombre'}
+                          </div>
+                          <div style={{ 
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                            gap: '12px',
+                            fontSize: '13px',
+                            color: '#9ca3af'
+                          }}>
+                            <div>
+                              <span style={{ fontWeight: '500' }}>Talle:</span>{' '}
+                              <span style={{ color: '#fff' }}>{detalle.talle || '-'}</span>
+                            </div>
+                            <div>
+                              <span style={{ fontWeight: '500' }}>Cantidad:</span>{' '}
+                              <span style={{ color: '#fff' }}>{detalle.cantidad}</span>
+                            </div>
+                            <div>
+                              <span style={{ fontWeight: '500' }}>Tipo:</span>{' '}
+                              <span style={{ color: '#fff' }}>{detalle.tipo || 'LISA'}</span>
+                            </div>
+                            {detalle.precio_unitario && (
+                              <div>
+                                <span style={{ fontWeight: '500' }}>Precio unit:</span>{' '}
+                                <span style={{ color: '#ffd70f' }}>
+                                  ${parseFloat(detalle.precio_unitario).toFixed(2)}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {detalle.precio_unitario && (
+                          <div style={{
+                            textAlign: 'right'
+                          }}>
+                            <div style={{ 
+                              fontSize: '12px', 
+                              color: '#9ca3af',
+                              marginBottom: '4px'
+                            }}>
+                              Subtotal
+                            </div>
+                            <div style={{ 
+                              fontSize: '20px', 
+                              fontWeight: 'bold',
+                              color: '#ffd70f'
+                            }}>
+                              ${(parseFloat(detalle.precio_unitario) * detalle.cantidad).toFixed(2)}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{
+                      textAlign: 'center',
+                      padding: '40px 20px',
+                      color: '#9ca3af',
+                      backgroundColor: 'rgba(30,30,30,0.6)',
+                      borderRadius: '12px'
+                    }}>
+                      <AlertCircle size={48} style={{ margin: '0 auto 12px' }} />
+                      <p>No hay detalles disponibles para este pedido</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {pedidoSeleccionado.detalles && pedidoSeleccionado.detalles.some(d => d.precio_unitario) && (
+                <div style={{
+                  backgroundColor: 'rgba(255, 215, 15, 0.1)',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  marginTop: '20px',
+                  border: '1px solid rgba(255, 215, 15, 0.3)'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <div style={{ color: '#d1d5db', fontSize: '16px', fontWeight: '600' }}>
+                      Total del Pedido
+                    </div>
+                    <div style={{ color: '#ffd70f', fontSize: '28px', fontWeight: 'bold' }}>
+                      ${pedidoSeleccionado.detalles
+                        .reduce((acc, d) => acc + (parseFloat(d.precio_unitario || 0) * d.cantidad), 0)
+                        .toFixed(2)}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

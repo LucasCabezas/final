@@ -3,11 +3,23 @@ from django.contrib.auth.models import User
 from inventario.models import Prenda
 
 class Pedido(models.Model):
+    # 🔥 NUEVO: Estados como CharField con 4 opciones
+    ESTADO_CHOICES = [
+        ('PENDIENTE', 'Pendiente'),
+        ('EN_PROCESO', 'En Proceso'),
+        ('COMPLETADO', 'Completado'),
+        ('CANCELADO', 'Cancelado'),
+    ]
+    
     Pedido_ID = models.AutoField(primary_key=True)
     Usuario = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
     Pedido_fecha = models.DateField()
-    Pedido_estado = models.BooleanField()
-
+    # 🔥 CAMBIADO: De BooleanField a CharField con estados
+    Pedido_estado = models.CharField(
+        max_length=20, 
+        choices=ESTADO_CHOICES, 
+        default='PENDIENTE'  # Por defecto todos los pedidos inician como PENDIENTE
+    )
 
     def __str__(self):
         return f"Pedido {self.Pedido_ID} - {self.Usuario} - {self.Pedido_fecha}"

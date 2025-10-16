@@ -4,13 +4,15 @@ from .views import (
     PrendaList, PrendaDetail,
     AlertaStockList,
     obtener_insumos_bajo_stock,
-    ConfirmarPedidoView
+    ConfirmarPedidoView,
+    verificar_uso_insumo  # 🔥 NUEVO: Importar la función de verificación
 )
 
 urlpatterns = [
     # ---------- INSUMOS ----------
     path('insumos/', InsumoList.as_view(), name='insumo-list'),
     path('insumos/<int:pk>/', InsumoDetail.as_view(), name='insumo-detail'),
+    path('insumos/<int:pk>/verificar-uso/', verificar_uso_insumo, name='verificar-uso-insumo'),  # 🔥 NUEVO
 
     # ---------- PRENDAS ----------
     path('prendas/', PrendaList.as_view(), name='prenda-list'),

@@ -30,6 +30,48 @@ class InsumoList(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+# 🔥 NUEVO: Verificar si un insumo está en uso
+@api_view(['GET'])
+def verificar_uso_insumo(request, pk):
+    """
+    Verifica si un insumo está siendo usado por alguna prenda.
+    Devuelve la lista de prendas que lo usan.
+    """
+    try:
+        insumo = Insumo.objects.get(pk=pk)
+    except Insumo.DoesNotExist:
+        return Response(
+            {'error': 'Insumo no encontrado'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Buscar todas las prendas que usan este insumo
+    relaciones = InsumosXPrendas.objects.filter(insumo=insumo).select_related('prenda')
+    
+    if relaciones.exists():
+        prendas_usando = [
+            {
+                'id': rel.prenda.Prenda_ID,
+                'nombre': rel.prenda.Prenda_nombre,
+                'cantidad_usada': rel.Insumo_prenda_cantidad_utilizada,
+                'unidad': rel.Insumo_prenda_unidad_medida
+            }
+            for rel in relaciones
+        ]
+        
+        return Response({
+            'en_uso': True,
+            'total_prendas': len(prendas_usando),
+            'prendas': prendas_usando
+        })
+    
+    return Response({
+        'en_uso': False,
+        'total_prendas': 0,
+        'prendas': []
+    })
+
+
 class InsumoDetail(APIView):
     """Obtener, actualizar o eliminar un insumo"""
     def get_object(self, pk):
@@ -102,6 +144,40 @@ def obtener_insumos_bajo_stock(request):
 # ------------------------ PRENDAS ----------------------------
 # ============================================================
 
+def procesar_clasificaciones(data):
+    """
+    Busca o crea Marca, Modelo y Color basándose en los nombres enviados,
+    y reemplaza los nombres con IDs en el diccionario de datos.
+    """
+    from clasificaciones.models import Marca, Modelo, Color
+    
+    # Procesar Marca
+    if 'Prenda_marca' in data and data['Prenda_marca']:
+        marca_nombre = str(data['Prenda_marca']).strip()
+        if marca_nombre:
+            marca, created = Marca.objects.get_or_create(Marca_nombre=marca_nombre)
+            data['Prenda_marca'] = marca.Marca_ID
+            print(f"Marca {'creada' if created else 'encontrada'}: {marca_nombre} (ID: {marca.Marca_ID})")
+    
+    # Procesar Modelo
+    if 'Prenda_modelo' in data and data['Prenda_modelo']:
+        modelo_nombre = str(data['Prenda_modelo']).strip()
+        if modelo_nombre:
+            modelo, created = Modelo.objects.get_or_create(Modelo_nombre=modelo_nombre)
+            data['Prenda_modelo'] = modelo.Modelo_ID
+            print(f"Modelo {'creado' if created else 'encontrado'}: {modelo_nombre} (ID: {modelo.Modelo_ID})")
+    
+    # Procesar Color
+    if 'Prenda_color' in data and data['Prenda_color']:
+        color_nombre = str(data['Prenda_color']).strip()
+        if color_nombre:
+            color, created = Color.objects.get_or_create(Color_nombre=color_nombre)
+            data['Prenda_color'] = color.Color_ID
+            print(f"Color {'creado' if created else 'encontrado'}: {color_nombre} (ID: {color.Color_ID})")
+    
+    return data
+
+
 class PrendaList(APIView):
     """Listar y crear prendas con sus insumos y talles"""
     parser_classes = [MultiPartParser, FormParser, JSONParser]
@@ -114,8 +190,8 @@ class PrendaList(APIView):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@transaction.atomic
-def post(self, request):
+    @transaction.atomic
+    def post(self, request):
         data = request.data.copy()
         insumos_data = []
         talles_data = []
@@ -127,17 +203,27 @@ def post(self, request):
             except json.JSONDecodeError:
                 return Response({'error': 'Error al decodificar insumos_prendas'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 🔥 NUEVO: Decodificar talles
+        # Decodificar talles
         if data.get('talles'):
             try:
                 talles_data = json.loads(data.get('talles'))
-                print("Talles recibidos:", talles_data)  # Debug
+                print("Talles recibidos:", talles_data)
             except json.JSONDecodeError:
                 return Response({'error': 'Error al decodificar talles'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Convertir nombres a IDs
+        try:
+            data = procesar_clasificaciones(data)
+        except Exception as e:
+            return Response(
+                {'error': f'Error al procesar clasificaciones: {str(e)}'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         # Crear la prenda base
         serializer = PrendaSerializer(data=data, context={'request': request})
         if not serializer.is_valid():
+            print("Errores del serializer:", serializer.errors)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         prenda = serializer.save()
@@ -160,17 +246,17 @@ def post(self, request):
                 print(f"Error creando insumo: {e}")
                 continue
 
-        # 🔥 CORREGIDO: Crear las relaciones TallesXPrendas
+        # Crear las relaciones TallesXPrendas
         from clasificaciones.models import Talle, TallesXPrendas
-        for talle_codigo in talles_data:  # Ahora son strings directamente
+        for talle_codigo in talles_data:
             try:
-                # Buscar o crear el talle por su código
                 talle, created = Talle.objects.get_or_create(Talle_codigo=talle_codigo)
                 TallesXPrendas.objects.create(
                     talle=talle,
-                    prenda=prenda
+                    prenda=prenda,
+                    stock=0
                 )
-                print(f"Talle creado/asociado: {talle_codigo}")  # Debug
+                print(f"Talle {'creado' if created else 'asociado'}: {talle_codigo}")
             except Exception as e:
                 print(f"Error creando talle: {e}")
                 continue
@@ -225,17 +311,27 @@ class PrendaDetail(APIView):
             except json.JSONDecodeError:
                 return Response({'error': 'Error al decodificar insumos_prendas'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 🔥 NUEVO: Decodificar talles
+        # Decodificar talles
         if data.get('talles'):
             try:
                 talles_data = json.loads(data.get('talles'))
-                print("Talles recibidos para actualizar:", talles_data)  # Debug
+                print("Talles recibidos para actualizar:", talles_data)
             except json.JSONDecodeError:
                 return Response({'error': 'Error al decodificar talles'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Convertir nombres a IDs
+        try:
+            data = procesar_clasificaciones(data)
+        except Exception as e:
+            return Response(
+                {'error': f'Error al procesar clasificaciones: {str(e)}'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         # Actualizar prenda
         serializer = PrendaSerializer(prenda, data=data, context={'request': request})
         if not serializer.is_valid():
+            print("Errores del serializer:", serializer.errors)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         prenda = serializer.save()
@@ -259,18 +355,18 @@ class PrendaDetail(APIView):
                 print(f"Error actualizando insumo: {e}")
                 continue
 
-        # 🔥 CORREGIDO: Limpiar y recrear relaciones de talles
+        # Limpiar y recrear relaciones de talles
         from clasificaciones.models import Talle, TallesXPrendas
         TallesXPrendas.objects.filter(prenda=prenda).delete()
-        for talle_codigo in talles_data:  # Ahora son strings directamente
+        for talle_codigo in talles_data:
             try:
-                # Buscar o crear el talle por su código
                 talle, created = Talle.objects.get_or_create(Talle_codigo=talle_codigo)
                 TallesXPrendas.objects.create(
                     talle=talle,
-                    prenda=prenda
+                    prenda=prenda,
+                    stock=0
                 )
-                print(f"Talle actualizado/asociado: {talle_codigo}")  # Debug
+                print(f"Talle {'creado' if created else 'actualizado'}: {talle_codigo}")
             except Exception as e:
                 print(f"Error actualizando talle: {e}")
                 continue
@@ -283,7 +379,6 @@ class PrendaDetail(APIView):
         if not prenda:
             return Response({'error': 'Prenda no encontrada'}, status=status.HTTP_404_NOT_FOUND)
 
-        # 🔥 NUEVO: También eliminar talles asociados
         from clasificaciones.models import TallesXPrendas
         TallesXPrendas.objects.filter(prenda=prenda).delete()
         InsumosXPrendas.objects.filter(prenda=prenda).delete()
@@ -333,7 +428,6 @@ class ConfirmarPedidoView(APIView):
                     insumo = rel.insumo
                     cantidad_total = rel.Insumo_prenda_cantidad_utilizada * cantidad_pedida
 
-                    # Validar stock
                     if insumo.Insumo_cantidad < cantidad_total:
                         transaction.set_rollback(True)
                         return Response(
@@ -345,7 +439,6 @@ class ConfirmarPedidoView(APIView):
                             status=status.HTTP_400_BAD_REQUEST
                         )
 
-                    # Descontar del stock
                     insumo.Insumo_cantidad -= cantidad_total
                     insumo.save()
 

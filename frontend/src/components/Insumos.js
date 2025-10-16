@@ -87,7 +87,7 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    padding: '8px 24px',
+    padding: '8px 16px',
     borderRadius: '8px',
     fontWeight: '600',
     backgroundColor: 'rgba(255, 215, 15, 1)',
@@ -95,11 +95,6 @@ const styles = {
     border: 'none',
     cursor: 'pointer',
     transition: 'opacity 0.2s'
-  },
-  addButtonContainer: {
-    marginTop: '24px',
-    display: 'flex',
-    justifyContent: 'flex-end'
   },
   tableContainer: {
     backgroundColor: 'transparent', 
@@ -436,6 +431,30 @@ const styles = {
     margin: '0',
     color: '#fecaca',
     fontSize: '14px'
+  },
+  prendasList: {
+    marginTop: '16px',
+    padding: '12px',
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    borderRadius: '8px',
+    maxHeight: '200px',
+    overflowY: 'auto'
+  },
+  prendaItem: {
+    padding: '8px',
+    marginBottom: '8px',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: '6px',
+    borderLeft: '3px solid #ef4444'
+  },
+  prendaItemName: {
+    color: '#ffffff',
+    fontWeight: '600',
+    marginBottom: '4px'
+  },
+  prendaItemDetail: {
+    color: '#9ca3af',
+    fontSize: '13px'
   }
 };
 
@@ -666,10 +685,28 @@ function Insumos() {
     }
   };
 
-  const handleDeleteClick = (insumo) => {
-    setConfirmAction('delete');
-    setConfirmData(insumo);
-    setShowConfirmModal(true);
+  const handleDeleteClick = async (insumo) => {
+    try {
+      const response = await fetch(`http://localhost:8000/api/inventario/insumos/${insumo.Insumo_ID}/verificar-uso/`);
+      const data = await response.json();
+
+      if (data.en_uso) {
+        setConfirmAction('delete_blocked');
+        setConfirmData({
+          insumo: insumo,
+          prendas: data.prendas,
+          total: data.total_prendas
+        });
+        setShowConfirmModal(true);
+      } else {
+        setConfirmAction('delete');
+        setConfirmData(insumo);
+        setShowConfirmModal(true);
+      }
+    } catch (error) {
+      console.error('Error verificando uso del insumo:', error);
+      showAlert('Error al verificar el uso del insumo', 'error');
+    }
   };
 
   const handleConfirmDelete = async () => {
@@ -747,6 +784,18 @@ function Insumos() {
         buttonClass: 'hover-confirm-delete',
         onConfirm: handleConfirmDelete
       };
+    } else if (confirmAction === 'delete_blocked') {
+      return {
+        title: '⚠️ No se puede eliminar',
+        message: `El insumo "${confirmData.insumo.Insumo_nombre}" está siendo usado por ${confirmData.total} ${confirmData.total === 1 ? 'prenda' : 'prendas'}.`,
+        messageExtra: 'Para eliminarlo, primero debes eliminar o modificar estas prendas:',
+        buttonText: 'Entendido',
+        buttonStyle: styles.confirmActionButton,
+        buttonClass: 'hover-confirm-action',
+        onConfirm: handleCancelConfirm,
+        hideCancel: true,
+        showPrendas: true
+      };
     }
     return null;
   };
@@ -813,6 +862,14 @@ function Insumos() {
                     {filteredInsumos.length} de {insumos.length}
                   </div>
                 )}
+                <button
+                  onClick={() => handleOpenModal()}
+                  style={styles.addButton}
+                  className="hover-button"
+                >
+                  <Plus style={{ width: '20px', height: '20px' }} />
+                  Agregar Insumo
+                </button>
               </div>
             </div>
 
@@ -874,17 +931,6 @@ function Insumos() {
               </table>
             </div>
 
-            <div style={styles.addButtonContainer}>
-              <button
-                onClick={() => handleOpenModal()}
-                style={styles.addButton}
-                className="hover-button"
-              >
-                <Plus style={{ width: '20px', height: '20px' }} />
-                Agregar Insumo
-              </button>
-            </div>
-
             {showModal && (
               <div style={styles.modalOverlay} onClick={handleCloseModal}>
                 <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -909,7 +955,7 @@ function Insumos() {
                         name="nombre"
                         value={formData.nombre}
                         onChange={handleInputChange}
-                        style={styles.input}
+                        style={editingInsumo ? styles.inputDisabled : styles.input}
                         className="form-input"
                         placeholder="Ej: Algodón Premium"
                         disabled={editingInsumo}
@@ -1018,16 +1064,36 @@ function Insumos() {
                     <div style={styles.confirmHeader}>
                       <h2 style={styles.confirmTitle}>{content.title}</h2>
                       <p style={styles.confirmMessage}>{content.message}</p>
+                      {content.messageExtra && (
+                        <p style={{...styles.confirmMessage, marginTop: '12px'}}>
+                          {content.messageExtra}
+                        </p>
+                      )}
+                      
+                      {content.showPrendas && confirmData.prendas && (
+                        <div style={styles.prendasList}>
+                          {confirmData.prendas.map((prenda) => (
+                            <div key={prenda.id} style={styles.prendaItem}>
+                              <div style={styles.prendaItemName}>{prenda.nombre}</div>
+                              <div style={styles.prendaItemDetail}>
+                                Usa {prenda.cantidad_usada} {prenda.unidad}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div style={styles.confirmActions}>
-                      <button
-                        onClick={handleCancelConfirm}
-                        style={styles.confirmCancelButton}
-                        className="hover-confirm-cancel"
-                      >
-                        Cancelar
-                      </button>
+                      {!content.hideCancel && (
+                        <button
+                          onClick={handleCancelConfirm}
+                          style={styles.confirmCancelButton}
+                          className="hover-confirm-cancel"
+                        >
+                          Cancelar
+                        </button>
+                      )}
                       <button
                         onClick={content.onConfirm}
                         style={content.buttonStyle}
