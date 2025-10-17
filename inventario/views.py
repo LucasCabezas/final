@@ -198,18 +198,33 @@ class PrendaList(APIView):
 
         # Decodificar insumos
         if data.get('insumos_prendas'):
-            try:
-                insumos_data = json.loads(data.get('insumos_prendas'))
-            except json.JSONDecodeError:
-                return Response({'error': 'Error al decodificar insumos_prendas'}, status=status.HTTP_400_BAD_REQUEST)
+            insumos_raw = data.get('insumos_prendas')
+            # Verificar si es string o ya es lista
+            if isinstance(insumos_raw, str):
+                try:
+                    insumos_data = json.loads(insumos_raw)
+                except json.JSONDecodeError:
+                    return Response({'error': 'Error al decodificar insumos_prendas'}, status=status.HTTP_400_BAD_REQUEST)
+            elif isinstance(insumos_raw, list):
+                insumos_data = insumos_raw
+            else:
+                return Response({'error': 'Formato inválido para insumos_prendas'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Decodificar talles
         if data.get('talles'):
-            try:
-                talles_data = json.loads(data.get('talles'))
+            talles_raw = data.get('talles')
+            # Verificar si es string o ya es lista
+            if isinstance(talles_raw, str):
+                try:
+                    talles_data = json.loads(talles_raw)
+                    print("Talles recibidos:", talles_data)
+                except json.JSONDecodeError:
+                    return Response({'error': 'Error al decodificar talles'}, status=status.HTTP_400_BAD_REQUEST)
+            elif isinstance(talles_raw, list):
+                talles_data = talles_raw
                 print("Talles recibidos:", talles_data)
-            except json.JSONDecodeError:
-                return Response({'error': 'Error al decodificar talles'}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({'error': 'Formato inválido para talles'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Convertir nombres a IDs
         try:
@@ -304,20 +319,35 @@ class PrendaDetail(APIView):
         insumos_data = []
         talles_data = []
 
-        # Decodificar insumos_prendas
+        # Decodificar insumos_prendas - CORREGIDO
         if data.get('insumos_prendas'):
-            try:
-                insumos_data = json.loads(data.get('insumos_prendas'))
-            except json.JSONDecodeError:
-                return Response({'error': 'Error al decodificar insumos_prendas'}, status=status.HTTP_400_BAD_REQUEST)
+            insumos_raw = data.get('insumos_prendas')
+            # Verificar si es string o ya es lista
+            if isinstance(insumos_raw, str):
+                try:
+                    insumos_data = json.loads(insumos_raw)
+                except json.JSONDecodeError:
+                    return Response({'error': 'Error al decodificar insumos_prendas'}, status=status.HTTP_400_BAD_REQUEST)
+            elif isinstance(insumos_raw, list):
+                insumos_data = insumos_raw
+            else:
+                return Response({'error': 'Formato inválido para insumos_prendas'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Decodificar talles
+        # Decodificar talles - CORREGIDO
         if data.get('talles'):
-            try:
-                talles_data = json.loads(data.get('talles'))
+            talles_raw = data.get('talles')
+            # Verificar si es string o ya es lista
+            if isinstance(talles_raw, str):
+                try:
+                    talles_data = json.loads(talles_raw)
+                    print("Talles recibidos para actualizar:", talles_data)
+                except json.JSONDecodeError:
+                    return Response({'error': 'Error al decodificar talles'}, status=status.HTTP_400_BAD_REQUEST)
+            elif isinstance(talles_raw, list):
+                talles_data = talles_raw
                 print("Talles recibidos para actualizar:", talles_data)
-            except json.JSONDecodeError:
-                return Response({'error': 'Error al decodificar talles'}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({'error': 'Formato inválido para talles'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Convertir nombres a IDs
         try:

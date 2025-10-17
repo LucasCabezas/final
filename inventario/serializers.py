@@ -86,8 +86,8 @@ class PrendaSerializer(serializers.ModelSerializer):
     Prenda_imagen = serializers.ImageField(required=False)
     Prenda_imagen_url = serializers.SerializerMethodField()
     
-    # Relaciones
-    insumos_prendas = InsumosXPrendasSerializer(many=True, required=False)
+    # Relaciones - SOLO LECTURA (se procesan manualmente en las vistas)
+    insumos_prendas = InsumosXPrendasSerializer(many=True, read_only=True)
     talles = serializers.SerializerMethodField()
     
     class Meta:
@@ -126,29 +126,3 @@ class PrendaSerializer(serializers.ModelSerializer):
             else:
                 return obj.Prenda_imagen.url
         return None
-
-    def create(self, validated_data):
-        """Crear prenda con insumos"""
-        insumos_data = validated_data.pop('insumos_prendas', [])
-        prenda = Prenda.objects.create(**validated_data)
-
-        for insumo_data in insumos_data:
-            InsumosXPrendas.objects.create(prenda=prenda, **insumo_data)
-
-        return prenda
-
-    def update(self, instance, validated_data):
-        """Actualizar prenda con insumos"""
-        insumos_data = validated_data.pop('insumos_prendas', [])
-
-        # Actualizar campos base de la prenda
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-
-        # Actualizar insumos
-        instance.insumos_prendas.all().delete()
-        for insumo_data in insumos_data:
-            InsumosXPrendas.objects.create(prenda=instance, **insumo_data)
-
-        return instance
