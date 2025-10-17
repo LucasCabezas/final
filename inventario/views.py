@@ -86,14 +86,27 @@ class InsumoDetail(APIView):
             return Response({'error': 'Insumo no encontrado'}, status=status.HTTP_404_NOT_FOUND)
         return Response(InsumoSerializer(insumo).data)
 
+    @transaction.atomic
     def put(self, request, pk):
         insumo = self.get_object(pk)
         if not insumo:
             return Response({'error': 'Insumo no encontrado'}, status=status.HTTP_404_NOT_FOUND)
 
+        # 🔥 NUEVO: Guardar valores anteriores para comparar
+        nombre_anterior = insumo.Insumo_nombre
+        unidad_anterior = insumo.Insumo_unidad_medida
+
         serializer = InsumoSerializer(insumo, data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            insumo_actualizado = serializer.save()
+            
+            # 🔥 NUEVO: Si cambió la unidad de medida, actualizar en todas las prendas
+            if unidad_anterior != insumo_actualizado.Insumo_unidad_medida:
+                InsumosXPrendas.objects.filter(insumo=insumo_actualizado).update(
+                    Insumo_prenda_unidad_medida=insumo_actualizado.Insumo_unidad_medida
+                )
+                print(f"✅ Unidad de medida actualizada de '{unidad_anterior}' a '{insumo_actualizado.Insumo_unidad_medida}' en todas las prendas")
+            
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

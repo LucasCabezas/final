@@ -209,16 +209,6 @@ const styles = {
     transition: 'border-color 0.2s',
     boxSizing: 'border-box'
   },
-  inputDisabled: {
-    width: '100%',
-    padding: '8px 16px',
-    backgroundColor: '#e5e7eb',
-    color: '#6b7280',
-    borderRadius: '8px',
-    border: '1px solid #d1d5db',
-    outline: 'none',
-    boxSizing: 'border-box'
-  },
   toggleContainer: {
     marginBottom: '16px',
     display: 'flex',
@@ -457,6 +447,28 @@ const styles = {
   prendaItemDetail: {
     color: '#9ca3af',
     fontSize: '13px'
+  },
+  warningBox: {
+    marginTop: '16px',
+    padding: '12px',
+    backgroundColor: 'rgba(251, 191, 36, 0.1)',
+    border: '1px solid rgba(251, 191, 36, 0.3)',
+    borderRadius: '8px'
+  },
+  warningTitle: {
+    color: '#fbbf24',
+    fontWeight: '600',
+    fontSize: '14px',
+    marginBottom: '8px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
+  },
+  warningList: {
+    color: '#fde68a',
+    fontSize: '13px',
+    margin: '0',
+    paddingLeft: '20px'
   }
 };
 
@@ -609,7 +621,40 @@ function Insumos() {
       return;
     }
     
+    // 🔥 NUEVO: Verificar si hay cambios en nombre o unidad cuando se edita
     if (editingInsumo) {
+      const cambioNombre = formData.nombre !== editingInsumo.Insumo_nombre;
+      const cambioUnidad = formData.unidad !== editingInsumo.Insumo_unidad_medida;
+      
+      if (cambioNombre || cambioUnidad) {
+        // Verificar si el insumo está en uso
+        try {
+          const response = await fetch(`http://localhost:8000/api/inventario/insumos/${editingInsumo.Insumo_ID}/verificar-uso/`);
+          const data = await response.json();
+          
+          if (data.en_uso) {
+            setConfirmAction('edit_with_impact');
+            setConfirmData({
+              insumo: editingInsumo,
+              prendas: data.prendas,
+              total: data.total_prendas,
+              cambios: {
+                nombre: cambioNombre,
+                unidad: cambioUnidad,
+                nombreNuevo: formData.nombre,
+                unidadNueva: formData.unidad
+              },
+              formData: formData
+            });
+            setShowConfirmModal(true);
+            return;
+          }
+        } catch (error) {
+          console.error('Error verificando uso:', error);
+        }
+      }
+      
+      // Si no hay cambios críticos o no está en uso, continuar normal
       setConfirmAction('edit');
       setConfirmData(formData);
       setShowConfirmModal(true);
@@ -622,20 +667,20 @@ function Insumos() {
 
   const handleConfirmSubmit = async () => {
     try {
-      let finalQuantity = Number(confirmData.cantidad);
+      let finalQuantity = Number(confirmData.cantidad || formData.cantidad);
 
       if (isAddMode && editingInsumo) {
-        finalQuantity = editingInsumo.Insumo_cantidad + Number(confirmData.cantidad);
+        finalQuantity = editingInsumo.Insumo_cantidad + Number(confirmData.cantidad || formData.cantidad);
       }
 
       const payload = {
-        Insumo_nombre: confirmData.nombre,
+        Insumo_nombre: confirmData.nombre || formData.nombre,
         Insumo_cantidad: finalQuantity,
-        Insumo_unidad_medida: confirmData.unidad,
-        Insumo_precio_unitario: Number(confirmData.precioUnitario)
+        Insumo_unidad_medida: confirmData.unidad || formData.unidad,
+        Insumo_precio_unitario: Number(confirmData.precioUnitario || formData.precioUnitario)
       };
 
-      if (confirmAction === 'edit') {
+      if (confirmAction === 'edit' || confirmAction === 'edit_with_impact') {
         const response = await fetch(`http://localhost:8000/api/inventario/insumos/${editingInsumo.Insumo_ID}/`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -654,7 +699,12 @@ function Insumos() {
 
         await cargarInsumos();
         await cargarAlertas();
-        showAlert(`Insumo "${confirmData.nombre}" actualizado exitosamente`, 'success');
+        
+        if (confirmAction === 'edit_with_impact') {
+          showAlert(`Insumo "${payload.Insumo_nombre}" actualizado. Los cambios se aplicaron a todas las prendas.`, 'success');
+        } else {
+          showAlert(`Insumo "${payload.Insumo_nombre}" actualizado exitosamente`, 'success');
+        }
       } else {
         const response = await fetch('http://localhost:8000/api/inventario/insumos/', {
           method: 'POST',
@@ -674,7 +724,7 @@ function Insumos() {
 
         await cargarInsumos();
         await cargarAlertas();
-        showAlert(`Insumo "${confirmData.nombre}" agregado exitosamente`, 'success');
+        showAlert(`Insumo "${payload.Insumo_nombre}" agregado exitosamente`, 'success');
       }
       
       setShowConfirmModal(false);
@@ -776,6 +826,27 @@ function Insumos() {
         buttonStyle: styles.confirmActionButton,
         buttonClass: 'hover-confirm-action',
         onConfirm: handleConfirmSubmit
+      };
+    } else if (confirmAction === 'edit_with_impact') {
+      // 🔥 NUEVO: Modal especial para cambios que afectan prendas
+      const cambiosTexto = [];
+      if (confirmData.cambios.nombre) {
+        cambiosTexto.push(`nombre a "${confirmData.cambios.nombreNuevo}"`);
+      }
+      if (confirmData.cambios.unidad) {
+        cambiosTexto.push(`unidad de medida a "${confirmData.cambios.unidadNueva}"`);
+      }
+
+      return {
+        title: '⚠️ Confirmar cambios importantes',
+        message: `Estás a punto de cambiar el ${cambiosTexto.join(' y el ')} del insumo "${confirmData.insumo.Insumo_nombre}".`,
+        messageExtra: `Este cambio afectará automáticamente a ${confirmData.total} ${confirmData.total === 1 ? 'prenda que usa' : 'prendas que usan'} este insumo:`,
+        buttonText: 'Confirmar cambios',
+        buttonStyle: styles.confirmActionButton,
+        buttonClass: 'hover-confirm-action',
+        onConfirm: handleConfirmSubmit,
+        showPrendas: true,
+        showWarning: true
       };
     } else if (confirmAction === 'delete') {
       return {
@@ -957,10 +1028,9 @@ function Insumos() {
                         name="nombre"
                         value={formData.nombre}
                         onChange={handleInputChange}
-                        style={editingInsumo ? styles.inputDisabled : styles.input}
+                        style={styles.input}
                         className="form-input"
                         placeholder="Ej: Algodón Premium"
-                        disabled={editingInsumo}
                       />
                     </div>
 
@@ -1015,10 +1085,9 @@ function Insumos() {
                         name="unidad"
                         value={formData.unidad}
                         onChange={handleInputChange}
-                        style={editingInsumo ? styles.inputDisabled : styles.input}
+                        style={styles.input}
                         className="form-input"
                         placeholder="Ej: KG, metros, unidades"
-                        disabled={editingInsumo}
                       />
                     </div>
 
@@ -1070,6 +1139,23 @@ function Insumos() {
                         <p style={{...styles.confirmMessage, marginTop: '12px'}}>
                           {content.messageExtra}
                         </p>
+                      )}
+                      
+                      {content.showWarning && (
+                        <div style={styles.warningBox}>
+                          <div style={styles.warningTitle}>
+                            <AlertCircle style={{ width: '16px', height: '16px' }} />
+                            Cambios que se aplicarán:
+                          </div>
+                          <ul style={styles.warningList}>
+                            {confirmData.cambios.nombre && (
+                              <li>El nombre se actualizará en el inventario</li>
+                            )}
+                            {confirmData.cambios.unidad && (
+                              <li>La unidad de medida se actualizará en todas las prendas relacionadas</li>
+                            )}
+                          </ul>
+                        </div>
                       )}
                       
                       {content.showPrendas && confirmData.prendas && (
