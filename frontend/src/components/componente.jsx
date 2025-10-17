@@ -1,13 +1,195 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaBoxOpen, FaShoppingCart, FaUserPlus, FaHome, FaSignOutAlt, FaUser } from "react-icons/fa";
+import { FaBoxOpen, FaShoppingCart, FaUserPlus, FaHome, FaSignOutAlt, FaUser, FaExclamationTriangle, FaCheckCircle } from "react-icons/fa";
 import { MdKeyboardArrowDown, MdKeyboardArrowLeft, MdKeyboardArrowRight } from "react-icons/md";
 import logo from "./assets/logo.png";
+
+// Modal de Confirmación
+function ConfirmModal({ isOpen, onClose, onConfirm, title, message }) {
+  if (!isOpen) return null;
+
+  const styles = {
+    overlay: {
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: "rgba(0, 0, 0, 0.8)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 9999,
+      animation: "fadeIn 0.3s ease",
+    },
+    modal: {
+      background: "linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%)",
+      borderRadius: "12px",
+      padding: "30px",
+      maxWidth: "450px",
+      width: "90%",
+      animation: "slideIn 0.3s ease",
+    },
+    header: {
+      display: "flex",
+      alignItems: "center",
+      gap: "15px",
+      marginBottom: "20px",
+    },
+    icon: {
+      fontSize: "32px",
+      color: "#ef4444",
+    },
+    title: {
+      fontSize: "22px",
+      fontWeight: "600",
+      color: "#fff",
+      margin: 0,
+    },
+    message: {
+      fontSize: "16px",
+      color: "#ccc",
+      marginBottom: "30px",
+      lineHeight: "1.5",
+    },
+    buttonContainer: {
+      display: "flex",
+      gap: "15px",
+      justifyContent: "flex-end",
+    },
+    button: {
+      padding: "12px 24px",
+      borderRadius: "8px",
+      border: "none",
+      fontSize: "15px",
+      fontWeight: "500",
+      cursor: "pointer",
+      transition: "all 0.3s ease",
+      display: "flex",
+      alignItems: "center",
+      gap: "8px",
+    },
+    cancelButton: {
+      background: "rgba(255, 255, 255, 0.1)",
+      color: "#fff",
+      border: "1px solid rgba(255, 255, 255, 0.2)",
+    },
+    confirmButton: {
+      background: "rgba(239, 68, 68, 0.2)",
+      color: "#ef4444",
+      border: "1px solid rgba(239, 68, 68, 0.4)",
+    },
+  };
+
+  return (
+    <>
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes slideIn {
+          from { transform: translateY(-50px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+      `}</style>
+      <div style={styles.overlay} onClick={onClose}>
+        <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+          <div style={styles.header}>
+            <FaExclamationTriangle style={styles.icon} />
+            <h3 style={styles.title}>{title}</h3>
+          </div>
+          <p style={styles.message}>{message}</p>
+          <div style={styles.buttonContainer}>
+            <button
+              style={{ ...styles.button, ...styles.cancelButton }}
+              onClick={onClose}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(255, 255, 255, 0.15)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)";
+              }}
+            >
+              Cancelar
+            </button>
+            <button
+              style={{ ...styles.button, ...styles.confirmButton }}
+              onClick={onConfirm}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(239, 68, 68, 0.3)";
+                e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.6)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "rgba(239, 68, 68, 0.2)";
+                e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.4)";
+              }}
+            >
+              Cerrar Sesión
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// Modal de Éxito (MODIFICADO - SIN BOTÓN)
+function SuccessModal({ isOpen, message }) {
+  if (!isOpen) return null;
+
+  const styles = {
+    overlay: {
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: "rgba(0, 0, 0, 0.8)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 9999,
+      animation: "fadeIn 0.3s ease",
+    },
+    modal: {
+      background: "linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%)",
+      borderRadius: "12px",
+      padding: "30px",
+      maxWidth: "400px",
+      width: "90%",
+      animation: "slideIn 0.3s ease",
+      textAlign: "center",
+    },
+    icon: {
+      fontSize: "48px",
+      color: "rgba(255, 215, 15, 1)",
+      marginBottom: "20px",
+      filter: "drop-shadow(0 0 10px rgba(255, 215, 15, 0.5))",
+    },
+    message: {
+      fontSize: "18px",
+      color: "#fff",
+      fontWeight: "500",
+    },
+  };
+
+  return (
+    <div style={styles.overlay}>
+      <div style={styles.modal}>
+        <FaCheckCircle style={styles.icon} />
+        <p style={styles.message}>{message}</p>
+      </div>
+    </div>
+  );
+}
 
 function Componente({ onToggle }) {
   const [openInventario, setOpenInventario] = useState(false);
   const [openPedidos, setOpenPedidos] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const navigate = useNavigate();
 
   // --- Navegaciones ---
@@ -28,12 +210,17 @@ function Componente({ onToggle }) {
 
   // --- Cerrar Sesión ---
   const handleCerrarSesion = () => {
-    if (window.confirm("¿Estás seguro de que deseas cerrar sesión?")) {
-      localStorage.clear();
-      sessionStorage.clear();
-      alert("✅ Sesión cerrada exitosamente");
+    setShowConfirmModal(true);
+  };
+
+  const confirmLogout = () => {
+    localStorage.clear();
+    sessionStorage.clear();
+    setShowConfirmModal(false);
+    setShowSuccessModal(true);
+    setTimeout(() => {
       navigate("/");
-    }
+    }, 1500);
   };
 
   // --- Estilos ---
@@ -115,192 +302,207 @@ function Componente({ onToggle }) {
   };
 
   return (
-    <aside style={styles.sidebar}>
-      {/* Botón de colapsar */}
-      <button
-        style={styles.toggleBtn}
-        onClick={handleToggle}
-        onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.1)")}
-        onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-      >
-        {isCollapsed ? <MdKeyboardArrowRight /> : <MdKeyboardArrowLeft />}
-      </button>
-
-      {/* Logo */}
-      <div style={styles.logoContainer}>
-        <img src={logo} alt="Logo" style={styles.logo} />
-      </div>
-
-      {/* Menú principal */}
-      <ul style={styles.menu}>
-        {/* Inicio */}
-        <li style={styles.menuItem}>
-          <div
-            style={styles.menuLabel}
-            onClick={handleInicio}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "rgba(255,215,15,0.1)";
-              e.currentTarget.style.borderLeft = "3px solid rgba(255,215,15,1)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.borderLeft = "3px solid transparent";
-            }}
-          >
-            <div style={styles.menuTitle}>
-              <FaHome style={styles.icon} />
-              {!isCollapsed && <span style={styles.menuText}>Inicio</span>}
-            </div>
-          </div>
-        </li>
-
-        {/* Inventario */}
-        <li style={styles.menuItem}>
-          <div
-            style={styles.menuLabel}
-            onClick={() => setOpenInventario((v) => !v)}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "rgba(255,215,15,0.1)";
-              e.currentTarget.style.borderLeft = "3px solid rgba(255,215,15,1)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.borderLeft = "3px solid transparent";
-            }}
-          >
-            <div style={styles.menuTitle}>
-              <FaBoxOpen style={styles.icon} />
-              {!isCollapsed && <span style={styles.menuText}>Inventario</span>}
-            </div>
-            {!isCollapsed && <MdKeyboardArrowDown style={openInventario ? styles.arrowOpen : styles.arrow} />}
-          </div>
-          {!isCollapsed && (
-            <ul style={openInventario ? styles.submenuShow : styles.submenu}>
-              <li
-                style={styles.submenuItem}
-                onClick={handleInsumos}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255, 215, 15, 1)")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "#ccc")}
-              >
-                Insumos
-              </li>
-              <li
-                style={styles.submenuItem}
-                onClick={handlePrendas}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255, 215, 15, 1)")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "#ccc")}
-              >
-                Prendas
-              </li>
-            </ul>
-          )}
-        </li>
-
-        {/* Pedidos */}
-        <li style={styles.menuItem}>
-          <div
-            style={styles.menuLabel}
-            onClick={() => setOpenPedidos((v) => !v)}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "rgba(255,215,15,0.1)";
-              e.currentTarget.style.borderLeft = "3px solid rgba(255,215,15,1)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.borderLeft = "3px solid transparent";
-            }}
-          >
-            <div style={styles.menuTitle}>
-              <FaShoppingCart style={styles.icon} />
-              {!isCollapsed && <span style={styles.menuText}>Pedidos</span>}
-            </div>
-            {!isCollapsed && <MdKeyboardArrowDown style={openPedidos ? styles.arrowOpen : styles.arrow} />}
-          </div>
-          {!isCollapsed && (
-            <ul style={openPedidos ? styles.submenuShow : styles.submenu}>
-              <li
-                style={styles.submenuItem}
-                onClick={handleRealizarPedido}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255, 215, 15, 1)")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "#ccc")}
-              >
-                Realizar pedido
-              </li>
-              {/* ❌ ELIMINADO: Detalle de Pedidos */}
-              <li
-                style={styles.submenuItem}
-                onClick={handleAprobacionPedidos}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255, 215, 15, 1)")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "#ccc")}
-              >
-                Aprobación de pedidos
-              </li>
-            </ul>
-          )}
-        </li>
-
-        {/* Usuarios */}
-        <li style={styles.menuItem}>
-          <div
-            style={styles.menuLabel}
-            onClick={handleUsuarios}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "rgba(255,215,15,0.1)";
-              e.currentTarget.style.borderLeft = "3px solid rgba(255,215,15,1)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.borderLeft = "3px solid transparent";
-            }}
-          >
-            <div style={styles.menuTitle}>
-              <FaUserPlus style={styles.icon} />
-              {!isCollapsed && <span style={styles.menuText}>Usuarios</span>}
-            </div>
-          </div>
-        </li>
-
-        {/* Perfil */}
-        <li style={styles.menuItem}>
-          <div
-            style={styles.menuLabel}
-            onClick={handlePerfil}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "rgba(255,215,15,0.1)";
-              e.currentTarget.style.borderLeft = "3px solid rgba(255,215,15,1)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.borderLeft = "3px solid transparent";
-            }}
-          >
-            <div style={styles.menuTitle}>
-              <FaUser style={styles.icon} />
-              {!isCollapsed && <span style={styles.menuText}>Perfil</span>}
-            </div>
-          </div>
-        </li>
-      </ul>
-
-      {/* Botón Cerrar Sesión */}
-      <div style={styles.logoutContainer}>
+    <>
+      <aside style={styles.sidebar}>
+        {/* Botón de colapsar */}
         <button
-          style={styles.logoutButton}
-          onClick={handleCerrarSesion}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "rgba(239, 68, 68, 0.2)";
-            e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.5)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "rgba(239, 68, 68, 0.1)";
-            e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.3)";
-          }}
+          style={styles.toggleBtn}
+          onClick={handleToggle}
+          onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.1)")}
+          onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
         >
-          <FaSignOutAlt style={{ fontSize: "20px", minWidth: "20px" }} />
-          {!isCollapsed && <span>Cerrar Sesión</span>}
+          {isCollapsed ? <MdKeyboardArrowRight /> : <MdKeyboardArrowLeft />}
         </button>
-      </div>
-    </aside>
+
+        {/* Logo */}
+        <div style={styles.logoContainer}>
+          <img src={logo} alt="Logo" style={styles.logo} />
+        </div>
+
+        {/* Menú principal */}
+        <ul style={styles.menu}>
+          {/* Inicio */}
+          <li style={styles.menuItem}>
+            <div
+              style={styles.menuLabel}
+              onClick={handleInicio}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(255,215,15,0.1)";
+                e.currentTarget.style.borderLeft = "3px solid rgba(255,215,15,1)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.borderLeft = "3px solid transparent";
+              }}
+            >
+              <div style={styles.menuTitle}>
+                <FaHome style={styles.icon} />
+                {!isCollapsed && <span style={styles.menuText}>Inicio</span>}
+              </div>
+            </div>
+          </li>
+
+          {/* Inventario */}
+          <li style={styles.menuItem}>
+            <div
+              style={styles.menuLabel}
+              onClick={() => setOpenInventario((v) => !v)}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(255,215,15,0.1)";
+                e.currentTarget.style.borderLeft = "3px solid rgba(255,215,15,1)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.borderLeft = "3px solid transparent";
+              }}
+            >
+              <div style={styles.menuTitle}>
+                <FaBoxOpen style={styles.icon} />
+                {!isCollapsed && <span style={styles.menuText}>Inventario</span>}
+              </div>
+              {!isCollapsed && <MdKeyboardArrowDown style={openInventario ? styles.arrowOpen : styles.arrow} />}
+            </div>
+            {!isCollapsed && (
+              <ul style={openInventario ? styles.submenuShow : styles.submenu}>
+                <li
+                  style={styles.submenuItem}
+                  onClick={handleInsumos}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255, 215, 15, 1)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = "#ccc")}
+                >
+                  Insumos
+                </li>
+                <li
+                  style={styles.submenuItem}
+                  onClick={handlePrendas}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255, 215, 15, 1)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = "#ccc")}
+                >
+                  Prendas
+                </li>
+              </ul>
+            )}
+          </li>
+
+          {/* Pedidos */}
+          <li style={styles.menuItem}>
+            <div
+              style={styles.menuLabel}
+              onClick={() => setOpenPedidos((v) => !v)}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(255,215,15,0.1)";
+                e.currentTarget.style.borderLeft = "3px solid rgba(255,215,15,1)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.borderLeft = "3px solid transparent";
+              }}
+            >
+              <div style={styles.menuTitle}>
+                <FaShoppingCart style={styles.icon} />
+                {!isCollapsed && <span style={styles.menuText}>Pedidos</span>}
+              </div>
+              {!isCollapsed && <MdKeyboardArrowDown style={openPedidos ? styles.arrowOpen : styles.arrow} />}
+            </div>
+            {!isCollapsed && (
+              <ul style={openPedidos ? styles.submenuShow : styles.submenu}>
+                <li
+                  style={styles.submenuItem}
+                  onClick={handleRealizarPedido}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255, 215, 15, 1)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = "#ccc")}
+                >
+                  Realizar pedido
+                </li>
+                <li
+                  style={styles.submenuItem}
+                  onClick={handleAprobacionPedidos}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255, 215, 15, 1)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = "#ccc")}
+                >
+                  Aprobación de pedidos
+                </li>
+              </ul>
+            )}
+          </li>
+
+          {/* Usuarios */}
+          <li style={styles.menuItem}>
+            <div
+              style={styles.menuLabel}
+              onClick={handleUsuarios}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(255,215,15,0.1)";
+                e.currentTarget.style.borderLeft = "3px solid rgba(255,215,15,1)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.borderLeft = "3px solid transparent";
+              }}
+            >
+              <div style={styles.menuTitle}>
+                <FaUserPlus style={styles.icon} />
+                {!isCollapsed && <span style={styles.menuText}>Usuarios</span>}
+              </div>
+            </div>
+          </li>
+
+          {/* Perfil */}
+          <li style={styles.menuItem}>
+            <div
+              style={styles.menuLabel}
+              onClick={handlePerfil}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(255,215,15,0.1)";
+                e.currentTarget.style.borderLeft = "3px solid rgba(255,215,15,1)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.borderLeft = "3px solid transparent";
+              }}
+            >
+              <div style={styles.menuTitle}>
+                <FaUser style={styles.icon} />
+                {!isCollapsed && <span style={styles.menuText}>Perfil</span>}
+              </div>
+            </div>
+          </li>
+        </ul>
+
+        {/* Botón Cerrar Sesión */}
+        <div style={styles.logoutContainer}>
+          <button
+            style={styles.logoutButton}
+            onClick={handleCerrarSesion}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(239, 68, 68, 0.2)";
+              e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.5)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(239, 68, 68, 0.1)";
+              e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.3)";
+            }}
+          >
+            <FaSignOutAlt style={{ fontSize: "20px", minWidth: "20px" }} />
+            {!isCollapsed && <span>Cerrar Sesión</span>}
+          </button>
+        </div>
+      </aside>
+
+      {/* Modales Personalizados */}
+      <ConfirmModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={confirmLogout}
+        title="Confirmar cierre de sesión"
+        message="¿Estás seguro de que deseas cerrar sesión?"
+      />
+
+      <SuccessModal
+        isOpen={showSuccessModal}
+        message="Sesión cerrada exitosamente"
+      />
+    </>
   );
 }
 
