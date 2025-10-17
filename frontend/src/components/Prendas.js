@@ -530,11 +530,12 @@ function Prendas() {
       const det = await res.json();
       console.log("Datos de edición:", det);
       setEditing(p);
+      // 🔥 CORREGIDO: Usar los nombres en lugar de los IDs
       setForm({
         nombre: det.Prenda_nombre || "",
-        marca: det.Prenda_marca || "",
-        modelo: det.Prenda_modelo || "",
-        color: det.Prenda_color || "",
+        marca: det.Prenda_marca_nombre || "",      // ✅ Nombre
+        modelo: det.Prenda_modelo_nombre || "",    // ✅ Nombre
+        color: det.Prenda_color_nombre || "",      // ✅ Nombre
         precioUnitario: det.Prenda_precio_unitario || "",
         imagen: null,
       });
