@@ -1,5 +1,7 @@
+// src/components/componente.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import { FaBoxOpen, FaShoppingCart, FaUserPlus, FaHome, FaSignOutAlt, FaUser, FaExclamationTriangle, FaCheckCircle } from "react-icons/fa";
 import { MdKeyboardArrowDown, MdKeyboardArrowLeft, MdKeyboardArrowRight } from "react-icons/md";
 import logo from "./assets/logo.png";
@@ -134,7 +136,7 @@ function ConfirmModal({ isOpen, onClose, onConfirm, title, message }) {
   );
 }
 
-// Modal de Éxito (MODIFICADO - SIN BOTÓN)
+// Modal de Éxito
 function SuccessModal({ isOpen, message }) {
   if (!isOpen) return null;
 
@@ -191,6 +193,8 @@ function Componente({ onToggle }) {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const navigate = useNavigate();
+  
+  const { logout } = useAuth();
 
   // --- Navegaciones ---
   const handleInicio = () => navigate("/Dueno");
@@ -214,12 +218,15 @@ function Componente({ onToggle }) {
   };
 
   const confirmLogout = () => {
-    localStorage.clear();
-    sessionStorage.clear();
     setShowConfirmModal(false);
     setShowSuccessModal(true);
+    
+    // ✅ Llamar a logout del contexto
+    logout();
+    
+    // ✅ Navegar manualmente al login
     setTimeout(() => {
-      navigate("/");
+      navigate('/', { replace: true });
     }, 1500);
   };
 

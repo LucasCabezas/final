@@ -2,14 +2,201 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiEye, FiEyeOff } from "react-icons/fi";
+import { useAuth } from "../context/AuthContext";
 import logo from "./assets/logo.png";
-import "./Login.css";
+import fondoImg from "./assets/fondo.png";
 import Recuperar from "./Recuperar";
+
+const styles = {
+  loginContainer: {
+    minHeight: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
+    padding: '20px',
+    position: 'relative'
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 1
+  },
+  contentWrapper: {
+    position: 'relative',
+    zIndex: 2,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: '450px'
+  },
+  logo: {
+    width: '180px',
+    height: 'auto',
+    marginBottom: '32px',
+    filter: 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3))'
+  },
+  loginBox: {
+    backgroundColor: 'rgba(30, 30, 30, 0.95)',
+    borderRadius: '16px',
+    padding: '40px',
+    width: '100%',
+    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+    border: '1px solid rgba(255, 255, 255, 0.1)'
+  },
+  title: {
+    fontSize: '28px',
+    fontWeight: 'bold',
+    color: '#ffffff',
+    textAlign: 'center',
+    marginBottom: '32px',
+    letterSpacing: '0.5px'
+  },
+  form: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '20px'
+  },
+  input: {
+    width: '100%',
+    padding: '14px 16px',
+    backgroundColor: '#fff',
+    color: '#000',
+    border: '2px solid #4b5563',
+    borderRadius: '8px',
+    fontSize: '15px',
+    outline: 'none',
+    transition: 'all 0.2s',
+    boxSizing: 'border-box',
+    fontFamily: 'inherit'
+  },
+  inputContainer: {
+    position: 'relative',
+    width: '100%'
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: '16px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    cursor: 'pointer',
+    color: '#666',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'color 0.2s'
+  },
+  submitButton: {
+    width: '100%',
+    padding: '14px',
+    backgroundColor: 'rgba(255, 215, 15, 1)',
+    color: '#000',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '16px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    marginTop: '8px',
+    fontFamily: 'inherit'
+  },
+  submitButtonDisabled: {
+    opacity: 0.6,
+    cursor: 'not-allowed'
+  },
+  recuperarButton: {
+    width: '100%',
+    padding: '12px',
+    backgroundColor: 'transparent',
+    color: '#93c5fd',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '14px',
+    fontWeight: '500',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    marginTop: '12px',
+    textDecoration: 'underline',
+    fontFamily: 'inherit'
+  },
+  mensaje: {
+    marginTop: '20px',
+    padding: '12px 16px',
+    borderRadius: '8px',
+    fontSize: '14px',
+    fontWeight: '500',
+    textAlign: 'center',
+    animation: 'slideIn 0.3s ease-out'
+  },
+  mensajeSuccess: {
+    backgroundColor: '#10b981',
+    color: '#ffffff'
+  },
+  mensajeError: {
+    backgroundColor: '#ef4444',
+    color: '#ffffff'
+  },
+  mensajeWarning: {
+    backgroundColor: '#f59e0b',
+    color: '#ffffff'
+  }
+};
+
+const styleSheet = `
+  .login-input:focus {
+    border-color: rgba(255, 215, 15, 1);
+    box-shadow: 0 0 0 3px rgba(255, 215, 15, 0.1);
+  }
+
+  .login-submit-button:hover:not(:disabled) {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 215, 15, 0.3);
+  }
+
+  .login-submit-button:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  .login-recuperar-button:hover {
+    color: #60a5fa;
+    background-color: rgba(147, 197, 253, 0.1);
+  }
+
+  .login-eye-icon:hover {
+    color: rgba(255, 215, 15, 1);
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @media (max-width: 480px) {
+    .login-box-responsive {
+      padding: 28px 24px;
+    }
+  }
+`;
 
 function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
-  // Estados
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [mensaje, setMensaje] = useState("");
@@ -18,7 +205,6 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const [mostrarRecuperar, setMostrarRecuperar] = useState(false);
 
-  // Validación de campos
   const validarCampos = () => {
     const errores = {};
     if (!username.trim()) errores.username = "⚠️ Usuario vacío";
@@ -34,7 +220,6 @@ function Login() {
     return true;
   };
 
-  // Manejo del login
   const handleLogin = async (e) => {
     e.preventDefault();
     if (!validarCampos()) return;
@@ -57,99 +242,138 @@ function Login() {
         if (!data.id) {
           setMensaje("❌ Error: no se recibió el ID del usuario");
           setTipoMensaje("error");
+          setLoading(false);
           return;
         }
-
-        // Guardar datos directamente
-        localStorage.setItem("usuarioId", data.id);
-        localStorage.setItem("usuarioNombre", data.usuario);
-        localStorage.setItem("rol", data.rol);
 
         setMensaje(`✅ Bienvenido ${data.usuario}`);
         setTipoMensaje("success");
 
-        // Manejo de rutas según rol
+        // Llamar a login del contexto
+        login(data);
+
+        // Navegar según el rol
         const rutas = {
-          Dueño: "/dueno",
-          Vendedor: "/vendedor",
-          Costurero: "/costurero",
-          Estampador: "/estampador",
+          'Dueño': '/dueno',
+          'Vendedor': '/vendedor',
+          'Costurero': '/costurero',
+          'Estampador': '/estampador'
         };
 
+        const rutaDestino = rutas[data.rol];
+
         setTimeout(() => {
-          if (rutas[data.rol]) navigate(rutas[data.rol]);
-          else {
-            setMensaje("❌ Rol no autorizado");
-            setTipoMensaje("error");
-          }
+          navigate(rutaDestino || '/', { replace: true });
+          setLoading(false);
         }, 1000);
+
       } else {
-        setMensaje("❌ Usuario incorrecto");
+        setMensaje("❌ Usuario o contraseña incorrectos");
         setTipoMensaje("error");
+        setLoading(false);
       }
     } catch (error) {
       setMensaje("⚠️ No se pudo conectar con el servidor");
       setTipoMensaje("warning");
       console.error("Error login:", error);
-    } finally {
       setLoading(false);
     }
   };
 
-  // Vista de recuperación de contraseña
   if (mostrarRecuperar) {
     return <Recuperar volverAlLogin={() => setMostrarRecuperar(false)} />;
   }
 
   return (
-    <div className="login-container">
-      <img src={logo} alt="Logo King Importados" className="logo" />
-      <div className="login-box">
-        <h1>Inicio de Sesión</h1>
+    <>
+      <style>{styleSheet}</style>
+      
+      <div 
+        style={{
+          ...styles.loginContainer,
+          backgroundImage: `url(${fondoImg})`
+        }}
+      >
+        <div style={styles.overlay}></div>
+        
+        <div style={styles.contentWrapper}>
+          <img src={logo} alt="Logo King Importados" style={styles.logo} />
+          
+          <div style={styles.loginBox} className="login-box-responsive">
+            <h1 style={styles.title}>Inicio de Sesión</h1>
 
-        <form onSubmit={handleLogin}>
-          <input
-            type="text"
-            placeholder="Usuario"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            aria-label="Usuario"
-            required
-          />
+            <form onSubmit={handleLogin} style={styles.form}>
+              <input
+                type="text"
+                placeholder="Usuario"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                aria-label="Usuario"
+                style={styles.input}
+                className="login-input"
+                required
+                disabled={loading}
+              />
 
-          <div className="input-container">
-            <input
-              type={showPassword ? "text" : "password"}
-              placeholder="Contraseña"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              aria-label="Contraseña"
-              required
-            />
-            <span
-              className="eye-icon"
-              onClick={() => setShowPassword(!showPassword)}
-              style={{ cursor: "pointer" }}
+              <div style={styles.inputContainer}>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Contraseña"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  aria-label="Contraseña"
+                  style={{...styles.input, paddingRight: '48px'}}
+                  className="login-input"
+                  required
+                  disabled={loading}
+                />
+                <span
+                  style={styles.eyeIcon}
+                  className="login-eye-icon"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
+                </span>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  ...styles.submitButton,
+                  ...(loading && styles.submitButtonDisabled)
+                }}
+                className="login-submit-button"
+              >
+                {loading ? "🔄 Ingresando..." : "Ingresar"}
+              </button>
+            </form>
+
+            <button
+              style={styles.recuperarButton}
+              className="login-recuperar-button"
+              onClick={() => setMostrarRecuperar(true)}
+              disabled={loading}
             >
-              {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
-            </span>
+              Recuperar Contraseña
+            </button>
+
+            {mensaje && (
+              <div
+                style={{
+                  ...styles.mensaje,
+                  ...(tipoMensaje === 'success' && styles.mensajeSuccess),
+                  ...(tipoMensaje === 'error' && styles.mensajeError),
+                  ...(tipoMensaje === 'warning' && styles.mensajeWarning)
+                }}
+              >
+                {mensaje}
+              </div>
+            )}
           </div>
-
-          <button type="submit" disabled={loading}>
-            {loading ? "🔄 Ingresando..." : "Ingresar"}
-          </button>
-        </form>
-
-        <button
-          className="recuperar"
-          onClick={() => setMostrarRecuperar(true)}
-        >
-          Recuperar Contraseña
-        </button>
-
-        {mensaje && <p className={`mensaje ${tipoMensaje}`}>{mensaje}</p>}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

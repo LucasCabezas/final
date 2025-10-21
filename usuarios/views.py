@@ -1,23 +1,23 @@
+# usuarios/views.py
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth.models import User, Group
 from django.contrib.auth import authenticate
+from django.db import transaction
 import logging
 
 logger = logging.getLogger(__name__)
 
-# Login ACTUALIZADO para usar Django Auth
+# ===== LOGIN =====
 class LoginView(APIView):
     def post(self, request):
         username = request.data.get("username")
         password = request.data.get("password")
 
-        # Intentar autenticar con Django
         user = authenticate(username=username, password=password)
         
         if user is not None:
-            # Usuario autenticado correctamente
             roles = [group.name for group in user.groups.all()]
             rol_nombre = roles[0] if roles else None
 
@@ -30,7 +30,7 @@ class LoginView(APIView):
         else:
             return Response({"error": "Credenciales incorrectas"}, status=status.HTTP_401_UNAUTHORIZED)
 
-# Validación de correo ACTUALIZADA
+# ===== VALIDACIÓN DE CORREO =====
 class ValidarCorreoView(APIView):
     def post(self, request):
         email = request.data.get("email")
@@ -43,68 +43,99 @@ class ValidarCorreoView(APIView):
         except User.DoesNotExist:
             return Response({"error": "Correo no registrado"}, status=404)
 
-# Roles por usuario ACTUALIZADO
-class RolesPorUsuarioView(APIView):
-    def get(self, request, usuario_id):
-        try:
-            user = User.objects.get(id=usuario_id)
-            roles = user.groups.all()
-            data = [{"rol_id": rol.id, "rol_nombre": rol.name} for rol in roles]
-            return Response(data)
-        except User.DoesNotExist:
-            return Response({"error": "Usuario no encontrado"}, status=404)
-
-# CRUD Usuarios ACTUALIZADO
+# ===== CRUD USUARIOS =====
 class UsuarioList(APIView):
     def get(self, request):
-        users = User.objects.all()
-        data = [{
-            "id": u.id,
-            "nombre": u.first_name,
-            "apellido": u.last_name,
-            "email": u.email,
-            "dni": u.perfil.dni if hasattr(u, 'perfil') else None
-        } for u in users]
+        users = User.objects.all().select_related('perfil').prefetch_related('groups')
+        data = []
+        
+        for u in users:
+            roles = [g.name for g in u.groups.all()]
+            data.append({
+                "id": u.id,
+                "nombre": u.first_name,
+                "apellido": u.last_name,
+                "email": u.email,
+                "dni": u.perfil.dni if hasattr(u, 'perfil') else None,
+                "rol": roles[0] if roles else None,
+                "rol_id": u.groups.first().id if u.groups.exists() else None
+            })
+        
         return Response(data)
 
     def post(self, request):
         try:
-            user = User.objects.create_user(
-                username=request.data.get('email'),
-                email=request.data.get('email'),
-                password=request.data.get('password'),
-                first_name=request.data.get('nombre'),
-                last_name=request.data.get('apellido')
-            )
+            # Validar que el DNI no exista
+            dni = request.data.get('dni')
+            if dni:
+                from .models import PerfilUsuario
+                if PerfilUsuario.objects.filter(dni=dni).exists():
+                    return Response(
+                        {"error": "Ya existe un usuario con este DNI"}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
             
-            if hasattr(user, 'perfil'):
-                user.perfil.dni = request.data.get('dni')
-                user.perfil.save()
+            # Validar que el email no exista
+            email = request.data.get('email')
+            if User.objects.filter(email=email).exists():
+                return Response(
+                    {"error": "Ya existe un usuario con este correo electrónico"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             
-            rol_id = request.data.get('rol_id')
-            if rol_id:
-                group = Group.objects.get(id=rol_id)
-                user.groups.add(group)
-            
-            return Response({
-                "id": user.id,
-                "nombre": user.first_name,
-                "apellido": user.last_name,
-                "email": user.email
-            }, status=201)
+            with transaction.atomic():
+                # Crear usuario
+                user = User.objects.create_user(
+                    username=email,  # Usamos el email como username
+                    email=email,
+                    password=request.data.get('password'),
+                    first_name=request.data.get('nombre', ''),
+                    last_name=request.data.get('apellido', '')
+                )
+                
+                # Asignar DNI al perfil
+                if dni and hasattr(user, 'perfil'):
+                    user.perfil.dni = dni
+                    user.perfil.save()
+                
+                # Asignar rol
+                rol_id = request.data.get('rol_id')
+                if rol_id:
+                    try:
+                        group = Group.objects.get(id=rol_id)
+                        user.groups.add(group)
+                    except Group.DoesNotExist:
+                        pass
+                
+                return Response({
+                    "id": user.id,
+                    "nombre": user.first_name,
+                    "apellido": user.last_name,
+                    "email": user.email,
+                    "dni": user.perfil.dni if hasattr(user, 'perfil') else None
+                }, status=status.HTTP_201_CREATED)
+                
         except Exception as e:
-            return Response({"error": str(e)}, status=400)
+            logger.error(f"Error al crear usuario: {str(e)}")
+            return Response(
+                {"error": f"Error al crear usuario: {str(e)}"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 class UsuarioDetail(APIView):
     def get(self, request, pk):
         try:
             user = User.objects.get(pk=pk)
+            roles = [g.name for g in user.groups.all()]
+            
             return Response({
                 "id": user.id,
                 "nombre": user.first_name,
                 "apellido": user.last_name,
                 "email": user.email,
-                "dni": user.perfil.dni if hasattr(user, 'perfil') else None
+                "dni": user.perfil.dni if hasattr(user, 'perfil') else None,
+                "rol": roles[0] if roles else None,
+                "rol_id": user.groups.first().id if user.groups.exists() else None
             })
         except User.DoesNotExist:
             return Response({"error": "Usuario no encontrado"}, status=404)
@@ -112,20 +143,53 @@ class UsuarioDetail(APIView):
     def put(self, request, pk):
         try:
             user = User.objects.get(pk=pk)
+            
+            # Actualizar campos básicos
             user.first_name = request.data.get('nombre', user.first_name)
             user.last_name = request.data.get('apellido', user.last_name)
-            user.email = request.data.get('email', user.email)
             
+            # Actualizar email si cambió
+            new_email = request.data.get('email')
+            if new_email and new_email != user.email:
+                if User.objects.filter(email=new_email).exclude(pk=pk).exists():
+                    return Response(
+                        {"error": "Ya existe un usuario con este correo electrónico"}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                user.email = new_email
+                user.username = new_email
+            
+            # Actualizar contraseña si se proporciona
             if request.data.get('password'):
                 user.set_password(request.data.get('password'))
             
             user.save()
             
-            if hasattr(user, 'perfil') and request.data.get('dni'):
-                user.perfil.dni = request.data.get('dni')
-                user.perfil.save()
+            # Actualizar DNI
+            if hasattr(user, 'perfil'):
+                new_dni = request.data.get('dni')
+                if new_dni and new_dni != user.perfil.dni:
+                    from .models import PerfilUsuario
+                    if PerfilUsuario.objects.filter(dni=new_dni).exclude(user=user).exists():
+                        return Response(
+                            {"error": "Ya existe un usuario con este DNI"}, 
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                    user.perfil.dni = new_dni
+                    user.perfil.save()
             
-            return Response({"message": "Usuario actualizado"})
+            # Actualizar rol
+            rol_id = request.data.get('rol_id')
+            if rol_id:
+                try:
+                    user.groups.clear()
+                    group = Group.objects.get(id=rol_id)
+                    user.groups.add(group)
+                except Group.DoesNotExist:
+                    pass
+            
+            return Response({"message": "Usuario actualizado exitosamente"})
+            
         except User.DoesNotExist:
             return Response({"error": "Usuario no encontrado"}, status=404)
 
@@ -137,61 +201,20 @@ class UsuarioDetail(APIView):
         except User.DoesNotExist:
             return Response({"error": "Usuario no encontrado"}, status=404)
 
-# CRUD Roles ACTUALIZADO
+# ===== ROLES/GRUPOS =====
 class RolList(APIView):
     def get(self, request):
         groups = Group.objects.all()
         data = [{"id": g.id, "nombre": g.name} for g in groups]
         return Response(data)
 
-    def post(self, request):
-        group, created = Group.objects.get_or_create(name=request.data.get('nombre'))
-        return Response({"id": group.id, "nombre": group.name}, status=201 if created else 200)
-
-class RolDetail(APIView):
-    def get(self, request, pk):
+# ===== ROLES POR USUARIO =====
+class RolesPorUsuarioView(APIView):
+    def get(self, request, usuario_id):
         try:
-            group = Group.objects.get(pk=pk)
-            return Response({"id": group.id, "nombre": group.name})
-        except Group.DoesNotExist:
-            return Response({"error": "Rol no encontrado"}, status=404)
-
-    def put(self, request, pk):
-        try:
-            group = Group.objects.get(pk=pk)
-            group.name = request.data.get('nombre', group.name)
-            group.save()
-            return Response({"id": group.id, "nombre": group.name})
-        except Group.DoesNotExist:
-            return Response({"error": "Rol no encontrado"}, status=404)
-
-    def delete(self, request, pk):
-        try:
-            group = Group.objects.get(pk=pk)
-            group.delete()
-            return Response(status=204)
-        except Group.DoesNotExist:
-            return Response({"error": "Rol no encontrado"}, status=404)
-
-# Asignar roles a usuarios
-class RolesXUsuariosList(APIView):
-    def post(self, request):
-        try:
-            user = User.objects.get(id=request.data.get('usuario_id'))
-            group = Group.objects.get(id=request.data.get('rol_id'))
-            user.groups.add(group)
-            return Response({"message": "Rol asignado"}, status=201)
-        except Exception as e:
-            return Response({"error": str(e)}, status=400)
-
-class RolesXUsuariosDetail(APIView):
-    def delete(self, request, pk):
-        # pk debería ser usuario_id y rol_id separados por guión
-        try:
-            usuario_id, rol_id = pk.split('-')
             user = User.objects.get(id=usuario_id)
-            group = Group.objects.get(id=rol_id)
-            user.groups.remove(group)
-            return Response(status=204)
-        except Exception as e:
-            return Response({"error": str(e)}, status=400)
+            roles = user.groups.all()
+            data = [{"rol_id": rol.id, "rol_nombre": rol.name} for rol in roles]
+            return Response(data)
+        except User.DoesNotExist:
+            return Response({"error": "Usuario no encontrado"}, status=404)
