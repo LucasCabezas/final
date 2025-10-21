@@ -5,6 +5,9 @@ from rest_framework import status
 from django.contrib.auth.models import User, Group
 from django.contrib.auth import authenticate
 from django.db import transaction
+from django.core.files.storage import default_storage
+from django.conf import settings
+import os
 import logging
 
 logger = logging.getLogger(__name__)
@@ -86,7 +89,7 @@ class UsuarioList(APIView):
             with transaction.atomic():
                 # Crear usuario
                 user = User.objects.create_user(
-                    username=email,  # Usamos el email como username
+                    username=email,
                     email=email,
                     password=request.data.get('password'),
                     first_name=request.data.get('nombre', ''),
@@ -128,14 +131,20 @@ class UsuarioDetail(APIView):
             user = User.objects.get(pk=pk)
             roles = [g.name for g in user.groups.all()]
             
+            # Obtener la URL de la foto de perfil si existe
+            foto_perfil_url = None
+            if hasattr(user, 'perfil') and user.perfil.foto_perfil:
+                foto_perfil_url = user.perfil.foto_perfil.url
+            
             return Response({
                 "id": user.id,
                 "nombre": user.first_name,
                 "apellido": user.last_name,
-                "email": user.email,
+                "correo": user.email,  # Cambiado de "email" a "correo"
                 "dni": user.perfil.dni if hasattr(user, 'perfil') else None,
                 "rol": roles[0] if roles else None,
-                "rol_id": user.groups.first().id if user.groups.exists() else None
+                "rol_id": user.groups.first().id if user.groups.exists() else None,
+                "foto_perfil": foto_perfil_url
             })
         except User.DoesNotExist:
             return Response({"error": "Usuario no encontrado"}, status=404)
@@ -149,7 +158,7 @@ class UsuarioDetail(APIView):
             user.last_name = request.data.get('apellido', user.last_name)
             
             # Actualizar email si cambió
-            new_email = request.data.get('email')
+            new_email = request.data.get('correo') or request.data.get('email')
             if new_email and new_email != user.email:
                 if User.objects.filter(email=new_email).exclude(pk=pk).exists():
                     return Response(
@@ -159,9 +168,51 @@ class UsuarioDetail(APIView):
                 user.email = new_email
                 user.username = new_email
             
-            # Actualizar contraseña si se proporciona
-            if request.data.get('password'):
-                user.set_password(request.data.get('password'))
+            # Validar y actualizar contraseña si se proporciona
+            contrasena_actual = request.data.get('contrasenaActual')
+            nueva_contrasena = request.data.get('nuevaContrasena')
+            
+            if nueva_contrasena:
+                # Verificar que la contraseña actual sea correcta
+                if not contrasena_actual:
+                    return Response(
+                        {"error": "Debe proporcionar la contraseña actual"}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                if not user.check_password(contrasena_actual):
+                    return Response(
+                        {"error": "La contraseña actual es incorrecta"}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                # Validar requisitos de la nueva contraseña
+                if len(nueva_contrasena) < 6:
+                    return Response(
+                        {"error": "La contraseña debe tener al menos 6 caracteres"}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                import re
+                if not re.search(r'[A-Z]', nueva_contrasena):
+                    return Response(
+                        {"error": "La contraseña debe contener al menos una mayúscula"}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                if not re.search(r'[a-z]', nueva_contrasena):
+                    return Response(
+                        {"error": "La contraseña debe contener al menos una minúscula"}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                if not re.search(r'\d', nueva_contrasena):
+                    return Response(
+                        {"error": "La contraseña debe contener al menos un número"}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                user.set_password(nueva_contrasena)
             
             user.save()
             
@@ -188,10 +239,23 @@ class UsuarioDetail(APIView):
                 except Group.DoesNotExist:
                     pass
             
-            return Response({"message": "Usuario actualizado exitosamente"})
+            # Devolver los datos actualizados
+            return Response({
+                "id": user.id,
+                "nombre": user.first_name,
+                "apellido": user.last_name,
+                "correo": user.email,
+                "message": "Usuario actualizado exitosamente"
+            })
             
         except User.DoesNotExist:
             return Response({"error": "Usuario no encontrado"}, status=404)
+        except Exception as e:
+            logger.error(f"Error al actualizar usuario: {str(e)}")
+            return Response(
+                {"error": f"Error al actualizar usuario: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def delete(self, request, pk):
         try:
@@ -200,6 +264,64 @@ class UsuarioDetail(APIView):
             return Response(status=204)
         except User.DoesNotExist:
             return Response({"error": "Usuario no encontrado"}, status=404)
+
+# 🆕 NUEVO: Endpoint para subir foto de perfil
+class UsuarioFotoView(APIView):
+    def post(self, request, pk):
+        try:
+            user = User.objects.get(pk=pk)
+            
+            if not hasattr(user, 'perfil'):
+                return Response(
+                    {"error": "El usuario no tiene un perfil asociado"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            foto = request.FILES.get('foto_perfil')
+            if not foto:
+                return Response(
+                    {"error": "No se proporcionó ninguna imagen"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Validar tipo de archivo
+            allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif']
+            if foto.content_type not in allowed_types:
+                return Response(
+                    {"error": "Tipo de archivo no permitido. Use JPG, PNG o GIF"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Validar tamaño (5MB máximo)
+            if foto.size > 5 * 1024 * 1024:
+                return Response(
+                    {"error": "La imagen debe ser menor a 5MB"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Eliminar foto anterior si existe
+            if user.perfil.foto_perfil:
+                old_photo_path = user.perfil.foto_perfil.path
+                if os.path.exists(old_photo_path):
+                    os.remove(old_photo_path)
+            
+            # Guardar nueva foto
+            user.perfil.foto_perfil = foto
+            user.perfil.save()
+            
+            return Response({
+                "message": "Foto de perfil actualizada exitosamente",
+                "foto_perfil": user.perfil.foto_perfil.url
+            })
+            
+        except User.DoesNotExist:
+            return Response({"error": "Usuario no encontrado"}, status=404)
+        except Exception as e:
+            logger.error(f"Error al subir foto: {str(e)}")
+            return Response(
+                {"error": f"Error al subir foto: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 # ===== ROLES/GRUPOS =====
 class RolList(APIView):

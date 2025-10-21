@@ -1,3 +1,4 @@
+# usuarios/models.py
 from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
@@ -7,6 +8,7 @@ from django.dispatch import receiver
 class PerfilUsuario(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='perfil')
     dni = models.BigIntegerField(null=True, blank=True)
+    foto_perfil = models.ImageField(upload_to='perfiles/', null=True, blank=True)  # 🆕 AGREGAR ESTE CAMPO
     
     def __str__(self):
         return f"Perfil de {self.user.get_full_name()} - DNI: {self.dni}"

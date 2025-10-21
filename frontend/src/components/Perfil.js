@@ -1,12 +1,14 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { FaArrowLeft, FaUpload } from "react-icons/fa";
+import { useState, useEffect } from "react";
+import { FaUpload, FaCheck, FaTimes } from "react-icons/fa";
 import Componente from "./componente";
+import { useAuth } from "../context/AuthContext";
 
 function Perfil() {
-  const navigate = useNavigate();
+  const { user, updateUser } = useAuth();
   const [profilePhoto, setProfilePhoto] = useState(null);
+  const [photoFile, setPhotoFile] = useState(null);
   const [isNavbarCollapsed, setIsNavbarCollapsed] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     nombre: "",
     apellido: "",
@@ -17,6 +19,94 @@ function Perfil() {
   });
   const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState("");
+  const [passwordRequirements, setPasswordRequirements] = useState({
+    minLength: false,
+    hasUpperCase: false,
+    hasLowerCase: false,
+    hasNumber: false,
+  });
+
+  // Cargar datos del usuario al montar el componente
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        if (!user) {
+          setLoading(false);
+          return;
+        }
+
+        console.log("📥 Cargando datos del usuario:", user);
+
+        // Intentar cargar datos completos desde la API
+        try {
+          const apiUrl = `http://localhost:8000/api/usuarios/usuarios/${user.id}/`;
+          console.log(`🔍 Intentando cargar desde: ${apiUrl}`);
+          const response = await fetch(apiUrl);
+          
+          console.log("📡 Respuesta del servidor:", response.status, response.statusText);
+          
+          if (response.ok) {
+            const userData = await response.json();
+            console.log("✅ Datos del usuario cargados desde API:", userData);
+            
+            setFormData({
+              nombre: userData.nombre || user.nombre || "",
+              apellido: userData.apellido || "",
+              correo: userData.correo || "",
+              contrasenaActual: "",
+              nuevaContrasena: "",
+              confirmarContrasena: "",
+            });
+
+            // Si el usuario tiene foto de perfil, cargarla
+            if (userData.foto_perfil) {
+              setProfilePhoto(`http://localhost:8000${userData.foto_perfil}`);
+            }
+          } else {
+            const errorText = await response.text();
+            console.error("❌ Error del servidor:", response.status, errorText.substring(0, 200));
+            
+            // Si falla la API, usar los datos del contexto
+            console.log("⚠️ No se pudieron cargar datos desde la API, usando datos del contexto");
+            setFormData({
+              nombre: user.nombre || "",
+              apellido: user.apellido || "",
+              correo: user.correo || "",
+              contrasenaActual: "",
+              nuevaContrasena: "",
+              confirmarContrasena: "",
+            });
+            
+            if (user.foto_perfil) {
+              setProfilePhoto(`http://localhost:8000${user.foto_perfil}`);
+            }
+          }
+        } catch (apiError) {
+          console.error("⚠️ Error al conectar con la API:", apiError);
+          setFormData({
+            nombre: user.nombre || "",
+            apellido: user.apellido || "",
+            correo: user.correo || "",
+            contrasenaActual: "",
+            nuevaContrasena: "",
+            confirmarContrasena: "",
+          });
+          
+          if (user.foto_perfil) {
+            setProfilePhoto(`http://localhost:8000${user.foto_perfil}`);
+          }
+        }
+
+        setLoading(false);
+      } catch (error) {
+        console.error("❌ Error al cargar datos del usuario:", error);
+        setErrors({ general: "Error al cargar los datos del perfil" });
+        setLoading(false);
+      }
+    };
+
+    loadUserData();
+  }, [user]);
 
   const handleNavbarToggle = (collapsed) => {
     setIsNavbarCollapsed(collapsed);
@@ -25,11 +115,31 @@ function Perfil() {
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      // Validar tamaño de archivo (máximo 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setErrors({ ...errors, photo: "La imagen debe ser menor a 5MB" });
+        return;
+      }
+
+      // Validar tipo de archivo
+      if (!file.type.startsWith("image/")) {
+        setErrors({ ...errors, photo: "El archivo debe ser una imagen" });
+        return;
+      }
+
+      setPhotoFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setProfilePhoto(reader.result);
       };
       reader.readAsDataURL(file);
+      
+      // Limpiar error de foto si existía
+      if (errors.photo) {
+        const newErrors = { ...errors };
+        delete newErrors.photo;
+        setErrors(newErrors);
+      }
     }
   };
 
@@ -39,12 +149,27 @@ function Perfil() {
       ...prev,
       [name]: value,
     }));
+
+    // Validar requisitos de contraseña en tiempo real
+    if (name === "nuevaContrasena") {
+      validatePasswordRequirements(value);
+    }
+
     if (errors[name]) {
       setErrors((prev) => ({
         ...prev,
         [name]: "",
       }));
     }
+  };
+
+  const validatePasswordRequirements = (password) => {
+    setPasswordRequirements({
+      minLength: password.length >= 6,
+      hasUpperCase: /[A-Z]/.test(password),
+      hasLowerCase: /[a-z]/.test(password),
+      hasNumber: /\d/.test(password),
+    });
   };
 
   const validateForm = () => {
@@ -62,15 +187,24 @@ function Perfil() {
       newErrors.correo = "El correo no es válido";
     }
 
+    // Validación de contraseña mejorada
     if (formData.nuevaContrasena || formData.contrasenaActual || formData.confirmarContrasena) {
       if (!formData.contrasenaActual) {
         newErrors.contrasenaActual = "La contraseña actual es requerida";
       }
       if (!formData.nuevaContrasena) {
         newErrors.nuevaContrasena = "La nueva contraseña es requerida";
-      }
-      if (formData.nuevaContrasena.length < 8) {
-        newErrors.nuevaContrasena = "La contraseña debe tener al menos 8 caracteres";
+      } else {
+        // Validar todos los requisitos de contraseña
+        if (formData.nuevaContrasena.length < 6) {
+          newErrors.nuevaContrasena = "La contraseña debe tener al menos 6 caracteres";
+        } else if (!/[A-Z]/.test(formData.nuevaContrasena)) {
+          newErrors.nuevaContrasena = "La contraseña debe contener al menos una mayúscula";
+        } else if (!/[a-z]/.test(formData.nuevaContrasena)) {
+          newErrors.nuevaContrasena = "La contraseña debe contener al menos una minúscula";
+        } else if (!/\d/.test(formData.nuevaContrasena)) {
+          newErrors.nuevaContrasena = "La contraseña debe contener al menos un número";
+        }
       }
       if (formData.nuevaContrasena !== formData.confirmarContrasena) {
         newErrors.confirmarContrasena = "Las contraseñas no coinciden";
@@ -90,27 +224,107 @@ function Perfil() {
     }
 
     try {
-      console.log("Datos a enviar:", formData);
+      setLoading(true);
+      console.log("💾 Guardando cambios del perfil...");
+
+      // Preparar datos para enviar
+      const updateData = {
+        nombre: formData.nombre,
+        apellido: formData.apellido,
+        correo: formData.correo,
+      };
+
+      // Si hay cambio de contraseña
+      if (formData.nuevaContrasena) {
+        updateData.contrasenaActual = formData.contrasenaActual;
+        updateData.nuevaContrasena = formData.nuevaContrasena;
+      }
+
+      // Actualizar información del usuario
+      console.log(`📤 Enviando datos a: http://localhost:8000/api/usuarios/usuarios/${user.id}/`);
+      console.log("📦 Datos a enviar:", updateData);
       
+      const response = await fetch(`http://localhost:8000/api/usuarios/usuarios/${user.id}/`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updateData),
+      });
+
+      console.log("📡 Respuesta:", response.status, response.statusText);
+
+      if (!response.ok) {
+        const contentType = response.headers.get("content-type");
+        console.log("📋 Content-Type:", contentType);
+        
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || errorData.message || "Error al actualizar el perfil");
+        } else {
+          const errorText = await response.text();
+          console.error("❌ Respuesta del servidor (HTML):", errorText.substring(0, 300));
+          throw new Error(`El servidor devolvió un error (${response.status}). Verifica que el endpoint existe.`);
+        }
+      }
+
+      const updatedUserData = await response.json();
+      console.log("✅ Perfil actualizado:", updatedUserData);
+
+      // Si hay una nueva foto, subirla
+      if (photoFile) {
+        console.log("📸 Subiendo foto de perfil...");
+        const formDataPhoto = new FormData();
+        formDataPhoto.append("foto_perfil", photoFile);
+
+        const photoResponse = await fetch(`http://localhost:8000/api/usuarios/usuarios/${user.id}/foto/`, {
+          method: "POST",
+          body: formDataPhoto,
+        });
+
+        if (!photoResponse.ok) {
+          throw new Error("Error al subir la foto de perfil");
+        }
+
+        const photoData = await photoResponse.json();
+        console.log("✅ Foto subida correctamente");
+        
+        // Actualizar la foto en el estado
+        if (photoData.foto_perfil) {
+          updatedUserData.foto_perfil = photoData.foto_perfil;
+        }
+      }
+
+      // Actualizar el contexto de autenticación con los nuevos datos
+      updateUser(updatedUserData);
+
       setSuccessMessage("✅ Cambios guardados exitosamente");
       setTimeout(() => {
         setSuccessMessage("");
       }, 3000);
 
+      // Limpiar campos de contraseña
       setFormData((prev) => ({
         ...prev,
         contrasenaActual: "",
         nuevaContrasena: "",
         confirmarContrasena: "",
       }));
-    } catch (error) {
-      console.error("Error al guardar cambios:", error);
-      setErrors({ general: "Error al guardar los cambios" });
-    }
-  };
 
-  const handleVolver = () => {
-    navigate("/Dueno");
+      setPasswordRequirements({
+        minLength: false,
+        hasUpperCase: false,
+        hasLowerCase: false,
+        hasNumber: false,
+      });
+
+      setPhotoFile(null);
+      setLoading(false);
+    } catch (error) {
+      console.error("❌ Error al guardar cambios:", error);
+      setErrors({ general: error.message || "Error al guardar los cambios" });
+      setLoading(false);
+    }
   };
 
   const styles = {
@@ -134,19 +348,6 @@ function Perfil() {
       alignItems: "center",
       marginBottom: "30px",
       gap: "15px",
-    },
-    backButton: {
-      background: "rgba(255, 215, 15, 0.1)",
-      border: "1px solid rgba(255, 215, 15, 0.3)",
-      color: "rgba(255, 215, 15, 1)",
-      padding: "10px 15px",
-      borderRadius: "8px",
-      cursor: "pointer",
-      fontSize: "16px",
-      transition: "all 0.3s ease",
-      display: "flex",
-      alignItems: "center",
-      gap: "8px",
     },
     title: {
       fontSize: "28px",
@@ -242,10 +443,26 @@ function Perfil() {
       fontSize: "12px",
       marginTop: "5px",
     },
-    passwordHint: {
+    passwordRequirements: {
+      marginTop: "10px",
+      padding: "12px",
+      background: "rgba(255, 255, 255, 0.03)",
+      borderRadius: "6px",
+      border: "1px solid rgba(255, 215, 15, 0.1)",
+    },
+    requirementItem: {
+      display: "flex",
+      alignItems: "center",
+      gap: "8px",
       fontSize: "12px",
+      marginBottom: "6px",
       color: "#999",
-      marginTop: "5px",
+    },
+    requirementMet: {
+      color: "#22c55e",
+    },
+    requirementNotMet: {
+      color: "#ef4444",
     },
     buttonContainer: {
       display: "flex",
@@ -254,17 +471,6 @@ function Perfil() {
       marginTop: "40px",
       paddingTop: "30px",
       borderTop: "1px solid rgba(255, 215, 15, 0.2)",
-    },
-    volverButton: {
-      background: "rgba(100, 100, 100, 0.2)",
-      color: "#ccc",
-      border: "1px solid rgba(100, 100, 100, 0.3)",
-      padding: "12px 30px",
-      borderRadius: "8px",
-      fontSize: "15px",
-      fontWeight: "600",
-      cursor: "pointer",
-      transition: "all 0.3s ease",
     },
     guardarButton: {
       background: "rgba(255, 215, 15, 1)",
@@ -276,6 +482,7 @@ function Perfil() {
       fontWeight: "600",
       cursor: "pointer",
       transition: "all 0.3s ease",
+      opacity: loading ? 0.6 : 1,
     },
     successMessage: {
       background: "rgba(34, 197, 94, 0.1)",
@@ -295,7 +502,27 @@ function Perfil() {
       marginBottom: "20px",
       fontSize: "14px",
     },
+    loadingOverlay: {
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: "rgba(0, 0, 0, 0.7)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 9999,
+    },
   };
+
+  if (loading && !user) {
+    return (
+      <div style={styles.loadingOverlay}>
+        <div style={{ color: "#fff", fontSize: "18px" }}>Cargando perfil...</div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -317,18 +544,24 @@ function Perfil() {
                 <div style={{ color: "rgba(255, 215, 15, 0.5)", fontSize: "40px" }}>👤</div>
               )}
             </div>
-            <label style={styles.uploadLabel}>
-              <FaUpload /> Cambiar Foto
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoChange}
-                style={{ display: "none" }}
-              />
-            </label>
+            <div>
+              <label style={styles.uploadLabel}>
+                <FaUpload /> Cambiar Foto
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoChange}
+                  style={{ display: "none" }}
+                />
+              </label>
+              {errors.photo && <div style={styles.errorMessage}>{errors.photo}</div>}
+              <div style={{ fontSize: "11px", color: "#666", marginTop: "5px" }}>
+                Máximo 5MB (JPG, PNG, GIF)
+              </div>
+            </div>
           </div>
 
-          <form onSubmit={handleGuardarCambios}>
+          <div onSubmit={handleGuardarCambios}>
             <div style={styles.section}>
               <h2 style={styles.sectionTitle}>Información Personal</h2>
               <div style={styles.formGrid}>
@@ -426,8 +659,49 @@ function Perfil() {
                   {errors.nuevaContrasena && (
                     <span style={styles.errorMessage}>{errors.nuevaContrasena}</span>
                   )}
-                  {!errors.nuevaContrasena && formData.nuevaContrasena && (
-                    <span style={styles.passwordHint}>✓ Contraseña válida</span>
+                  
+                  {formData.nuevaContrasena && (
+                    <div style={styles.passwordRequirements}>
+                      <div style={{ fontSize: "12px", fontWeight: "600", color: "#ccc", marginBottom: "8px" }}>
+                        Requisitos de contraseña:
+                      </div>
+                      <div
+                        style={{
+                          ...styles.requirementItem,
+                          ...(passwordRequirements.minLength ? styles.requirementMet : styles.requirementNotMet),
+                        }}
+                      >
+                        {passwordRequirements.minLength ? <FaCheck /> : <FaTimes />}
+                        <span>Mínimo 6 caracteres</span>
+                      </div>
+                      <div
+                        style={{
+                          ...styles.requirementItem,
+                          ...(passwordRequirements.hasUpperCase ? styles.requirementMet : styles.requirementNotMet),
+                        }}
+                      >
+                        {passwordRequirements.hasUpperCase ? <FaCheck /> : <FaTimes />}
+                        <span>Al menos una letra mayúscula</span>
+                      </div>
+                      <div
+                        style={{
+                          ...styles.requirementItem,
+                          ...(passwordRequirements.hasLowerCase ? styles.requirementMet : styles.requirementNotMet),
+                        }}
+                      >
+                        {passwordRequirements.hasLowerCase ? <FaCheck /> : <FaTimes />}
+                        <span>Al menos una letra minúscula</span>
+                      </div>
+                      <div
+                        style={{
+                          ...styles.requirementItem,
+                          ...(passwordRequirements.hasNumber ? styles.requirementMet : styles.requirementNotMet),
+                        }}
+                      >
+                        {passwordRequirements.hasNumber ? <FaCheck /> : <FaTimes />}
+                        <span>Al menos un número</span>
+                      </div>
+                    </div>
                   )}
                 </div>
                 <div style={styles.formGroup}>
@@ -452,21 +726,27 @@ function Perfil() {
 
             <div style={styles.buttonContainer}>
               <button
-                type="submit"
+                type="button"
+                disabled={loading}
+                onClick={handleGuardarCambios}
                 style={styles.guardarButton}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "rgba(255, 215, 15, 0.9)";
-                  e.currentTarget.style.transform = "translateY(-2px)";
+                  if (!loading) {
+                    e.currentTarget.style.background = "rgba(255, 215, 15, 0.9)";
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "rgba(255, 215, 15, 1)";
-                  e.currentTarget.style.transform = "translateY(0)";
+                  if (!loading) {
+                    e.currentTarget.style.background = "rgba(255, 215, 15, 1)";
+                    e.currentTarget.style.transform = "translateY(0)";
+                  }
                 }}
               >
-                Guardar Cambios
+                {loading ? "Guardando..." : "Guardar Cambios"}
               </button>
             </div>
-          </form>
+          </div>
         </div>
       </div>
     </>

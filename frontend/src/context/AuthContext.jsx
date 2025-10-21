@@ -55,8 +55,29 @@ export const AuthProvider = ({ children }) => {
     
     setUser(newUser);
     console.log("✅ Estado de usuario actualizado:", newUser);
+  };
+
+  // 🆕 Nueva función para actualizar el perfil del usuario
+  const updateUser = (userData) => {
+    console.log("🔄 AuthContext - Actualizando perfil del usuario:", userData);
     
-    // ✅ NO navegamos aquí, lo hace el componente Login
+    // Actualizar localStorage si hay cambios en nombre
+    if (userData.nombre || userData.usuario) {
+      localStorage.setItem('usuarioNombre', userData.nombre || userData.usuario);
+    }
+    
+    // Actualizar estado manteniendo el rol
+    const updatedUser = {
+      ...user,
+      nombre: userData.nombre || userData.usuario || user.nombre,
+      // Agregar campos adicionales si vienen en la respuesta
+      apellido: userData.apellido,
+      correo: userData.correo,
+      foto_perfil: userData.foto_perfil
+    };
+    
+    setUser(updatedUser);
+    console.log("✅ Perfil de usuario actualizado:", updatedUser);
   };
 
   const logout = () => {
@@ -65,8 +86,6 @@ export const AuthProvider = ({ children }) => {
     
     // Limpiar estado
     setUser(null);
-    
-    // ✅ NO navegamos aquí, lo hace el componente que llama logout
   };
 
   const isAuthenticated = () => {
@@ -86,6 +105,7 @@ export const AuthProvider = ({ children }) => {
     loading,
     login,
     logout,
+    updateUser, // 🆕 Agregar la nueva función
     isAuthenticated,
     hasRole
   };
