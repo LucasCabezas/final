@@ -6,6 +6,8 @@ import ProtectedRoute from "./components/ProtectedRoute";
 
 // Componentes
 import Login from "./components/Login";
+import Recuperar from "./components/Recuperar";
+import RestaurarContraseña from "./components/RestaurarContraseña";
 import Dueno from "./components/Dueno";
 import GestionUsuarios from "./components/AgregarUsuario";
 import RealizarPedido from "./components/RealizarPedido";
@@ -18,9 +20,11 @@ function App() {
     <AuthProvider>
       <Routes>
         {/* ============================================ */}
-        {/* RUTA PÚBLICA - LOGIN */}
+        {/* RUTAS PÚBLICAS - LOGIN Y RECUPERACIÓN */}
         {/* ============================================ */}
         <Route path="/" element={<Login />} />
+        <Route path="/recuperar-contrasena" element={<Recuperar />} />
+        <Route path="/reset-password" element={<RestaurarContraseña />} />
 
         {/* ============================================ */}
         {/* RUTAS PROTEGIDAS SOLO PARA DUEÑO */}

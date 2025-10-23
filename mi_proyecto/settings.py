@@ -125,9 +125,39 @@ STATICFILES_DIRS = [
 CORS_ALLOW_ALL_ORIGINS = True
 
 # ---------------------------------------------------
+# 📧 Configuración de Email - MODO PRUEBA (CONSOLA)
+# ---------------------------------------------------
+# ⚠️ CONFIGURACIÓN TEMPORAL PARA DESARROLLO
+# El email se mostrará en la consola de Django en lugar de enviarse
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'noreply@kingimportados.com'
+
+# 💾 CONFIGURACIÓN DE GMAIL PARA PRODUCCIÓN (COMENTADA)
+# Descomenta estas líneas cuando quieras enviar emails reales
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = 'smtp.gmail.com'
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_HOST_USER = 'eliosuffikpo@gmail.com'
+# EMAIL_HOST_PASSWORD = 'uylz ahde vptx ccty'
+# DEFAULT_FROM_EMAIL = 'eliosuffikpo@gmail.com'
+
+# ---------------------------------------------------
+# 🔐 Configuración JWT para recuperación de contraseña
+# ---------------------------------------------------
+JWT_SECRET_KEY = SECRET_KEY  # Usa la SECRET_KEY existente
+JWT_ALGORITHM = 'HS256'
+JWT_PASSWORD_RESET_TOKEN_EXPIRY = 30  # Minutos de expiración del token
+
+# ---------------------------------------------------
+# 🌐 URL del Frontend (para el link de recuperación)
+# ---------------------------------------------------
+FRONTEND_URL = 'http://localhost:3000'  # Cambia esto en producción a tu dominio real
+
+# ---------------------------------------------------
 # 🧠 Logs
 # ---------------------------------------------------
-LOGGING = {  # ✅ CORREGIDO (antes tenías "LLOGGING")
+LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "handlers": {

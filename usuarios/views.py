@@ -2,13 +2,21 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
 from django.contrib.auth.models import User, Group
 from django.contrib.auth import authenticate
 from django.db import transaction
 from django.core.files.storage import default_storage
+from django.core.mail import send_mail
 from django.conf import settings
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
 import os
 import logging
+
+from .serializers import PasswordResetRequestSerializer, PasswordResetConfirmSerializer
+from .utils import generate_password_reset_token, verify_password_reset_token
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +151,7 @@ class UsuarioDetail(APIView):
                 "correo": user.email,  # Cambiado de "email" a "correo"
                 "dni": user.perfil.dni if hasattr(user, 'perfil') else None,
                 "rol": roles[0] if roles else None,
-                "rol_id": user.groups.first().id if user.groups.exists() else None,
+                "rol_id": user.groups.first().id if u.groups.exists() else None,
                 "foto_perfil": foto_perfil_url
             })
         except User.DoesNotExist:
@@ -340,3 +348,134 @@ class RolesPorUsuarioView(APIView):
             return Response(data)
         except User.DoesNotExist:
             return Response({"error": "Usuario no encontrado"}, status=404)
+
+
+# ========================================
+# 🔐 RECUPERACIÓN DE CONTRASEÑA
+# ========================================
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def password_reset_request(request):
+    """
+    Endpoint para solicitar recuperación de contraseña.
+    Recibe un email y envía un correo con el link de recuperación.
+    """
+    serializer = PasswordResetRequestSerializer(data=request.data)
+    
+    if serializer.is_valid():
+        email = serializer.validated_data['email'].lower()
+        
+        try:
+            user = User.objects.get(email__iexact=email)
+            
+            # Generar token JWT
+            token = generate_password_reset_token(user)
+            
+            # Crear URL de recuperación
+            reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
+            
+            # Contexto para el template del email
+            context = {
+                'user': user,
+                'reset_url': reset_url,
+                'expiry_minutes': settings.JWT_PASSWORD_RESET_TOKEN_EXPIRY
+            }
+            
+            # Renderizar el email HTML
+            html_message = render_to_string('emails/password_reset.html', context)
+            plain_message = strip_tags(html_message)
+            
+            # Enviar email
+            send_mail(
+                subject='Recuperación de Contraseña - King Importados',
+                message=plain_message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
+                html_message=html_message,
+                fail_silently=False,
+            )
+            
+            logger.info(f"Email de recuperación enviado a: {email}")
+            
+            return Response({
+                'message': 'Se ha enviado un correo con las instrucciones para recuperar tu contraseña.'
+            }, status=status.HTTP_200_OK)
+            
+        except User.DoesNotExist:
+            # Por seguridad, retornamos el mismo mensaje aunque el usuario no exista
+            # Esto evita que alguien pueda verificar qué emails están registrados
+            logger.warning(f"Intento de recuperación con email no registrado: {email}")
+            return Response({
+                'message': 'Se ha enviado un correo con las instrucciones para recuperar tu contraseña.'
+            }, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            logger.error(f"Error al enviar email de recuperación: {str(e)}")
+            return Response({
+                'error': 'Hubo un error al enviar el correo. Por favor, inténtalo más tarde.'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def password_reset_confirm(request):
+    """
+    Endpoint para confirmar el cambio de contraseña.
+    Recibe el token y la nueva contraseña.
+    """
+    serializer = PasswordResetConfirmSerializer(data=request.data)
+    
+    if serializer.is_valid():
+        token = serializer.validated_data['token']
+        new_password = serializer.validated_data['new_password']
+        
+        # Verificar token
+        user = verify_password_reset_token(token)
+        
+        if user is None:
+            return Response({
+                'error': 'El token es inválido o ha expirado.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Cambiar la contraseña
+        user.set_password(new_password)
+        user.save()
+        
+        logger.info(f"Contraseña actualizada correctamente para usuario: {user.email}")
+        
+        return Response({
+            'message': 'Tu contraseña ha sido actualizada correctamente.'
+        }, status=status.HTTP_200_OK)
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def verify_reset_token(request):
+    """
+    Endpoint opcional para verificar si un token es válido antes de mostrar el formulario.
+    """
+    token = request.query_params.get('token')
+    
+    if not token:
+        return Response({
+            'valid': False,
+            'error': 'Token no proporcionado.'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    user = verify_password_reset_token(token)
+    
+    if user:
+        return Response({
+            'valid': True,
+            'email': user.email
+        }, status=status.HTTP_200_OK)
+    else:
+        return Response({
+            'valid': False,
+            'error': 'El token es inválido o ha expirado.'
+        }, status=status.HTTP_400_BAD_REQUEST)
