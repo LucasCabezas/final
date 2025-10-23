@@ -4,6 +4,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
+
 // Componentes
 import Login from "./components/Login";
 import Recuperar from "./components/Recuperar";
@@ -14,6 +15,12 @@ import RealizarPedido from "./components/RealizarPedido";
 import Insumos from "./components/Insumos";
 import Prendas from "./components/Prendas";
 import Perfil from "./components/Perfil";
+import Vendedor from "./components/Vendedor";
+import Costurero from "./components/Costurero"; 
+import AprobacionPedidos from "./components/AprobacionPedidos";
+import Estampador from "./components/Estampador";
+
+
 
 function App() {
   return (
@@ -89,8 +96,8 @@ function App() {
         <Route
           path="/aprobacion-pedidos"
           element={
-            <ProtectedRoute allowedRoles={['Dueño']}>
-              <RealizarPedido />
+            <ProtectedRoute allowedRoles={['Dueño', 'Costurero','Estampador']}>
+              < AprobacionPedidos />
             </ProtectedRoute>
           }
         />
@@ -104,7 +111,7 @@ function App() {
           path="/vendedor"
           element={
             <ProtectedRoute allowedRoles={['Vendedor']}>
-              <RealizarPedido />
+              <Vendedor />
             </ProtectedRoute>
           }
         />
@@ -114,7 +121,7 @@ function App() {
           path="/costurero"
           element={
             <ProtectedRoute allowedRoles={['Costurero']}>
-              <Insumos />
+              <Costurero />
             </ProtectedRoute>
           }
         />
@@ -124,7 +131,7 @@ function App() {
           path="/estampador"
           element={
             <ProtectedRoute allowedRoles={['Estampador']}>
-              <Prendas />
+              <Estampador />
             </ProtectedRoute>
           }
         />
