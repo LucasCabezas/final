@@ -51,8 +51,8 @@ function Perfil() {
             
             setFormData({
               nombre: userData.nombre || user.nombre || "",
-              apellido: userData.apellido || "",
-              correo: userData.correo || "",
+              apellido: userData.apellido || user.apellido || "",
+              correo: userData.correo || user.correo || "",
               contrasenaActual: "",
               nuevaContrasena: "",
               confirmarContrasena: "",
@@ -61,6 +61,8 @@ function Perfil() {
             // Si el usuario tiene foto de perfil, cargarla
             if (userData.foto_perfil) {
               setProfilePhoto(`http://localhost:8000${userData.foto_perfil}`);
+            } else if (user.foto_perfil) {
+              setProfilePhoto(`http://localhost:8000${user.foto_perfil}`);
             }
           } else {
             const errorText = await response.text();
@@ -287,16 +289,42 @@ function Perfil() {
         }
 
         const photoData = await photoResponse.json();
-        console.log("✅ Foto subida correctamente");
+        console.log("✅ Foto subida correctamente:", photoData);
         
-        // Actualizar la foto en el estado
+        // Actualizar la foto en el estado y en los datos actualizados
         if (photoData.foto_perfil) {
           updatedUserData.foto_perfil = photoData.foto_perfil;
+          setProfilePhoto(`http://localhost:8000${photoData.foto_perfil}`);
         }
       }
 
-      // Actualizar el contexto de autenticación con los nuevos datos
-      updateUser(updatedUserData);
+      // ✅ CORRECCIÓN PRINCIPAL: Asegurar que todos los datos se actualicen en el contexto
+      // Crear un objeto con todos los datos del usuario, incluyendo los que no cambiaron
+      const completeUserData = {
+        ...user, // Mantener todos los datos existentes del usuario
+        id: user.id, // Asegurar que el ID se mantenga
+        nombre: updatedUserData.nombre || formData.nombre,
+        apellido: updatedUserData.apellido || formData.apellido,
+        correo: updatedUserData.correo || formData.correo,
+        foto_perfil: updatedUserData.foto_perfil || user.foto_perfil,
+      };
+
+      console.log("🔄 Actualizando contexto con:", completeUserData);
+      
+      // Actualizar el contexto de autenticación con los datos completos
+      updateUser(completeUserData);
+      
+      // También actualizar localStorage para persistencia
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const userObj = JSON.parse(storedUser);
+        const updatedStoredUser = {
+          ...userObj,
+          ...completeUserData
+        };
+        localStorage.setItem('user', JSON.stringify(updatedStoredUser));
+        console.log("💾 Usuario actualizado en localStorage:", updatedStoredUser);
+      }
 
       setSuccessMessage("✅ Cambios guardados exitosamente");
       setTimeout(() => {
@@ -348,59 +376,84 @@ function Perfil() {
       alignItems: "center",
       marginBottom: "30px",
       gap: "15px",
+      paddingBottom: "20px",
+      borderBottom: "1px solid rgba(255, 215, 15, 0.2)",
     },
     title: {
       fontSize: "28px",
-      fontWeight: "bold",
-      color: "#fff",
+      fontWeight: "700",
+      color: "#FFD70F",
       margin: 0,
     },
-    photoSection: {
+    subtitle: {
+      fontSize: "14px",
+      color: "#999",
+      marginTop: "5px",
+    },
+    profilePhotoSection: {
       display: "flex",
       alignItems: "center",
       gap: "20px",
-      marginBottom: "40px",
-      paddingBottom: "30px",
-      borderBottom: "1px solid rgba(255, 215, 15, 0.2)",
+      padding: "30px",
+      background: "rgba(30, 30, 30, 0.5)",
+      borderRadius: "10px",
+      marginBottom: "30px",
+      border: "1px solid rgba(255, 215, 15, 0.1)",
     },
     photoContainer: {
       position: "relative",
-      width: "100px",
-      height: "100px",
+      width: "120px",
+      height: "120px",
       borderRadius: "50%",
+      border: "3px solid rgba(255, 215, 15, 0.3)",
+      overflow: "hidden",
       background: "rgba(255, 215, 15, 0.1)",
-      border: "2px solid rgba(255, 215, 15, 0.3)",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      overflow: "hidden",
     },
-    photo: {
+    profileImage: {
       width: "100%",
       height: "100%",
       objectFit: "cover",
-      borderRadius: "50%",
     },
-    uploadLabel: {
-      cursor: "pointer",
-      background: "rgba(255, 215, 15, 0.1)",
-      border: "1px solid rgba(255, 215, 15, 0.3)",
-      color: "rgba(255, 215, 15, 1)",
-      padding: "10px 15px",
-      borderRadius: "8px",
-      transition: "all 0.3s ease",
-      display: "flex",
+    placeholderText: {
+      fontSize: "48px",
+      color: "#FFD70F",
+      fontWeight: "700",
+    },
+    photoInfo: {
+      flex: 1,
+    },
+    photoTitle: {
+      fontSize: "18px",
+      fontWeight: "600",
+      color: "#fff",
+      marginBottom: "10px",
+    },
+    uploadButton: {
+      display: "inline-flex",
       alignItems: "center",
       gap: "8px",
+      padding: "10px 20px",
+      background: "rgba(255, 215, 15, 0.1)",
+      color: "#FFD70F",
+      border: "1px solid rgba(255, 215, 15, 0.3)",
+      borderRadius: "8px",
+      fontSize: "14px",
+      fontWeight: "500",
+      cursor: "pointer",
+      transition: "all 0.3s ease",
+      marginBottom: "10px",
     },
     section: {
       marginBottom: "30px",
     },
     sectionTitle: {
-      fontSize: "18px",
-      fontWeight: "bold",
-      color: "#fff",
-      marginBottom: "15px",
+      fontSize: "20px",
+      fontWeight: "600",
+      color: "#FFD70F",
+      marginBottom: "20px",
       paddingBottom: "10px",
       borderBottom: "1px solid rgba(255, 215, 15, 0.2)",
     },
@@ -417,37 +470,46 @@ function Perfil() {
     formGroup: {
       display: "flex",
       flexDirection: "column",
+      gap: "8px",
     },
     label: {
       fontSize: "14px",
-      fontWeight: "600",
+      fontWeight: "500",
       color: "#ccc",
-      marginBottom: "8px",
     },
     input: {
-      padding: "12px",
-      background: "rgba(255, 255, 255, 0.05)",
+      padding: "12px 15px",
+      background: "rgba(30, 30, 30, 0.8)",
       border: "1px solid rgba(255, 215, 15, 0.2)",
       borderRadius: "8px",
-      color: "#fff",
       fontSize: "14px",
+      color: "#fff",
       transition: "all 0.3s ease",
-      fontFamily: "inherit",
+      outline: "none",
     },
     inputError: {
-      borderColor: "rgba(239, 68, 68, 0.5)",
-      background: "rgba(239, 68, 68, 0.05)",
+      borderColor: "#ff4444",
     },
     errorMessage: {
-      color: "#ef4444",
       fontSize: "12px",
+      color: "#ff4444",
       marginTop: "5px",
     },
+    successMessage: {
+      padding: "15px",
+      background: "rgba(76, 175, 80, 0.1)",
+      border: "1px solid rgba(76, 175, 80, 0.3)",
+      borderRadius: "8px",
+      color: "#4CAF50",
+      fontSize: "14px",
+      marginBottom: "20px",
+      textAlign: "center",
+    },
     passwordRequirements: {
-      marginTop: "10px",
+      marginTop: "12px",
       padding: "12px",
-      background: "rgba(255, 255, 255, 0.03)",
-      borderRadius: "6px",
+      background: "rgba(30, 30, 30, 0.5)",
+      borderRadius: "8px",
       border: "1px solid rgba(255, 215, 15, 0.1)",
     },
     requirementItem: {
@@ -455,72 +517,50 @@ function Perfil() {
       alignItems: "center",
       gap: "8px",
       fontSize: "12px",
-      marginBottom: "6px",
-      color: "#999",
+      marginTop: "6px",
     },
     requirementMet: {
-      color: "#22c55e",
+      color: "#4CAF50",
     },
     requirementNotMet: {
-      color: "#ef4444",
+      color: "#999",
     },
     buttonContainer: {
       display: "flex",
-      gap: "15px",
       justifyContent: "flex-end",
-      marginTop: "40px",
-      paddingTop: "30px",
+      marginTop: "30px",
+      paddingTop: "20px",
       borderTop: "1px solid rgba(255, 215, 15, 0.2)",
     },
     guardarButton: {
+      padding: "12px 30px",
       background: "rgba(255, 215, 15, 1)",
       color: "#000",
-      padding: "12px 30px",
-      borderRadius: "8px",
       border: "none",
+      borderRadius: "8px",
       fontSize: "15px",
       fontWeight: "600",
       cursor: "pointer",
       transition: "all 0.3s ease",
-      opacity: loading ? 0.6 : 1,
-    },
-    successMessage: {
-      background: "rgba(34, 197, 94, 0.1)",
-      border: "1px solid rgba(34, 197, 94, 0.3)",
-      color: "#22c55e",
-      padding: "15px",
-      borderRadius: "8px",
-      marginBottom: "20px",
-      fontSize: "14px",
-    },
-    generalError: {
-      background: "rgba(239, 68, 68, 0.1)",
-      border: "1px solid rgba(239, 68, 68, 0.3)",
-      color: "#ef4444",
-      padding: "15px",
-      borderRadius: "8px",
-      marginBottom: "20px",
-      fontSize: "14px",
-    },
-    loadingOverlay: {
-      position: "fixed",
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: "rgba(0, 0, 0, 0.7)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      zIndex: 9999,
+      boxShadow: "0 4px 15px rgba(255, 215, 15, 0.3)",
     },
   };
 
-  if (loading && !user) {
+  if (loading) {
     return (
-      <div style={styles.loadingOverlay}>
-        <div style={{ color: "#fff", fontSize: "18px" }}>Cargando perfil...</div>
-      </div>
+      <>
+        <Componente onToggle={handleNavbarToggle} />
+        <div style={styles.container}>
+          <div style={{ ...styles.content, textAlign: "center", padding: "60px 40px" }}>
+            <div style={{ fontSize: "18px", color: "#FFD70F", marginBottom: "15px" }}>
+              Cargando perfil...
+            </div>
+            <div style={{ fontSize: "14px", color: "#999" }}>
+              Por favor espera un momento
+            </div>
+          </div>
+        </div>
+      </>
     );
   }
 
@@ -530,22 +570,28 @@ function Perfil() {
       <div style={styles.container}>
         <div style={styles.content}>
           <div style={styles.header}>
-            <h1 style={styles.title}>Mi Perfil</h1>
+            <div>
+              <h1 style={styles.title}>Mi Perfil</h1>
+              <p style={styles.subtitle}>Administra tu información personal y preferencias</p>
+            </div>
           </div>
 
           {successMessage && <div style={styles.successMessage}>{successMessage}</div>}
-          {errors.general && <div style={styles.generalError}>{errors.general}</div>}
+          {errors.general && <div style={styles.errorMessage}>{errors.general}</div>}
 
-          <div style={styles.photoSection}>
+          <div style={styles.profilePhotoSection}>
             <div style={styles.photoContainer}>
               {profilePhoto ? (
-                <img src={profilePhoto} alt="Perfil" style={styles.photo} />
+                <img src={profilePhoto} alt="Perfil" style={styles.profileImage} />
               ) : (
-                <div style={{ color: "rgba(255, 215, 15, 0.5)", fontSize: "40px" }}>👤</div>
+                <span style={styles.placeholderText}>
+                  {formData.nombre ? formData.nombre.charAt(0).toUpperCase() : "?"}
+                </span>
               )}
             </div>
-            <div>
-              <label style={styles.uploadLabel}>
+            <div style={styles.photoInfo}>
+              <div style={styles.photoTitle}>Foto de Perfil</div>
+              <label style={styles.uploadButton}>
                 <FaUpload /> Cambiar Foto
                 <input
                   type="file"
@@ -630,7 +676,7 @@ function Perfil() {
                     name="contrasenaActual"
                     value={formData.contrasenaActual}
                     onChange={handleInputChange}
-                    placeholder="••••••••"
+                    placeholder=""
                     style={{
                       ...styles.input,
                       ...(errors.contrasenaActual ? styles.inputError : {}),
@@ -650,7 +696,7 @@ function Perfil() {
                     name="nuevaContrasena"
                     value={formData.nuevaContrasena}
                     onChange={handleInputChange}
-                    placeholder="••••••••"
+                    placeholder=""
                     style={{
                       ...styles.input,
                       ...(errors.nuevaContrasena ? styles.inputError : {}),
@@ -711,7 +757,7 @@ function Perfil() {
                     name="confirmarContrasena"
                     value={formData.confirmarContrasena}
                     onChange={handleInputChange}
-                    placeholder="••••••••"
+                    placeholder=""
                     style={{
                       ...styles.input,
                       ...(errors.confirmarContrasena ? styles.inputError : {}),

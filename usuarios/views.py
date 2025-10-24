@@ -1,4 +1,5 @@
 # usuarios/views.py
+# usuarios/views.py
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -31,12 +32,21 @@ class LoginView(APIView):
         if user is not None:
             roles = [group.name for group in user.groups.all()]
             rol_nombre = roles[0] if roles else None
+            
+            # ✅ Obtener la URL de la foto de perfil si existe
+            foto_perfil_url = None
+            if hasattr(user, 'perfil') and user.perfil.foto_perfil:
+                foto_perfil_url = user.perfil.foto_perfil.url
 
+            # ✅ CORRECCIÓN: Devolver TODOS los datos del usuario
             return Response({
                 "message": "Login exitoso",
-                "usuario": user.get_full_name(),
                 "id": user.id,
-                "rol": rol_nombre
+                "nombre": user.first_name,
+                "apellido": user.last_name,
+                "correo": user.email,
+                "rol": rol_nombre,
+                "foto_perfil": foto_perfil_url
             }, status=status.HTTP_200_OK)
         else:
             return Response({"error": "Credenciales incorrectas"}, status=status.HTTP_401_UNAUTHORIZED)
@@ -148,10 +158,10 @@ class UsuarioDetail(APIView):
                 "id": user.id,
                 "nombre": user.first_name,
                 "apellido": user.last_name,
-                "correo": user.email,  # Cambiado de "email" a "correo"
+                "correo": user.email,
                 "dni": user.perfil.dni if hasattr(user, 'perfil') else None,
                 "rol": roles[0] if roles else None,
-                "rol_id": user.groups.first().id if u.groups.exists() else None,
+                "rol_id": user.groups.first().id if user.groups.exists() else None,  # ✅ CORREGIDO: era 'u', ahora es 'user'
                 "foto_perfil": foto_perfil_url
             })
         except User.DoesNotExist:
@@ -200,59 +210,39 @@ class UsuarioDetail(APIView):
                         {"error": "La contraseña debe tener al menos 6 caracteres"}, 
                         status=status.HTTP_400_BAD_REQUEST
                     )
-                
-                import re
-                if not re.search(r'[A-Z]', nueva_contrasena):
+                if not any(c.isupper() for c in nueva_contrasena):
                     return Response(
                         {"error": "La contraseña debe contener al menos una mayúscula"}, 
                         status=status.HTTP_400_BAD_REQUEST
                     )
-                
-                if not re.search(r'[a-z]', nueva_contrasena):
+                if not any(c.islower() for c in nueva_contrasena):
                     return Response(
                         {"error": "La contraseña debe contener al menos una minúscula"}, 
                         status=status.HTTP_400_BAD_REQUEST
                     )
-                
-                if not re.search(r'\d', nueva_contrasena):
+                if not any(c.isdigit() for c in nueva_contrasena):
                     return Response(
                         {"error": "La contraseña debe contener al menos un número"}, 
                         status=status.HTTP_400_BAD_REQUEST
                     )
                 
+                # Actualizar contraseña
                 user.set_password(nueva_contrasena)
             
             user.save()
             
-            # Actualizar DNI
-            if hasattr(user, 'perfil'):
-                new_dni = request.data.get('dni')
-                if new_dni and new_dni != user.perfil.dni:
-                    from .models import PerfilUsuario
-                    if PerfilUsuario.objects.filter(dni=new_dni).exclude(user=user).exists():
-                        return Response(
-                            {"error": "Ya existe un usuario con este DNI"}, 
-                            status=status.HTTP_400_BAD_REQUEST
-                        )
-                    user.perfil.dni = new_dni
-                    user.perfil.save()
+            # Obtener la URL de la foto de perfil actual
+            foto_perfil_url = None
+            if hasattr(user, 'perfil') and user.perfil.foto_perfil:
+                foto_perfil_url = user.perfil.foto_perfil.url
             
-            # Actualizar rol
-            rol_id = request.data.get('rol_id')
-            if rol_id:
-                try:
-                    user.groups.clear()
-                    group = Group.objects.get(id=rol_id)
-                    user.groups.add(group)
-                except Group.DoesNotExist:
-                    pass
-            
-            # Devolver los datos actualizados
             return Response({
                 "id": user.id,
                 "nombre": user.first_name,
                 "apellido": user.last_name,
                 "correo": user.email,
+                "dni": user.perfil.dni if hasattr(user, 'perfil') else None,
+                "foto_perfil": foto_perfil_url,
                 "message": "Usuario actualizado exitosamente"
             })
             
@@ -262,18 +252,25 @@ class UsuarioDetail(APIView):
             logger.error(f"Error al actualizar usuario: {str(e)}")
             return Response(
                 {"error": f"Error al actualizar usuario: {str(e)}"}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                status=status.HTTP_400_BAD_REQUEST
             )
 
     def delete(self, request, pk):
         try:
             user = User.objects.get(pk=pk)
+            
+            # Eliminar foto de perfil si existe
+            if hasattr(user, 'perfil') and user.perfil.foto_perfil:
+                foto_path = user.perfil.foto_perfil.path
+                if os.path.exists(foto_path):
+                    os.remove(foto_path)
+            
             user.delete()
-            return Response(status=204)
+            return Response({"message": "Usuario eliminado exitosamente"}, status=status.HTTP_204_NO_CONTENT)
         except User.DoesNotExist:
             return Response({"error": "Usuario no encontrado"}, status=404)
 
-# 🆕 NUEVO: Endpoint para subir foto de perfil
+# ===== SUBIDA DE FOTO DE PERFIL =====
 class UsuarioFotoView(APIView):
     def post(self, request, pk):
         try:

@@ -230,6 +230,8 @@ function Login() {
       setLoading(true);
       setMensaje("");
 
+      console.log("🔐 Iniciando login para usuario:", username);
+
       const response = await fetch(`${API_URL}/api/usuarios/login/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -237,6 +239,7 @@ function Login() {
       });
 
       const data = await response.json();
+      console.log("📥 Respuesta del servidor (login):", data);
 
       if (response.ok) {
         if (!data.id) {
@@ -246,26 +249,97 @@ function Login() {
           return;
         }
 
-        setMensaje(`✅ Bienvenido ${data.usuario}`);
-        setTipoMensaje("success");
+        // ✅ CORRECCIÓN: Obtener datos completos del usuario desde la API
+        console.log("🔍 Obteniendo datos completos del usuario desde la API...");
+        
+        try {
+          const userDetailsResponse = await fetch(`${API_URL}/api/usuarios/usuarios/${data.id}/`);
+          
+          if (userDetailsResponse.ok) {
+            const userDetails = await userDetailsResponse.json();
+            console.log("✅ Datos completos del usuario:", userDetails);
+            
+            // ✅ Combinar datos del login con datos completos del usuario
+            const completeUserData = {
+              id: data.id,
+              usuario: data.usuario,
+              rol: data.rol,
+              nombre: userDetails.nombre || data.usuario || '',
+              apellido: userDetails.apellido || '',
+              correo: userDetails.correo || '',
+              foto_perfil: userDetails.foto_perfil || null
+            };
+            
+            console.log("📋 Datos completos combinados:", completeUserData);
+            
+            setMensaje(`✅ Bienvenido ${completeUserData.nombre} ${completeUserData.apellido}`);
+            setTipoMensaje("success");
 
-        // Llamar a login del contexto
-        login(data);
+            // ✅ Llamar a login del contexto con datos completos
+            login(completeUserData);
 
-        // Navegar según el rol
-        const rutas = {
-          'Dueño': '/dueno',
-          'Vendedor': '/vendedor',
-          'Costurero': '/costurero',
-          'Estampador': '/estampador'
-        };
+            // Navegar según el rol
+            const rutas = {
+              'Dueño': '/dueno',
+              'Vendedor': '/vendedor',
+              'Costurero': '/costurero',
+              'Estampador': '/estampador'
+            };
 
-        const rutaDestino = rutas[data.rol];
+            const rutaDestino = rutas[data.rol];
 
-        setTimeout(() => {
-          navigate(rutaDestino || '/', { replace: true });
-          setLoading(false);
-        }, 1000);
+            setTimeout(() => {
+              navigate(rutaDestino || '/', { replace: true });
+              setLoading(false);
+            }, 1000);
+            
+          } else {
+            // Si no se pueden obtener datos completos, usar solo los del login
+            console.warn("⚠️ No se pudieron obtener datos completos, usando datos básicos del login");
+            
+            setMensaje(`✅ Bienvenido ${data.usuario}`);
+            setTipoMensaje("success");
+
+            // Llamar a login del contexto con datos básicos
+            login(data);
+
+            const rutas = {
+              'Dueño': '/dueno',
+              'Vendedor': '/vendedor',
+              'Costurero': '/costurero',
+              'Estampador': '/estampador'
+            };
+
+            const rutaDestino = rutas[data.rol];
+
+            setTimeout(() => {
+              navigate(rutaDestino || '/', { replace: true });
+              setLoading(false);
+            }, 1000);
+          }
+        } catch (detailsError) {
+          console.error("❌ Error al obtener datos completos:", detailsError);
+          
+          // Continuar con login básico
+          setMensaje(`✅ Bienvenido ${data.usuario}`);
+          setTipoMensaje("success");
+
+          login(data);
+
+          const rutas = {
+            'Dueño': '/dueno',
+            'Vendedor': '/vendedor',
+            'Costurero': '/costurero',
+            'Estampador': '/estampador'
+          };
+
+          const rutaDestino = rutas[data.rol];
+
+          setTimeout(() => {
+            navigate(rutaDestino || '/', { replace: true });
+            setLoading(false);
+          }, 1000);
+        }
 
       } else {
         setMensaje("❌ Usuario o contraseña incorrectos");
