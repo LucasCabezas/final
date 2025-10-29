@@ -291,150 +291,61 @@ class PrendaList(APIView):
         return Response(PrendaSerializer(prenda, context={'request': request}).data, status=status.HTTP_201_CREATED)
 
 
-class PrendaDetail(APIView):
-    """Detalle, actualización o eliminación de una prenda"""
-    parser_classes = [MultiPartParser, FormParser, JSONParser]
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.shortcuts import get_object_or_404
+from pedidos.models import DetallePedido
+from .models import Prenda
+from .serializers import PrendaSerializer
 
-    def get_object(self, pk):
-        try:
-            return Prenda.objects.get(pk=pk)
-        except Prenda.DoesNotExist:
-            return None
+
+class PrendaDetail(APIView):
+    """Ver, editar o eliminar una prenda"""
 
     def get(self, request, pk):
-        prenda = self.get_object(pk)
-        if not prenda:
-            return Response({'error': 'Prenda no encontrada'}, status=status.HTTP_404_NOT_FOUND)
-
-        data = PrendaSerializer(prenda, context={'request': request}).data
-        relaciones = InsumosXPrendas.objects.filter(prenda=prenda).select_related('insumo')
-
-        data["insumos_prendas"] = [
-            {
-                "Insumo_ID": r.insumo.Insumo_ID,
-                "Insumo_nombre": r.insumo.Insumo_nombre,
-                "Insumo_prenda_cantidad_utilizada": r.Insumo_prenda_cantidad_utilizada,
-                "Insumo_prenda_unidad_medida": r.Insumo_prenda_unidad_medida,
-                "Insumo_prenda_costo_total": r.Insumo_prenda_costo_total,
-            }
-            for r in relaciones
-        ]
-        return Response(data)
-
-    @transaction.atomic
-    def put(self, request, pk):
-        prenda = self.get_object(pk)
-        if not prenda:
-            return Response({'error': 'Prenda no encontrada'}, status=status.HTTP_404_NOT_FOUND)
-
-        data = request.data.copy()
-        insumos_data = []
-        talles_data = []
-
-        # Decodificar insumos_prendas - CORREGIDO
-        if data.get('insumos_prendas'):
-            insumos_raw = data.get('insumos_prendas')
-            # Verificar si es string o ya es lista
-            if isinstance(insumos_raw, str):
-                try:
-                    insumos_data = json.loads(insumos_raw)
-                except json.JSONDecodeError:
-                    return Response({'error': 'Error al decodificar insumos_prendas'}, status=status.HTTP_400_BAD_REQUEST)
-            elif isinstance(insumos_raw, list):
-                insumos_data = insumos_raw
-            else:
-                return Response({'error': 'Formato inválido para insumos_prendas'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Decodificar talles - CORREGIDO
-        if data.get('talles'):
-            talles_raw = data.get('talles')
-            # Verificar si es string o ya es lista
-            if isinstance(talles_raw, str):
-                try:
-                    talles_data = json.loads(talles_raw)
-                    print("Talles recibidos para actualizar:", talles_data)
-                except json.JSONDecodeError:
-                    return Response({'error': 'Error al decodificar talles'}, status=status.HTTP_400_BAD_REQUEST)
-            elif isinstance(talles_raw, list):
-                talles_data = talles_raw
-                print("Talles recibidos para actualizar:", talles_data)
-            else:
-                return Response({'error': 'Formato inválido para talles'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Convertir nombres a IDs
-        try:
-            data = procesar_clasificaciones(data)
-        except Exception as e:
-            return Response(
-                {'error': f'Error al procesar clasificaciones: {str(e)}'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Actualizar prenda
-        serializer = PrendaSerializer(prenda, data=data, context={'request': request})
-        if not serializer.is_valid():
-            print("Errores del serializer:", serializer.errors)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        prenda = serializer.save()
-
-        # Limpiar y recrear relaciones de insumos
-        InsumosXPrendas.objects.filter(prenda=prenda).delete()
-        for item in insumos_data:
-            try:
-                insumo_id = int(item.get('insumo'))
-                cantidad = float(item.get('cantidad'))
-                insumo = Insumo.objects.get(pk=insumo_id)
-
-                InsumosXPrendas.objects.create(
-                    insumo=insumo,
-                    prenda=prenda,
-                    Insumo_prenda_cantidad_utilizada=cantidad,
-                    Insumo_prenda_unidad_medida=insumo.Insumo_unidad_medida,
-                    Insumo_prenda_costo_total=cantidad * insumo.Insumo_precio_unitario
-                )
-            except Exception as e:
-                print(f"Error actualizando insumo: {e}")
-                continue
-
-        # Limpiar y recrear relaciones de talles
-        from clasificaciones.models import Talle, TallesXPrendas
-        TallesXPrendas.objects.filter(prenda=prenda).delete()
-        for talle_codigo in talles_data:
-            try:
-                talle, created = Talle.objects.get_or_create(Talle_codigo=talle_codigo)
-                TallesXPrendas.objects.create(
-                    talle=talle,
-                    prenda=prenda,
-                    stock=0
-                )
-                print(f"Talle {'creado' if created else 'actualizado'}: {talle_codigo}")
-            except Exception as e:
-                print(f"Error actualizando talle: {e}")
-                continue
-
-        return Response(PrendaSerializer(prenda, context={'request': request}).data)
-
-    @transaction.atomic
-    def delete(self, request, pk):  # ✅ alineado con el resto
         prenda = get_object_or_404(Prenda, pk=pk)
+        serializer = PrendaSerializer(prenda)
+        return Response(serializer.data)
 
-        usada = DetallePedido.objects.filter(prenda=prenda).exists()
-        if usada:
+    def put(self, request, pk):
+        prenda = get_object_or_404(Prenda, pk=pk)
+        serializer = PrendaSerializer(prenda, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        """Evita eliminar una prenda que ya fue usada en algún pedido"""
+        try:
+            prenda = get_object_or_404(Prenda, pk=pk)
+
+            # 🔍 Verificar si la prenda está en algún DetallePedido
+            usada = DetallePedido.objects.filter(prenda=prenda).exists()
+
+            if usada:
+                return Response(
+                    {
+                        "error": f"No se puede eliminar la prenda '{prenda.Prenda_nombre}' porque ya fue utilizada en pedidos.",
+                        "tipo": "prenda_en_uso",
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # ✅ Si no está usada, eliminar normalmente
+            prenda.delete()
             return Response(
-                {
-                    "error": f"No se puede eliminar la prenda '{prenda.Prenda_nombre}' porque ya fue utilizada en pedidos.",
-                    "tipo": "prenda_en_uso"
-                },
-                status=status.HTTP_400_BAD_REQUEST
+                {"mensaje": f"Prenda '{prenda.Prenda_nombre}' eliminada correctamente."},
+                status=status.HTTP_200_OK,
             )
 
-        prenda.delete()
-        return Response(
-            {"mensaje": f"Prenda '{prenda.Prenda_nombre}' eliminada correctamente."},
-            status=status.HTTP_204_NO_CONTENT
-        )
-
+        except Exception as e:
+            print(f"❌ Error al eliminar prenda: {e}")
+            return Response(
+                {"error": f"Error interno al eliminar la prenda: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 # ============================================================
 # -------- CONFIRMAR PEDIDO Y ACTUALIZAR STOCK ---------------
