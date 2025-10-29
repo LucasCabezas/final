@@ -158,15 +158,26 @@ class PedidoList(APIView):
                 prenda = Prenda.objects.get(pk=prenda_id)
 
                 # Crear detalle del pedido
+                from clasificaciones.models import Talle
+
+                # Buscar talle por nombre recibido desde el frontend (o usar uno por defecto)
+                talle_codigo = item.get("talle")
+                talle = Talle.objects.filter(Talle_codigo__iexact=talle_codigo).first()
+
+                if not talle:
+                    # Si el talle no existe, crear uno genérico para no romper la carga
+                    talle = Talle.objects.get_or_create(Talle_nombre="Único")[0]
+
+                # Crear detalle del pedido tomando color, modelo y marca desde la prenda
                 detalle = DetallePedido.objects.create(
                     pedido=pedido,
                     prenda=prenda,
                     cantidad=cantidad,
                     tipo=tipo,
-                    talle_id=1,   # Ajusta según tu modelo
-                    color_id=1,   # Ajusta según tu modelo
-                    modelo_id=1,  # Ajusta según tu modelo
-                    marca_id=1,   # Ajusta según tu modelo
+                    talle=talle,
+                    color=prenda.Prenda_color,   # ← directamente desde la prenda
+                    modelo=prenda.Prenda_modelo,
+                    marca=prenda.Prenda_marca,
                 )
 
                 total_pedido += detalle.precio_total

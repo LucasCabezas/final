@@ -705,7 +705,7 @@ export default function PedidosView() {
 
             console.log("Enviando pedido:", data);
 
-            const res = await fetch("http://localhost:8000/api/pedidos/Detalledepedido", {
+            const res = await fetch("http://localhost:8000/api/pedidos/", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(data)
@@ -1304,199 +1304,224 @@ export default function PedidosView() {
                     </div>
                 )}
 
-                {/* MODAL DETALLES DEL PEDIDO (Mantenido) */}
-                {modalDetallesOpen && pedidoSeleccionado && (
-                    <div style={styles.modalOverlay} onClick={() => setModalDetallesOpen(false)}>
-                        <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-                            <div style={styles.modalHeader}>
-                                <h2 style={styles.modalTitle}>
-                                    Detalles del Pedido #{pedidoSeleccionado.Pedido_ID.toString().padStart(3, '0')}
-                                </h2>
-                                <button style={styles.btnClose} onClick={() => setModalDetallesOpen(false)}>
-                                    <X size={24} />
-                                </button>
-                            </div>
+{/* MODAL DETALLES DEL PEDIDO */}
+{modalDetallesOpen && pedidoSeleccionado && (
+  <div style={styles.modalOverlay} onClick={() => setModalDetallesOpen(false)}>
+    <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+      {/* CABECERA */}
+      <div style={styles.modalHeader}>
+        <h2 style={styles.modalTitle}>
+          Detalles del Pedido #{pedidoSeleccionado.Pedido_ID.toString().padStart(3, "0")}
+        </h2>
+        <button style={styles.btnClose} onClick={() => setModalDetallesOpen(false)}>
+          <X size={24} />
+        </button>
+      </div>
 
-                            <div style={styles.infoBox}>
-                                <div style={styles.infoLabel}>Usuario que realizó el pedido</div>
-                                <div style={styles.infoValue}>
-                                    Usuario #{pedidoSeleccionado.Pedido_usuario_id || pedidoSeleccionado.usuario || 'N/A'}
-                                </div>
-                            </div>
+      {/* DATOS DEL USUARIO */}
+      <div style={styles.infoBox}>
+        <div style={styles.infoLabel}>Usuario que realizó el pedido</div>
+        <div style={styles.infoValue}>{pedidoSeleccionado.usuario || "Dueño"}</div>
+      </div>
 
-                            <div style={{
-                                backgroundColor: 'rgba(30, 30, 30, 0.6)',
-                                borderRadius: '12px',
-                                padding: '20px',
-                                marginBottom: '20px',
-                                border: '1px solid rgba(255, 255, 255, 0.1)'
-                            }}>
-                                <div style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                                    gap: '16px'
-                                }}>
-                                    <div>
-                                        <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px' }}>
-                                            Estado
-                                        </div>
-                                        {(() => {
-                                            const estado = obtenerEstadoPedido(pedidoSeleccionado);
-                                            const { texto, estilo } = obtenerEstiloEstado(estado);
-                                            return (
-                                                <span style={{ ...styles.estadoBadge, ...estilo }}>
-                                                    {texto}
-                                                </span>
-                                            );
-                                        })()}
-                                    </div>
-                                    <div>
-                                        <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px' }}>
-                                            Fecha
-                                        </div>
-                                        <div style={{ color: '#fff', fontSize: '16px', fontWeight: '600' }}>
-                                            {pedidoSeleccionado.Pedido_fecha 
-                                                ? new Date(pedidoSeleccionado.Pedido_fecha).toLocaleDateString('es-AR', {
-                                                        year: 'numeric',
-                                                        month: 'long',
-                                                        day: 'numeric'
-                                                    })
-                                                : '-'}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px' }}>
-                                            Total de Items
-                                        </div>
-                                        <div style={{ color: '#ffd70f', fontSize: '20px', fontWeight: 'bold' }}>
-                                            {pedidoSeleccionado.detalles?.reduce((acc, d) => acc + d.cantidad, 0) || 0}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+      {/* INFO GENERAL */}
+      <div
+        style={{
+          backgroundColor: "rgba(30, 30, 30, 0.6)",
+          borderRadius: "12px",
+          padding: "20px",
+          marginBottom: "20px",
+          border: "1px solid rgba(255, 255, 255, 0.1)",
+        }}
+      >
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+            gap: "16px",
+          }}
+        >
+          <div>
+            <div style={{ fontSize: "12px", color: "#9ca3af", marginBottom: "4px" }}>Estado</div>
+            {(() => {
+              const estado = obtenerEstadoPedido(pedidoSeleccionado);
+              const { texto, estilo } = obtenerEstiloEstado(estado);
+              return <span style={{ ...styles.estadoBadge, ...estilo }}>{texto}</span>;
+            })()}
+          </div>
+          <div>
+            <div style={{ fontSize: "12px", color: "#9ca3af", marginBottom: "4px" }}>Fecha</div>
+            <div style={{ color: "#fff", fontSize: "16px", fontWeight: "600" }}>
+              {pedidoSeleccionado.Pedido_fecha
+                ? new Date(pedidoSeleccionado.Pedido_fecha).toLocaleDateString("es-AR", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })
+                : "-"}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: "12px", color: "#9ca3af", marginBottom: "4px" }}>
+              Total de Items
+            </div>
+            <div style={{ color: "#ffd70f", fontSize: "20px", fontWeight: "bold" }}>
+              {pedidoSeleccionado.detalles?.reduce((acc, d) => acc + d.cantidad, 0) || 0}
+            </div>
+          </div>
+        </div>
+      </div>
 
-                            <div>
-                                <h3 style={{ 
-                                    color: '#fff', 
-                                    marginBottom: '16px', 
-                                    fontSize: '18px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px'
-                                }}>
-                                    <Package size={20} />
-                                    Prendas del Pedido
-                                </h3>
-                                
-                                <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                                    {pedidoSeleccionado.detalles && pedidoSeleccionado.detalles.length > 0 ? (
-                                        pedidoSeleccionado.detalles.map((detalle, index) => (
-                                            <div key={index} style={{
-                                                backgroundColor: 'rgba(0, 0, 0, 0.4)',
-                                                padding: '16px',
-                                                borderRadius: '10px',
-                                                marginBottom: '12px',
-                                                border: '1px solid rgba(255, 255, 255, 0.1)',
-                                                display: 'grid',
-                                                gridTemplateColumns: detalle.precio_unitario ? '1fr auto' : '1fr',
-                                                gap: '16px',
-                                                alignItems: 'center'
-                                            }}>
-                                                <div>
-                                                    <div style={{ 
-                                                        color: '#fff', 
-                                                        fontSize: '16px', 
-                                                        fontWeight: '600',
-                                                        marginBottom: '8px'
-                                                    }}>
-                                                        {detalle.prenda_nombre || 'Prenda sin nombre'}
-                                                    </div>
-                                                    <div style={{ 
-                                                        display: 'grid',
-                                                        gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-                                                        gap: '12px',
-                                                        fontSize: '13px',
-                                                        color: '#9ca3af'
-                                                    }}>
-                                                        <div>
-                                                            <span style={{ fontWeight: '500' }}>Talle:</span>{' '}
-                                                            <span style={{ color: '#fff' }}>{detalle.talle || '-'}</span>
-                                                        </div>
-                                                        <div>
-                                                            <span style={{ fontWeight: '500' }}>Cantidad:</span>{' '}
-                                                            <span style={{ color: '#fff' }}>{detalle.cantidad}</span>
-                                                        </div>
-                                                        <div>
-                                                            <span style={{ fontWeight: '500' }}>Tipo:</span>{' '}
-                                                            <span style={{ color: '#fff' }}>{detalle.tipo || 'LISA'}</span>
-                                                        </div>
-                                                        {detalle.precio_unitario && (
-                                                            <div>
-                                                                <span style={{ fontWeight: '500' }}>Precio unit:</span>{' '}
-                                                                <span style={{ color: '#ffd70f' }}>
-                                                                    ${parseFloat(detalle.precio_unitario).toFixed(2)}
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                {detalle.precio_unitario && (
-                                                    <div style={{
-                                                        textAlign: 'right'
-                                                    }}>
-                                                        <div style={{ 
-                                                            fontSize: '12px', 
-                                                            color: '#9ca3af',
-                                                            marginBottom: '4px'
-                                                        }}>
-                                                            Subtotal
-                                                        </div>
-                                                        <div style={{ 
-                                                            fontSize: '20px', 
-                                                            fontWeight: 'bold',
-                                                            color: '#ffd70f'
-                                                        }}>
-                                                            ${(parseFloat(detalle.precio_unitario) * detalle.cantidad).toFixed(2)}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <div style={{
-                                            textAlign: 'center',
-                                            padding: '40px 20px',
-                                            color: '#9ca3af',
-                                            backgroundColor: 'rgba(30,30,30,0.6)',
-                                            borderRadius: '12px'
-                                        }}>
-                                            <AlertCircle size={48} style={{ margin: '0 auto 12px' }} />
-                                            <p>No hay detalles disponibles para este pedido</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+      {/* PRENDAS DEL PEDIDO */}
+      <h3
+        style={{
+          color: "#fff",
+          marginBottom: "16px",
+          fontSize: "18px",
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+        }}
+      >
+        <Package size={20} />
+        Prendas del Pedido
+      </h3>
 
-                            {pedidoSeleccionado.detalles && pedidoSeleccionado.detalles.some(d => d.precio_unitario) && (
-                                <div style={{
-                                    backgroundColor: 'rgba(255, 215, 15, 0.1)',
-                                    borderRadius: '12px',
-                                    padding: '20px',
-                                    marginTop: '20px',
-                                    border: '1px solid rgba(255, 215, 15, 0.3)'
-                                }}>
-                                    <div style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center'
-                                    }}>
-                                        <div style={{ color: '#d1d5db', fontSize: '16px', fontWeight: '600' }}>
-                                            Total del Pedido
-                                        </div>
-                                        <div style={{ color: '#ffd70f', fontSize: '28px', fontWeight: 'bold' }}>
-                                            ${pedidoSeleccionado.detalles
-                                                .reduce((acc, d) => acc + (parseFloat(d.precio_unitario || 0) * d.cantidad), 0)
-                                                .toFixed(2)}
+      <div style={{ maxHeight: "400px", overflowY: "auto" }}>
+        {pedidoSeleccionado.detalles && pedidoSeleccionado.detalles.length > 0 ? (
+          pedidoSeleccionado.detalles.map((detalle, index) => (
+            <div
+              key={index}
+              style={{
+                backgroundColor: "rgba(0, 0, 0, 0.4)",
+                padding: "16px",
+                borderRadius: "12px",
+                marginBottom: "12px",
+                border: "1px solid rgba(255, 255, 255, 0.1)",
+                display: "flex",
+                alignItems: "center",
+                gap: "16px",
+              }}
+            >
+              {/* 🖼️ Miniatura */}
+              <img
+                src={
+                  detalle.prenda_imagen
+                    ? detalle.prenda_imagen.startsWith("http")
+                      ? detalle.prenda_imagen
+                      : `http://localhost:8000${detalle.prenda_imagen}`
+                    : "https://via.placeholder.com/100x100?text=Sin+Imagen"
+                }
+                alt={detalle.prenda_nombre}
+                style={{
+                  width: "100px",
+                  height: "100px",
+                  objectFit: "cover",
+                  borderRadius: "8px",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
+                }}
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = "https://via.placeholder.com/100x100?text=Sin+Imagen";
+                }}
+              />
+
+              {/* 🧾 Info */}
+              <div style={{ flex: 1 }}>
+                <div
+                  style={{
+                    color: "#fff",
+                    fontSize: "16px",
+                    fontWeight: "600",
+                    marginBottom: "8px",
+                  }}
+                >
+                  {detalle.prenda_nombre}
+                </div>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+                    gap: "8px",
+                    fontSize: "13px",
+                    color: "#9ca3af",
+                  }}
+                >
+                  <div>Marca: {detalle.prenda_marca}</div>
+                  <div>Modelo: {detalle.prenda_modelo}</div>
+                  <div>Color: {detalle.prenda_color}</div>
+                  <div>Talle: {detalle.talle || "-"}</div>
+                  <div>Cantidad: {detalle.cantidad}</div>
+                  <div>Tipo: {detalle.tipo || "LISA"}</div>
+                </div>
+              </div>
+
+              {/* 💰 Precio */}
+              {detalle.precio_unitario && (
+                <div style={{ textAlign: "right", minWidth: "80px" }}>
+                  <div style={{ fontSize: "12px", color: "#9ca3af" }}>Subtotal</div>
+                  <div
+                    style={{
+                      fontSize: "18px",
+                      fontWeight: "bold",
+                      color: "#ffd70f",
+                      marginTop: "4px",
+                    }}
+                  >
+                    ${(parseFloat(detalle.precio_unitario) * detalle.cantidad).toFixed(2)}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))
+        ) : (
+          <div
+            style={{
+              textAlign: "center",
+              padding: "40px 20px",
+              color: "#9ca3af",
+              backgroundColor: "rgba(30,30,30,0.6)",
+              borderRadius: "12px",
+            }}
+          >
+            <AlertCircle size={48} style={{ margin: "0 auto 12px" }} />
+            <p>No hay detalles disponibles para este pedido</p>
+          </div>
+        )}
+      </div>
+
+      {/* 🔹 TOTAL FINAL */}
+      {pedidoSeleccionado.detalles &&
+        pedidoSeleccionado.detalles.some((d) => d.precio_unitario) && (
+          <div
+            style={{
+              backgroundColor: "rgba(255, 215, 15, 0.1)",
+              borderRadius: "12px",
+              padding: "20px",
+              marginTop: "20px",
+              border: "1px solid rgba(255, 215, 15, 0.3)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <div style={{ color: "#d1d5db", fontSize: "16px", fontWeight: "600" }}>
+                Total del Pedido
+              </div>
+              <div style={{ color: "#ffd70f", fontSize: "28px", fontWeight: "bold" }}>
+                $
+                {pedidoSeleccionado.detalles
+                  .reduce(
+                    (acc, d) =>
+                      acc + parseFloat(d.precio_unitario || 0) * d.cantidad,
+                    0
+                  )
+                  .toFixed(2)}
                                         </div>
                                     </div>
                                 </div>

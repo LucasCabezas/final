@@ -159,37 +159,36 @@ def obtener_insumos_bajo_stock(request):
 
 def procesar_clasificaciones(data):
     """
-    Busca o crea Marca, Modelo y Color basándose en los nombres enviados,
-    y reemplaza los nombres con IDs en el diccionario de datos.
+    Asocia Marca, Modelo y Color existentes en base al nombre recibido.
+    Si no existen, lanza error (no los crea).
     """
     from clasificaciones.models import Marca, Modelo, Color
-    
-    # Procesar Marca
-    if 'Prenda_marca' in data and data['Prenda_marca']:
-        marca_nombre = str(data['Prenda_marca']).strip()
-        if marca_nombre:
-            marca, created = Marca.objects.get_or_create(Marca_nombre=marca_nombre)
-            data['Prenda_marca'] = marca.Marca_ID
-            print(f"Marca {'creada' if created else 'encontrada'}: {marca_nombre} (ID: {marca.Marca_ID})")
-    
-    # Procesar Modelo
-    if 'Prenda_modelo' in data and data['Prenda_modelo']:
-        modelo_nombre = str(data['Prenda_modelo']).strip()
-        if modelo_nombre:
-            modelo, created = Modelo.objects.get_or_create(Modelo_nombre=modelo_nombre)
-            data['Prenda_modelo'] = modelo.Modelo_ID
-            print(f"Modelo {'creado' if created else 'encontrado'}: {modelo_nombre} (ID: {modelo.Modelo_ID})")
-    
-    # Procesar Color
-    if 'Prenda_color' in data and data['Prenda_color']:
-        color_nombre = str(data['Prenda_color']).strip()
-        if color_nombre:
-            color, created = Color.objects.get_or_create(Color_nombre=color_nombre)
-            data['Prenda_color'] = color.Color_ID
-            print(f"Color {'creado' if created else 'encontrado'}: {color_nombre} (ID: {color.Color_ID})")
-    
-    return data
 
+    # Marca
+    if 'Prenda_marca' in data and data['Prenda_marca']:
+        try:
+            marca = Marca.objects.get(Marca_nombre__iexact=data['Prenda_marca'].strip())
+            data['Prenda_marca'] = marca.Marca_ID
+        except Marca.DoesNotExist:
+            raise ValueError(f"La marca '{data['Prenda_marca']}' no existe.")
+
+    # Modelo
+    if 'Prenda_modelo' in data and data['Prenda_modelo']:
+        try:
+            modelo = Modelo.objects.get(Modelo_nombre__iexact=data['Prenda_modelo'].strip())
+            data['Prenda_modelo'] = modelo.Modelo_ID
+        except Modelo.DoesNotExist:
+            raise ValueError(f"El modelo '{data['Prenda_modelo']}' no existe.")
+
+    # Color
+    if 'Prenda_color' in data and data['Prenda_color']:
+        try:
+            color = Color.objects.get(Color_nombre__iexact=data['Prenda_color'].strip())
+            data['Prenda_color'] = color.Color_ID
+        except Color.DoesNotExist:
+            raise ValueError(f"El color '{data['Prenda_color']}' no existe.")
+
+    return data
 
 class PrendaList(APIView):
     """Listar y crear prendas con sus insumos y talles"""
@@ -417,16 +416,24 @@ class PrendaDetail(APIView):
         return Response(PrendaSerializer(prenda, context={'request': request}).data)
 
     @transaction.atomic
-    def delete(self, request, pk):
-        prenda = self.get_object(pk)
-        if not prenda:
-            return Response({'error': 'Prenda no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+    def delete(self, request, pk):  # ✅ alineado con el resto
+        prenda = get_object_or_404(Prenda, pk=pk)
 
-        from clasificaciones.models import TallesXPrendas
-        TallesXPrendas.objects.filter(prenda=prenda).delete()
-        InsumosXPrendas.objects.filter(prenda=prenda).delete()
+        usada = DetallePedido.objects.filter(prenda=prenda).exists()
+        if usada:
+            return Response(
+                {
+                    "error": f"No se puede eliminar la prenda '{prenda.Prenda_nombre}' porque ya fue utilizada en pedidos.",
+                    "tipo": "prenda_en_uso"
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         prenda.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(
+            {"mensaje": f"Prenda '{prenda.Prenda_nombre}' eliminada correctamente."},
+            status=status.HTTP_204_NO_CONTENT
+        )
 
 
 # ============================================================

@@ -425,11 +425,17 @@ function Prendas() {
   });
   const [insumosPrenda, setInsumosPrenda] = useState([]);
   const [tallesPrenda, setTallesPrenda] = useState([]);
-
-  useEffect(() => {
-    cargarPrendas();
-    cargarInsumos();
-  }, []);
+  const [tallesDisponibles, setTallesDisponibles] = useState([]);
+  const [marcas, setMarcas] = useState([]);
+  const [modelos, setModelos] = useState([]);
+  const [colores, setColores] = useState([]);
+  
+useEffect(() => {
+  cargarPrendas();
+  cargarInsumos();
+  cargarClasificaciones();
+  cargarTalles();
+}, []);
 
   const showAlert = (message, type = "success") => {
     setAlert({ message, type });
@@ -437,6 +443,37 @@ function Prendas() {
       setAlert(null);
     }, 3000);
   };
+  const cargarTalles = async () => {
+  try {
+    const res = await fetch(`${CDN}/api/clasificaciones/talle/`);
+    const data = await res.json();
+    setTallesDisponibles(Array.isArray(data) ? data : []);
+  } catch (error) {
+    console.error("Error al cargar talles:", error);
+    setTallesDisponibles([]);
+  }
+};
+const cargarClasificaciones = async () => {
+  try {
+    const [resMarcas, resModelos, resColores] = await Promise.all([
+      fetch(`${CDN}/api/clasificaciones/marca/`),
+      fetch(`${CDN}/api/clasificaciones/modelo/`),
+      fetch(`${CDN}/api/clasificaciones/color/`)
+    ]);
+
+    const [dataMarcas, dataModelos, dataColores] = await Promise.all([
+      resMarcas.json(),
+      resModelos.json(),
+      resColores.json()
+    ]);
+
+    setMarcas(Array.isArray(dataMarcas) ? dataMarcas : []);
+    setModelos(Array.isArray(dataModelos) ? dataModelos : []);
+    setColores(Array.isArray(dataColores) ? dataColores : []);
+  } catch (error) {
+    console.error("Error al cargar clasificaciones:", error);
+  }
+};
 
   const cargarPrendas = async () => {
     try {
@@ -572,22 +609,36 @@ function Prendas() {
     setShowConfirmModal(true);
   };
 
-  const handleConfirmDelete = async () => {
-    try {
-      const res = await fetch(`${CDN}/api/inventario/prendas/${confirmData.Prenda_ID}/`, { method: "DELETE" });
-      if (!res.ok && res.status !== 204) {
-        throw new Error("Error al eliminar la prenda");
+ const handleConfirmDelete = async () => {
+  try {
+    const res = await fetch(`${CDN}/api/inventario/prendas/${confirmData.Prenda_ID}/`, { method: "DELETE" });
+    const data = await res.json().catch(() => ({})); // Intentamos parsear la respuesta JSON (si la hay)
+
+    if (!res.ok) {
+      // 🔹 Si viene un mensaje específico del backend (por ejemplo, prenda usada en pedidos)
+      if (data.tipo === "prenda_en_uso") {
+        showAlert(data.error || "Esta prenda no puede eliminarse porque ya fue utilizada en pedidos.", "error");
+      } else {
+        showAlert(data.error || "Error al eliminar la prenda.", "error");
       }
-      await cargarPrendas();
-      showAlert(`Prenda "${confirmData.Prenda_nombre}" eliminada exitosamente`, "success");
-      setShowConfirmModal(false);
-      setConfirmAction(null);
-      setConfirmData(null);
-    } catch (error) {
-      console.error("Error al eliminar prenda:", error);
-      showAlert("Error al eliminar la prenda", "error");
+      return;
     }
-  };
+
+    // 🔹 Si se eliminó correctamente
+    await cargarPrendas();
+    showAlert(`Prenda "${confirmData.Prenda_nombre}" eliminada exitosamente.`, "success");
+
+    // 🔹 Cerrar modales
+    setShowConfirmModal(false);
+    setConfirmAction(null);
+    setConfirmData(null);
+
+  } catch (error) {
+    console.error("Error al eliminar prenda:", error);
+    showAlert("Error inesperado al eliminar la prenda.", "error");
+  }
+};
+
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
@@ -669,88 +720,111 @@ function Prendas() {
     setShowConfirmModal(true);
   };
 
-  const handleConfirmSubmit = async () => {
-    try {
-      const payloadInsumos = insumosPrenda
-        .filter((r) => r.insumo && r.cantidad)
-        .map((r) => ({ 
-          insumo: Number(r.insumo), 
-          cantidad: Number(r.cantidad) 
-        }));
+// ============================================================
+// 🔘 CONFIRMAR CREACIÓN / EDICIÓN DE PRENDA
+// ============================================================
+const handleConfirmSubmit = async () => {
+  try {
+    // ================================
+    // 🧩 Preparar datos del formulario
+    // ================================
+    const payloadInsumos = insumosPrenda
+      .filter((r) => r.insumo && r.cantidad)
+      .map((r) => ({
+        insumo: Number(r.insumo),
+        cantidad: Number(r.cantidad),
+      }));
 
-      const payloadTalles = tallesPrenda.filter(t => t && t.trim() !== "");
+    const payloadTalles = tallesPrenda.filter(
+      (t) => t && t.trim() !== ""
+    );
 
-      const jsonData = {
-        Prenda_nombre: confirmData.nombre,
-        Prenda_marca: confirmData.marca,
-        Prenda_modelo: confirmData.modelo,
-        Prenda_color: confirmData.color,
-        Prenda_precio_unitario: Number(confirmData.precioUnitario),
-        insumos_prendas: payloadInsumos,
-        talles: payloadTalles
-      };
+    const jsonData = {
+      Prenda_nombre: confirmData.nombre,
+      Prenda_marca: confirmData.marca,
+      Prenda_modelo: confirmData.modelo,
+      Prenda_color: confirmData.color,
+      Prenda_precio_unitario: Number(confirmData.precioUnitario),
+      insumos_prendas: payloadInsumos,
+      talles: payloadTalles,
+    };
 
-      const url = editing
-        ? `${CDN}/api/inventario/prendas/${editing.Prenda_ID}/`
-        : `${CDN}/api/inventario/prendas/`;
-      
-      let res;
+    // ================================
+    // 🛣️ Definir URL y método
+    // ================================
+    const url = editing
+      ? `${CDN}/api/inventario/prendas/${editing.Prenda_ID}/`
+      : `${CDN}/api/inventario/prendas/`;
+    const method = editing ? "PUT" : "POST";
 
-      if (confirmData.imagen) {
-        const fd = new FormData();
-        fd.append("Prenda_nombre", confirmData.nombre);
-        fd.append("Prenda_marca", confirmData.marca);
-        fd.append("Prenda_modelo", confirmData.modelo);
-        fd.append("Prenda_color", confirmData.color);
-        fd.append("Prenda_precio_unitario", confirmData.precioUnitario);
-        fd.append("Prenda_imagen", confirmData.imagen);
-        fd.append("insumos_prendas", JSON.stringify(payloadInsumos));
-        fd.append("talles", JSON.stringify(payloadTalles));
+    let res;
 
-        const method = editing ? "PUT" : "POST";
-        res = await fetch(url, { 
-          method, 
-          body: fd 
-        });
-      } else {
-        const method = editing ? "PUT" : "POST";
-        res = await fetch(url, {
-          method,
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(jsonData),
-        });
-      }
+    // ================================
+    // 📸 Envío con o sin imagen
+    // ================================
+    if (confirmData.imagen) {
+      const fd = new FormData();
+      fd.append("Prenda_nombre", confirmData.nombre);
+      fd.append("Prenda_marca", confirmData.marca);
+      fd.append("Prenda_modelo", confirmData.modelo);
+      fd.append("Prenda_color", confirmData.color);
+      fd.append("Prenda_precio_unitario", confirmData.precioUnitario);
+      fd.append("Prenda_imagen", confirmData.imagen);
+      fd.append("insumos_prendas", JSON.stringify(payloadInsumos));
+      fd.append("talles", JSON.stringify(payloadTalles));
 
-      if (!res.ok) {
-        const error = await res.json();
-        console.error("Error del servidor:", error);
-        throw new Error("Error al guardar la prenda");
-      }
-
-      await cargarPrendas();
-      showAlert(
-        editing 
-          ? `Prenda "${confirmData.nombre}" actualizada exitosamente` 
-          : `Prenda "${confirmData.nombre}" creada exitosamente`,
-        "success"
-      );
-      setShowConfirmModal(false);
-      setConfirmAction(null);
-      setConfirmData(null);
-      setShowModal(false);
-    } catch (error) {
-      console.error("Error al guardar prenda:", error);
-      showAlert("Error al guardar la prenda", "error");
+      res = await fetch(url, { method, body: fd });
+    } else {
+      res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(jsonData),
+      });
     }
-  };
 
-  const handleCancelConfirm = () => {
+    // ================================
+    // ⚠️ Manejo de errores del servidor
+    // ================================
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      console.error("Error del servidor:", errorData);
+      const msg =
+        errorData.error ||
+        "Error al guardar la prenda. Verifica los campos ingresados.";
+      showAlert(msg, "error");
+      return;
+    }
+
+    // ================================
+    // ✅ Éxito
+    // ================================
+    await cargarPrendas();
+    showAlert(
+      editing
+        ? `Prenda "${confirmData.nombre}" actualizada exitosamente`
+        : `Prenda "${confirmData.nombre}" creada exitosamente`,
+      "success"
+    );
+
+    // Cerrar modales y limpiar estado
     setShowConfirmModal(false);
     setConfirmAction(null);
     setConfirmData(null);
-  };
+    setShowModal(false);
+  } catch (error) {
+    console.error("Error al guardar prenda:", error);
+    showAlert("Error inesperado al guardar la prenda", "error");
+  }
+};
+
+// ============================================================
+// 🔘 CANCELAR MODAL DE CONFIRMACIÓN
+// ============================================================
+const handleCancelConfirm = () => {
+  setShowConfirmModal(false);
+  setConfirmAction(null);
+  setConfirmData(null);
+};
 
   const getConfirmModalContent = () => {
     if (confirmAction === "add") {
@@ -920,35 +994,51 @@ function Prendas() {
                 placeholder="Ej: Remera Oversize"
               />
 
-              <label style={styles.label}>Marca</label>
-              <input 
-                name="marca" 
-                value={form.marca} 
-                onChange={handleChange} 
-                style={styles.input} 
-                className="form-input" 
-                placeholder="Ej: Gucci"
-              />
+              <label style={styles.label}>Marca *</label>
+<select
+  name="marca"
+  value={form.marca}
+  onChange={handleChange}
+  style={styles.input}
+>
+  <option value="">Seleccionar marca</option>
+  {marcas.map((m) => (
+    <option key={m.Marca_ID} value={m.Marca_nombre}>
+      {m.Marca_nombre}
+    </option>
+  ))}
+</select>
 
-              <label style={styles.label}>Modelo</label>
-              <input 
-                name="modelo" 
-                value={form.modelo} 
-                onChange={handleChange} 
-                style={styles.input} 
-                className="form-input" 
-                placeholder="Ej: GUC1"
-              />
+<label style={styles.label}>Modelo *</label>
+<select
+  name="modelo"
+  value={form.modelo}
+  onChange={handleChange}
+  style={styles.input}
+>
+  <option value="">Seleccionar modelo</option>
+  {modelos.map((m) => (
+    <option key={m.Modelo_ID} value={m.Modelo_nombre}>
+      {m.Modelo_nombre}
+    </option>
+  ))}
+</select>
 
-              <label style={styles.label}>Color</label>
-              <input 
-                name="color" 
-                value={form.color} 
-                onChange={handleChange} 
-                style={styles.input} 
-                className="form-input" 
-                placeholder="Ej: Negro"
-              />
+<label style={styles.label}>Color *</label>
+<select
+  name="color"
+  value={form.color}
+  onChange={handleChange}
+  style={styles.input}
+>
+  <option value="">Seleccionar color</option>
+  {colores.map((c) => (
+    <option key={c.Color_ID} value={c.Color_nombre}>
+      {c.Color_nombre}
+    </option>
+  ))}
+</select>
+
 
               <label style={styles.label}>Precio Unitario *</label>
               <input
@@ -1025,39 +1115,52 @@ function Prendas() {
               <button style={styles.addBtn} className="hover-button" onClick={addInsumo}>
                 <Plus size={18} /> Agregar insumo
               </button>
+<h3 style={{ marginTop: 25, marginBottom: 12, color: "#fff" }}>Talles disponibles</h3>
 
-              <h3 style={{ marginTop: 25, marginBottom: 12, color: "#fff" }}>Talles disponibles</h3>
+<div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+  {tallesDisponibles.length === 0 ? (
+    <p style={{ color: "#aaa" }}>No hay talles cargados en el sistema.</p>
+  ) : (
+    tallesDisponibles.map((talle) => {
+      const seleccionado = tallesPrenda.includes(talle.Talle_codigo);
+      return (
+        <label
+          key={talle.Talle_ID}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            backgroundColor: seleccionado
+              ? "rgba(255,215,15,0.2)"
+              : "rgba(255,255,255,0.05)",
+            color: seleccionado ? "#ffd70f" : "#fff",
+            padding: "6px 10px",
+            borderRadius: "8px",
+            cursor: "pointer",
+            fontWeight: "500",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={seleccionado}
+            onChange={(e) => {
+              if (e.target.checked) {
+                setTallesPrenda([...tallesPrenda, talle.Talle_codigo]);
+              } else {
+                setTallesPrenda(
+                  tallesPrenda.filter((t) => t !== talle.Talle_codigo)
+                );
+              }
+            }}
+            style={{ accentColor: "#ffd70f" }}
+          />
+          {talle.Talle_codigo}
+        </label>
+      );
+    })
+  )}
+</div>
 
-              {tallesPrenda.map((talle, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    marginBottom: "10px",
-                  }}
-                >
-                  <input
-                    type="text"
-                    placeholder="Ej: S, M, L, XL"
-                    value={talle}
-                    onChange={(e) => changeTalle(idx, e.target.value)}
-                    style={styles.talleInput}
-                  />
-
-                  <button onClick={() => removeTalle(idx)} style={styles.removeBtn} title="Eliminar">
-                    ✕
-                  </button>
-                </div>
-              ))}
-
-              <button style={styles.addBtn} className="hover-button" onClick={addTalle}>
-                <Plus size={18} /> Agregar talle
-              </button>
-            </div>
-
-            <div style={styles.modalFooter}>
               <button
                 onClick={() => setShowModal(false)}
                 style={styles.cancelBtn}

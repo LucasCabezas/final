@@ -1,12 +1,21 @@
-from django.urls import path, include
+# pedidos/urls.py
+from django.urls import path
 from .views import PedidoList, PedidoDetail, crear_pedido, eliminar_item, finalizar_pedido
 
 urlpatterns = [
-    # URLs de la API REST (las que ya tenías)
-    path('', PedidoList.as_view(), name='pedido-list'),        # /api/pedidos/
+    # ========================
+    # 🔹 API REST para React
+    # ========================
+    path('', PedidoList.as_view(), name='pedido-list'),               # /api/pedidos/
     path('<int:pk>/', PedidoDetail.as_view(), name='pedido-detail'),  # /api/pedidos/1/
-    
-    # URLs del Frontend (nuevas)
+
+    # 🧩 Alias temporal para compatibilidad con el frontend
+    # (permite seguir usando /api/pedidos/Detalledepedido)
+    path('Detalledepedido', PedidoList.as_view(), name='pedido-detalle-custom'),
+
+    # ========================
+    # 💻 Panel Administrativo
+    # ========================
     path('crear/', crear_pedido, name='crear_pedido'),
     path('eliminar/<int:item_id>/', eliminar_item, name='eliminar_item'),
     path('finalizar/<int:pedido_id>/', finalizar_pedido, name='finalizar_pedido'),
