@@ -169,6 +169,9 @@ const styles = {
     padding: '24px',
     width: '100%',
     maxWidth: '448px',
+    maxHeight: '90vh',
+    overflowY: 'auto',
+    border: '1px solid rgba(255, 255, 255, 0.1)'
   },
   modalHeader: {
     display: 'flex',
@@ -660,6 +663,21 @@ function Insumos() {
   const handleSubmit = async () => {
     if (!formData.nombre || !formData.cantidad || !formData.unidad || !formData.precioUnitario) {
       showAlert('Por favor completa todos los campos', 'error');
+      return;
+    }
+    
+    // 🔥 VALIDACIÓN: Verificar nombres duplicados
+    const nombreNormalizado = formData.nombre.trim().toLowerCase();
+    const nombreExistente = insumos.find(insumo => {
+      // Si estamos editando, excluir el insumo actual de la comparación
+      if (editingInsumo && insumo.Insumo_ID === editingInsumo.Insumo_ID) {
+        return false;
+      }
+      return insumo.Insumo_nombre.trim().toLowerCase() === nombreNormalizado;
+    });
+    
+    if (nombreExistente) {
+      showAlert(`Ya existe un insumo con el nombre "${formData.nombre}". Por favor usa un nombre diferente.`, 'error');
       return;
     }
     

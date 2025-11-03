@@ -507,7 +507,7 @@ const cargarInsumos = async () => {
     return map;
   }, [insumos]);
 
- const prendasFiltradas = React.useMemo(() => {
+  const prendasFiltradas = React.useMemo(() => {
   // 🔒 Protección total
   if (!prendas || !Array.isArray(prendas)) {
     console.warn("⚠️ prendas no es un array:", prendas);
@@ -591,9 +591,11 @@ const cargarInsumos = async () => {
       // 🔥 CORREGIDO: Usar los nombres en lugar de los IDs
       setForm({
         nombre: det.Prenda_nombre || "",
-        marca: det.Prenda_marca_nombre || "",      // ✅ Nombre
-        modelo: det.Prenda_modelo_nombre || "",    // ✅ Nombre
-        color: det.Prenda_color_nombre || "",      // ✅ Nombre
+        marca: det.Prenda_marca || "",           // ✅ ID para el select
+        nuevaMarca: "",
+        modelo: det.Prenda_modelo || "",         // ✅ ID para el select
+        color: det.Prenda_color || "",           // ✅ ID para el select
+        nuevoColor: "",
         precioUnitario: det.Prenda_precio_unitario || "",
         imagen: null,
       });
@@ -1026,8 +1028,9 @@ const costoProduccion = useMemo(() => {
                   <div style={styles.cardSubtitle}>Modelo: {p.Prenda_modelo_nombre}</div>
                 )}
 
+                <div style={styles.cardSubtitle}>Costo total de producción:</div>
                 <div style={styles.price}>
-                  ${p.Prenda_precio_unitario ? Number(p.Prenda_precio_unitario).toFixed(2) : "0.00"}
+                  ${p.Prenda_costo_total_produccion ? Number(p.Prenda_costo_total_produccion).toFixed(2) : "0.00"}
                 </div>
               </div>
               </div>
@@ -1367,7 +1370,7 @@ const costoProduccion = useMemo(() => {
             marginTop: 10,
           }}
         >
-          Precio base de producción: ${Number(detalle?.Prenda_precio_unitario || 0).toFixed(2)}
+          Costo de confección: ${Number(detalle?.Prenda_precio_unitario || 0).toFixed(2)}
         </p>
 
         {/* INSUMOS */}

@@ -1561,7 +1561,7 @@ const confirmarPedido = async () => {
                   <div>Marca: {detalle.prenda_marca || "-"}</div>
                     <div>Modelo: {detalle.prenda_modelo || "-"}</div>
                     <div>Color: {detalle.prenda_color || "-"}</div>
-                    <div>Talle: {detalle.talle || "-"}</div>
+                    <div>Talle: {detalle.talle_nombre || "-"}</div>
                     <div>Cantidad: {detalle.cantidad}</div>
             
                 </div>
@@ -1570,17 +1570,40 @@ const confirmarPedido = async () => {
              
               {/* 💰 Precio */}
                 {detalle.precio_total !== undefined && (
-                <div style={{ textAlign: "right", minWidth: "80px" }}>
+                <div style={{ textAlign: "right", minWidth: "140px" }}>
+                    {/* Subtotal de costos (sin ganancia) */}
                     <div style={{ fontSize: "12px", color: "#9ca3af" }}>Subtotal</div>
+                    <div style={{ fontSize: "14px", color: "#f59e0b", marginBottom: "4px" }}>
+                        ${parseFloat(detalle.precio_total || 0).toFixed(2)}
+                    </div>
+                    
+                    {/* Ganancia calculada */}
+                    <div style={{ fontSize: "12px", color: "#9ca3af" }}>Ganancia (25%)</div>
+                    <div style={{ fontSize: "14px", color: "#10b981", marginBottom: "8px" }}>
+                        ${(() => {
+                            const subtotal = parseFloat(detalle.precio_total || 0);
+                            const ganancia = subtotal * 0.25;
+                            return ganancia.toFixed(2);
+                        })()}
+                    </div>
+                    
+                    {/* Total real con ganancia */}
+                    <div style={{ fontSize: "12px", color: "#9ca3af" }}>TOTAL REAL</div>
                     <div
                     style={{
                         fontSize: "18px",
                         fontWeight: "bold",
                         color: "#ffd70f",
                         marginTop: "4px",
+                        borderTop: "1px solid rgba(255,255,255,0.2)",
+                        paddingTop: "4px",
                     }}
                     >
-                    ${parseFloat(detalle.precio_total || 0).toFixed(2)}
+                    ${(() => {
+                        const subtotal = parseFloat(detalle.precio_total || 0);
+                        const ganancia = subtotal * 0.25;
+                        return (subtotal + ganancia).toFixed(2);
+                    })()}
                     </div>
                 </div>
                 )}
@@ -1616,28 +1639,36 @@ const confirmarPedido = async () => {
               border: "1px solid rgba(255, 215, 15, 0.3)",
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <div style={{ color: "#d1d5db", fontSize: "16px", fontWeight: "600" }}>
-                Total del Pedido
-              </div>
+            {/* Subtotal del pedido */}
+            <div style={{ display: "flex", justifyContent: "space-between", width: "100%", color: "#d1d5db", fontSize: "14px", marginBottom: "8px" }}>
+              <span>Subtotal del Pedido:</span>
+              <span>
+                ${pedidoSeleccionado.detalles.reduce((acc, d) => acc + parseFloat(d.precio_total || 0), 0).toFixed(2)}
+              </span>
+            </div>
+            
+            {/* Ganancia total */}
+            <div style={{ display: "flex", justifyContent: "space-between", width: "100%", color: "#10b981", fontSize: "14px", marginBottom: "12px" }}>
+              <span>Ganancia Total (25%):</span>
+              <span>
+                ${(() => {
+                  const subtotal = pedidoSeleccionado.detalles.reduce((acc, d) => acc + parseFloat(d.precio_total || 0), 0);
+                  return (subtotal * 0.25).toFixed(2);
+                })()}
+              </span>
+            </div>
+            
+            {/* Total final con ganancia */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(255,255,255,0.2)", paddingTop: "12px" }}>
+              <div style={{ color: "#d1d5db", fontSize: "18px", fontWeight: "600" }}>TOTAL FINAL DEL PEDIDO</div>
               <div style={{ color: "#ffd70f", fontSize: "28px", fontWeight: "bold" }}>
-                $
-                {pedidoSeleccionado.detalles
-                  .reduce(
-                    (acc, d) =>
-                      acc + parseFloat(d.precio_total || 0),
-
-                    0
-                  )
-                  .toFixed(2)}
-                                        </div>
-                                    </div>
+                ${(() => {
+                  const subtotal = pedidoSeleccionado.detalles.reduce((acc, d) => acc + parseFloat(d.precio_total || 0), 0);
+                  const ganancia = subtotal * 0.25;
+                  return (subtotal + ganancia).toFixed(2);
+                })()}
+              </div>
+            </div>
                                 </div>
                             )}
                         </div>

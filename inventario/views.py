@@ -419,8 +419,12 @@ class PrendaDetail(APIView):
             .aggregate(total=Sum(F("Insumo_prenda_costo_total")))["total"]
             or 0
         )
+        # ✅ CORRECCIÓN: Usar el precio de confección que envió el usuario
+        precio_confeccion = float(data.get('Prenda_precio_unitario', prenda.Prenda_precio_unitario) or 0)
+        costo_total = float(costo_insumos) + precio_confeccion
+
         prenda.Prenda_costo_total_produccion = costo_total
-        prenda.Prenda_precio_unitario = costo_total
+        prenda.Prenda_precio_unitario = precio_confeccion
         prenda.save()
 
         return Response(PrendaSerializer(prenda, context={'request': request}).data)

@@ -7,12 +7,13 @@ class DetallePedidoSerializer(serializers.ModelSerializer):
     prenda_modelo = serializers.CharField(source='prenda.Prenda_modelo.Modelo_nombre', read_only=True)
     prenda_marca = serializers.CharField(source='prenda.Prenda_marca.Marca_nombre', read_only=True)
     prenda_imagen = serializers.ImageField(source='prenda.Prenda_imagen', read_only=True)  # 👈 agregado
+    talle_nombre = serializers.CharField(source='talle.Talle_codigo', read_only=True)  # 🔥 AGREGADO
 
     class Meta:
         model = DetallePedido
         fields = [
             'id', 'prenda', 'prenda_nombre', 'prenda_marca', 'prenda_modelo', 'prenda_color',
-            'prenda_imagen', 'cantidad', 'tipo', 'talle', 'precio_unitario', 'precio_total'
+            'prenda_imagen', 'cantidad', 'tipo', 'talle', 'talle_nombre', 'precio_unitario', 'precio_total'
         ]
 
 class PedidoSerializer(serializers.ModelSerializer):
