@@ -538,7 +538,6 @@ export default function PedidosView() {
     // 🔥 Función para obtener texto y estilo del badge
     const obtenerEstiloEstado = (estado) => {
         switch(estado) {
-            case 'PENDIENTE':
             case 'PENDIENTE_DUENO':
                 return { texto: 'Pend. Dueño', estilo: styles.estadoPendiente };
             case 'APROBADO_DUENO':
@@ -571,45 +570,67 @@ export default function PedidosView() {
     }, []);
 
     // 🔥 Cargar pedidos, filtrando por el usuario actual si es VENDEDOR
-    useEffect(() => {
-        if (loading || !user) return; // Esperar a que el usuario cargue
+  useEffect(() => {
+  if (loading || !user) return; // Esperar a que el usuario cargue
 
-        const fetchPedidos = async () => {
-            try {
-                const res = await fetch("http://localhost:8000/api/pedidos/");
-                
-                if (!res.ok) {
-                    console.error("❌ Error en la respuesta:", res.status, res.statusText);
-                    showAlert("Error al cargar pedidos", "error");
-                    return;
-                }
-                
-                const data = await res.json();
-                
-                let pedidosFiltrados = data;
+  const fetchPedidos = async () => {
+    try {
+      const res = await fetch("http://localhost:8000/api/pedidos/");
 
-                // 🔥 FILTRO POR ROL: Si es vendedor, solo ve sus pedidos
-                if (isVendedor) {
-                    pedidosFiltrados = pedidosFiltrados.filter(p => 
-                        p.usuario === user.id || p.Pedido_usuario_id === user.id
-                    );
-                } else {
-                    // Para otros roles, mostrar solo pendientes de dueño por defecto
-                    pedidosFiltrados = pedidosFiltrados.filter(p => {
-                        const estado = obtenerEstadoPedido(p);
-                        return estado === 'PENDIENTE_DUENO' || estado === 'PENDIENTE';
-                    });
-                }
-                
-                setPedidosFiltrados(pedidosFiltrados);
-                
-            } catch (err) {
-                console.error("❌ Error al cargar pedidos:", err);
-                showAlert("Error al cargar pedidos", "error");
-            }
-        };
-        fetchPedidos();
-    }, [user, loading, isVendedor]); // Dependencias para recargar si el usuario/rol cambia
+      if (!res.ok) {
+        console.error("❌ Error en la respuesta:", res.status, res.statusText);
+        showAlert("Error al cargar pedidos", "error");
+        return;
+      }
+
+      const data = await res.json();
+
+      // 🧩 Normalizar detalles antes de filtrar
+      const pedidosNormalizados = data.map((pedido) => ({
+        ...pedido,
+        detalles: pedido.detalles.map((d) => ({
+          ...d,
+          // 🧠 Si el talle vino como número, mostrar "-"
+          // Si vino como string (ej. "XL"), mantenerlo
+          talle:
+            typeof d.talle === "number"
+              ? "-"
+              : d.talle?.toUpperCase() || "-",
+          // Asegurar que tipo esté capitalizado correctamente
+          tipo:
+            typeof d.tipo === "string"
+              ? d.tipo.charAt(0).toUpperCase() + d.tipo.slice(1).toLowerCase()
+              : d.tipo,
+        })),
+      }));
+
+      // 👇 Usar los normalizados, no los sin procesar
+      let pedidosFiltrados = pedidosNormalizados;
+
+      // 🔥 FILTRO POR ROL: Si es vendedor, solo ve sus pedidos
+      if (isVendedor) {
+        pedidosFiltrados = pedidosFiltrados.filter(
+          (p) => p.usuario === user.id || p.Pedido_usuario_id === user.id
+        );
+      } else {
+        // Para otros roles, mostrar solo pendientes de dueño por defecto
+        pedidosFiltrados = pedidosFiltrados.filter((p) => {
+          const estado = obtenerEstadoPedido(p);
+          return estado === "PENDIENTE_DUENO" || estado === "PENDIENTE";
+        });
+      }
+
+      // 💾 Guardar pedidos ya normalizados
+      setPedidosFiltrados(pedidosFiltrados);
+    } catch (err) {
+      console.error("❌ Error al cargar pedidos:", err);
+      showAlert("Error al cargar pedidos", "error");
+    }
+  };
+
+  fetchPedidos();
+}, [user, loading, isVendedor]);
+
 
     const showAlert = (message, type = "success") => {
         setAlert({ message, type });
@@ -650,7 +671,7 @@ export default function PedidosView() {
             ...prendaBase,
             cantidad: parseInt(formData.cantidad),
             talle: formData.talle,
-            precioUnitario: precioFinal // Usamos precio base si es vendedor, o el precio final si no lo es
+            precioUnitario: selectedPrenda.Prenda_costo_total_produccion || selectedPrenda.Prenda_precio_unitario || 0,// Usamos precio base si es vendedor, o el precio final si no lo es
         };
 
         setPedido([...pedido, nueva]);
@@ -664,99 +685,138 @@ export default function PedidosView() {
 
     // 🔥 Función de cálculo: solo visible/útil si NO es vendedor
     const calcularTotales = () => {
-        if (pedido.length === 0) {
-            showAlert("Agregá al menos una prenda", "error");
-            return;
-        }
-        const subtotal = pedido.reduce((acc, p) => acc + p.precioUnitario * p.cantidad, 0);
-        const ganancia = subtotal * (formData.porcentajeGanancia / 100);
-        const total = subtotal + ganancia;
-        setResultado({ subtotal, ganancia, total });
+  try {
+    if (!pedido || pedido.length === 0) {
+      showAlert("No hay prendas en el pedido", "error");
+      return;
+    }
+
+    // 🧮 1️⃣ Calcular subtotal usando costo_total_produccion
+    const subtotal = pedido.reduce((acc, p) => {
+      const precioBase =
+        p.Prenda_costo_total_produccion || p.precioUnitario || 0;
+      return acc + precioBase * Number(p.cantidad);
+    }, 0);
+
+    // 🧮 2️⃣ Calcular ganancia
+    const porcentaje = Number(formData.porcentajeGanancia) || 0;
+    const ganancia = (subtotal * porcentaje) / 100;
+
+    // 🧮 3️⃣ Calcular total final
+    const total = subtotal + ganancia;
+
+    // 💾 Guardar resultados en el estado
+    setResultado({ subtotal, ganancia, total });
+
+    // 🎉 Notificación
+    showAlert("Totales calculados correctamente", "success");
+  } catch (error) {
+    console.error("Error al calcular totales:", error);
+    showAlert("Error al calcular totales", "error");
+  }
+};
+
+// ==========================
+// 🧠 Verificación de stock
+// ==========================
+const verificarStockAntesDeConfirmar = async () => {
+  try {
+    const prendasConCantidades = pedido.map(p => ({
+      id_prenda: p.Prenda_ID,
+      cantidad: p.cantidad
+    }));
+
+    const res = await fetch("http://localhost:8000/api/inventario/verificar-stock/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prendas: prendasConCantidades })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || data.insumos_insuficientes?.length > 0) {
+      const mensajes = data.insumos_insuficientes
+        .map(i => `• ${i.nombre}: faltan ${i.faltante} ${i.unidad}`)
+        .join("\n");
+      showAlert(`❌ Stock insuficiente:\n\n${mensajes}`, "error");
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Error verificando stock:", error);
+    showAlert("Error al verificar stock con el servidor", "error");
+    return false;
+  }
+};
+
+// ==========================
+// ✅ Confirmar Pedido
+// ==========================
+const confirmarPedido = async () => {
+  if (loading || !user || !user.id) {
+    showAlert("Error: Usuario no autenticado o no cargado.", "error");
+    return;
+  }
+
+  // 🧠 Verificar stock antes de enviar el pedido
+  const stockOk = await verificarStockAntesDeConfirmar();
+  if (!stockOk) return; // 🚫 Si no hay stock, no continúa
+
+  try {
+    const data = {
+      usuario: user.id,
+      estado: "PENDIENTE_DUENO",
+      prendas: pedido.map(p => ({
+        id_prenda: p.Prenda_ID,
+        cantidad: p.cantidad,
+        talle: p.talle,
+        tipo: "LISA"
+      }))
     };
 
-    // 🔥 MODIFICACIÓN DE LA FUNCIÓN DE CONFIRMACIÓN DE PEDIDO
-    const confirmarPedido = async () => {
-        if (loading || !user || !user.id) {
-            showAlert("Error: Usuario no autenticado o no cargado.", "error");
-            return;
-        }
-        
-        try {
-            const data = {
-                // 🔥 CRUCIAL: Usar ID de usuario real
-                usuario: user.id, 
-                
-                // Estado PENDIENTE_DUENO
-                estado: 'PENDIENTE_DUENO',
-                
-                prendas: pedido.map(p => ({
-                    id_prenda: p.Prenda_ID,
-                    cantidad: p.cantidad,
-                    talle: p.talle,
-                    tipo: "LISA"
-                }))
-            };
+    if (!isVendedor) {
+      data.porcentaje_ganancia = formData.porcentajeGanancia;
+    }
 
-            // Si NO es vendedor, incluimos el porcentaje de ganancia en el cuerpo del pedido si el backend lo requiere.
-            // Si el backend lo calcula automáticamente, esta línea no hace falta, pero la incluimos por si acaso.
-            if (!isVendedor) {
-                data.porcentaje_ganancia = formData.porcentajeGanancia;
-            }
+    const res = await fetch("http://localhost:8000/api/pedidos/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
 
-            console.log("Enviando pedido:", data);
+    const responseData = await res.json();
 
-            const res = await fetch("http://localhost:8000/api/pedidos/", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data)
-            });
+    if (!res.ok) {
+      if (responseData.tipo === "stock_insuficiente") {
+        const detallesHTML = responseData.mensajes.join('\n');
+        showAlert(`❌ Stock insuficiente:\n\n${detallesHTML}`, "error");
+      } else if (responseData.tipo === "sin_prendas") {
+        showAlert("⚠️ No se enviaron prendas en el pedido", "error");
+      } else if (responseData.tipo === "prenda_no_encontrada") {
+        showAlert(`⚠️ ${responseData.error}`, "error");
+      } else {
+        showAlert(`❌ Error: ${responseData.error || 'Error al realizar pedido'}`, "error");
+      }
+      return;
+    }
 
-            const responseData = await res.json();
-            console.log("Respuesta del servidor:", responseData);
+    showAlert("✅ Pedido realizado correctamente y enviado para aprobación", "success");
 
-            if (!res.ok) {
-                // ... (manejo de errores, sin cambios)
-                if (responseData.tipo === "stock_insuficiente") {
-                    const detallesHTML = responseData.mensajes.join('\n');
-                    showAlert(`❌ Stock Insuficiente:\n\n${detallesHTML}`, "error");
-                } else if (responseData.tipo === "sin_prendas") {
-                    showAlert("⚠️ No se enviaron prendas en el pedido", "error");
-                } else if (responseData.tipo === "prenda_no_encontrada") {
-                    showAlert(`⚠️ ${responseData.error}`, "error");
-                } else {
-                    showAlert(`❌ Error: ${responseData.error || 'Error al realizar pedido'}`, "error");
-                }
-                return;
-            }
+    // 🔄 Recargar pedidos, limpiar estados, cerrar modal
+    const resPedidos = await fetch("http://localhost:8000/api/pedidos/");
+    const dataPedidos = await resPedidos.json();
+    setPedidosFiltrados(dataPedidos);
+    setPedido([]);
+    setResultado(null);
+    setModalOpen(false);
 
-            showAlert("✅ Pedido realizado correctamente y enviado para Aprobación", "success");
+  } catch (err) {
+    console.error("Error al confirmar pedido:", err);
+    showAlert("❌ Error al conectar con el servidor", "error");
+  }
+};
 
-            // Recargar solo los pedidos del usuario actual (o pendientes para otros roles)
-            const resPedidos = await fetch("http://localhost:8000/api/pedidos/");
-            const dataPedidos = await resPedidos.json();
-            
-            let pedidosActualizados;
-            if (isVendedor) {
-                pedidosActualizados = dataPedidos.filter(p => 
-                    p.usuario === user.id || p.Pedido_usuario_id === user.id
-                );
-            } else {
-                pedidosActualizados = dataPedidos.filter(p => {
-                    const estado = obtenerEstadoPedido(p);
-                    return estado === 'PENDIENTE_DUENO';
-                });
-            }
-            
-            setPedidosFiltrados(pedidosActualizados);
-            
-            setPedido([]);
-            setResultado(null);
-            setModalOpen(false);
-        } catch (err) {
-            console.error("Error al confirmar pedido:", err);
-            showAlert("❌ Error al conectar con el servidor", "error");
-        }
-    };
 
     // Búsqueda con los 4 estados, limitada por usuario si es VENDEDOR
     const buscarPedidos = async () => {
@@ -881,6 +941,34 @@ export default function PedidosView() {
             console.error("❌ Error al cancelar el pedido:", err);
             showAlert("❌ Error al conectar con el servidor", "error");
         }
+    };
+    // 🔥 Actualizar estado del pedido (Dueño / Costura / Estampado)
+    const actualizarEstadoPedido = async (id, nuevoEstado) => {
+    try {
+        const res = await fetch(`http://localhost:8000/api/pedidos/${id}/`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estado: nuevoEstado }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+        showAlert(`❌ Error al actualizar estado: ${data.error || "Error desconocido"}`, "error");
+        return;
+        }
+
+        showAlert(`✅ Estado actualizado a "${nuevoEstado.replace("_", " ")}"`, "success");
+
+        // 🔄 Refrescar lista de pedidos
+        const resPedidos = await fetch("http://localhost:8000/api/pedidos/");
+        const pedidosActualizados = await resPedidos.json();
+        setPedidosFiltrados(pedidosActualizados);
+
+    } catch (err) {
+        console.error("❌ Error al actualizar estado:", err);
+        showAlert("Error al conectar con el servidor", "error");
+    }
     };
 
     // Ver detalles (SIN CAMBIOS)
@@ -1017,17 +1105,39 @@ export default function PedidosView() {
                                                 </td>
                                                 <td style={styles.td}>
                                                     <div style={styles.actionsContainer}>
-                                                        {puedeCancelar && (
-                                                            <button 
-                                                                style={styles.btnCancelar}
-                                                                onClick={() => cancelarPedido(p.Pedido_ID)}
-                                                                title="Cancelar pedido"
-                                                            >
-                                                                <XCircle size={16} />
-                                                                Cancelar
-                                                            </button>
-                                                        )}
-                                                    </div>
+                                                {/* 🔹 BOTÓN DE ESTADO (solo visible si no está completado ni cancelado) */}
+                                                {estado !== "COMPLETADO" && estado !== "CANCELADO" && (
+                                                    <select
+                                                    value={estado}
+                                                    onChange={(e) => actualizarEstadoPedido(p.Pedido_ID, e.target.value)}
+                                                    style={{
+                                                        ...styles.select,
+                                                        width: "180px",
+                                                        padding: "6px 10px",
+                                                        backgroundColor: "rgba(0,0,0,0.4)",
+                                                        color: "#fff",
+                                                        fontSize: "13px",
+                                                    }}
+                                                    >
+                                                    <option value="PENDIENTE_DUENO">Pendiente Dueño</option>
+                                                    <option value="APROBADO_DUENO">En Costura</option>
+                                                    <option value="PENDIENTE_ESTAMPADO">Pendiente Estampado</option>
+                                                    <option value="COMPLETADO">Completado</option>
+                                                    <option value="CANCELADO">Cancelado</option>
+                                                    </select>
+                                                )}
+
+                                                {puedeCancelar && (
+                                                    <button
+                                                    style={styles.btnCancelar}
+                                                    onClick={() => cancelarPedido(p.Pedido_ID)}
+                                                    title="Cancelar pedido"
+                                                    >
+                                                    <XCircle size={16} />
+                                                    Cancelar
+                                                    </button>
+                                                )}
+                                                </div>
                                                 </td>
                                             </tr>
                                         );
@@ -1109,7 +1219,7 @@ export default function PedidosView() {
                                                             <div style={styles.prendaNombre}>{prenda.Prenda_nombre}</div>
                                                             <div style={styles.prendaDetalle}>{prenda.Prenda_marca_nombre || 'Sin marca'}</div>
                                                             <div style={styles.prendaDetalle}>{prenda.Prenda_modelo_nombre || 'Sin modelo'}</div>
-                                                            <div style={styles.prendaPrecio}>${prenda.Prenda_precio_unitario}</div>
+                                                            <div style={styles.prendaPrecio}>${prenda.Prenda_costo_total_produccion}</div>
                                                         </div>
                                                     </div>
                                                 );
@@ -1259,16 +1369,16 @@ export default function PedidosView() {
                                             {!isVendedor && resultado && (
                                                 <div style={styles.resultadoGrid}>
                                                     <div style={styles.resultadoItem}>
-                                                        <div style={styles.resultadoLabel}>Subtotal</div>
-                                                        <div style={styles.resultadoValue}>${resultado.subtotal.toFixed(2)}</div>
+                                                <div style={styles.resultadoLabel}>Subtotal</div>
+                                                    <div style={styles.resultadoValue}>${resultado.subtotal.toFixed(2)}</div>
                                                     </div>
                                                     <div style={styles.resultadoItem}>
-                                                        <div style={styles.resultadoLabel}>Ganancia ({formData.porcentajeGanancia}%)</div>
-                                                        <div style={styles.resultadoValue}>${resultado.ganancia.toFixed(2)}</div>
+                                                 <div style={styles.resultadoLabel}>Ganancia ({formData.porcentajeGanancia}%)</div>
+                                                    <div style={styles.resultadoValue}>${resultado.ganancia.toFixed(2)}</div>
                                                     </div>
                                                     <div style={styles.resultadoItem}>
-                                                        <div style={styles.resultadoLabel}>Total Final</div>
-                                                        <div style={styles.resultadoValue}>${resultado.total.toFixed(2)}</div>
+                                                <div style={styles.resultadoLabel}>Total Final</div>
+                                                    <div style={styles.resultadoValue}>${resultado.total.toFixed(2)}</div>
                                                     </div>
                                                 </div>
                                             )}
@@ -1448,31 +1558,34 @@ export default function PedidosView() {
                     color: "#9ca3af",
                   }}
                 >
-                  <div>Marca: {detalle.prenda_marca}</div>
-                  <div>Modelo: {detalle.prenda_modelo}</div>
-                  <div>Color: {detalle.prenda_color}</div>
-                  <div>Talle: {detalle.talle || "-"}</div>
-                  <div>Cantidad: {detalle.cantidad}</div>
-                  <div>Tipo: {detalle.tipo || "LISA"}</div>
+                  <div>Marca: {detalle.prenda_marca || "-"}</div>
+                    <div>Modelo: {detalle.prenda_modelo || "-"}</div>
+                    <div>Color: {detalle.prenda_color || "-"}</div>
+                    <div>Talle: {detalle.talle || "-"}</div>
+                    <div>Cantidad: {detalle.cantidad}</div>
+            
                 </div>
               </div>
 
+             
               {/* 💰 Precio */}
-              {detalle.precio_unitario && (
+                {detalle.precio_total !== undefined && (
                 <div style={{ textAlign: "right", minWidth: "80px" }}>
-                  <div style={{ fontSize: "12px", color: "#9ca3af" }}>Subtotal</div>
-                  <div
+                    <div style={{ fontSize: "12px", color: "#9ca3af" }}>Subtotal</div>
+                    <div
                     style={{
-                      fontSize: "18px",
-                      fontWeight: "bold",
-                      color: "#ffd70f",
-                      marginTop: "4px",
+                        fontSize: "18px",
+                        fontWeight: "bold",
+                        color: "#ffd70f",
+                        marginTop: "4px",
                     }}
-                  >
-                    ${(parseFloat(detalle.precio_unitario) * detalle.cantidad).toFixed(2)}
-                  </div>
+                    >
+                    ${parseFloat(detalle.precio_total || 0).toFixed(2)}
+                    </div>
                 </div>
-              )}
+                )}
+
+              
             </div>
           ))
         ) : (
@@ -1518,7 +1631,8 @@ export default function PedidosView() {
                 {pedidoSeleccionado.detalles
                   .reduce(
                     (acc, d) =>
-                      acc + parseFloat(d.precio_unitario || 0) * d.cantidad,
+                      acc + parseFloat(d.precio_total || 0),
+
                     0
                   )
                   .toFixed(2)}

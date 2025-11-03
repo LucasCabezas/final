@@ -3,26 +3,21 @@ from django.contrib.auth.models import User
 from inventario.models import Prenda
 
 class Pedido(models.Model):
-    # 🔥 NUEVO: Estados como CharField con 4 opciones
     ESTADO_CHOICES = [
-        ('PENDIENTE', 'Pendiente'),
-        ('EN_PROCESO', 'En Proceso'),
+        ('PENDIENTE_DUENO', 'Pendiente Dueño'),
+        ('APROBADO_DUENO', 'Aprobado - En Costura'),
+        ('PENDIENTE_ESTAMPADO', 'Pendiente Estampado'),
         ('COMPLETADO', 'Completado'),
         ('CANCELADO', 'Cancelado'),
     ]
-    
     Pedido_ID = models.AutoField(primary_key=True)
     Usuario = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
-    Pedido_fecha = models.DateField()
-    # 🔥 CAMBIADO: De BooleanField a CharField con estados
-    Pedido_estado = models.CharField(
-        max_length=20, 
-        choices=ESTADO_CHOICES, 
-        default='PENDIENTE'  # Por defecto todos los pedidos inician como PENDIENTE
-    )
+    Pedido_fecha = models.DateField(auto_now_add=True)
+    Pedido_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    Pedido_estado = models.CharField(max_length=30, choices=ESTADO_CHOICES, default='PENDIENTE_DUENO')
 
     def __str__(self):
-        return f"Pedido {self.Pedido_ID} - {self.Usuario} - {self.Pedido_fecha}"
+        return f"Pedido {self.Pedido_ID} - {self.Usuario}"
 
 class PedidosXPrendas(models.Model):
     pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE)
@@ -37,12 +32,14 @@ class DetallePedido(models.Model):
     """Detalle completo de cada item en un pedido con cálculo automático de costos"""
     
     # Relaciones
-    pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name='detalles')
+    pedido = models.ForeignKey('Pedido', related_name='detalles', on_delete=models.CASCADE)
     prenda = models.ForeignKey('inventario.Prenda', on_delete=models.CASCADE)
-    talle = models.ForeignKey('clasificaciones.Talle', on_delete=models.CASCADE)
-    color = models.ForeignKey('clasificaciones.Color', on_delete=models.CASCADE)
-    modelo = models.ForeignKey('clasificaciones.Modelo', on_delete=models.CASCADE)
-    marca = models.ForeignKey('clasificaciones.Marca', on_delete=models.CASCADE)
+    cantidad = models.PositiveIntegerField(default=1)
+    tipo = models.CharField(max_length=50, default='LISA')
+    talle = models.ForeignKey('clasificaciones.Talle', on_delete=models.SET_NULL, null=True, blank=True)
+    color = models.ForeignKey('clasificaciones.Color', on_delete=models.SET_NULL, null=True, blank=True)
+    modelo = models.ForeignKey('clasificaciones.Modelo', on_delete=models.SET_NULL, null=True, blank=True)
+    marca = models.ForeignKey('clasificaciones.Marca', on_delete=models.SET_NULL, null=True, blank=True)
     
     # Tipo de prenda
     TIPO_CHOICES = [
@@ -58,8 +55,8 @@ class DetallePedido(models.Model):
     costo_materiales = models.FloatField(default=0, editable=False)
     costo_mano_obra_costura = models.FloatField(default=0, editable=False)
     costo_estampado = models.FloatField(default=0, editable=False)
-    precio_unitario = models.FloatField(default=0, editable=False)
-    precio_total = models.FloatField(default=0, editable=False)
+    precio_unitario = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    precio_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     
     def calcular_costo_materiales(self):
         """Calcula el costo total de materiales/insumos para esta prenda"""
@@ -129,9 +126,11 @@ class DetallePedido(models.Model):
         self.precio_total = self.calcular_precio_total()
     
     def save(self, *args, **kwargs):
-        """Sobrescribe el método save para calcular costos automáticamente"""
-        self.calcular_costos()
+        skip_auto_costs = kwargs.pop("skip_auto_costs", False)
+        if not skip_auto_costs:
+            self.calcular_costos()
         super().save(*args, **kwargs)
+
     
     def __str__(self):
         return f"{self.prenda.Prenda_nombre} - {self.marca.Marca_nombre} {self.modelo.Modelo_nombre} ({self.cantidad}u)"

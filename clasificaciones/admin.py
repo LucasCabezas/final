@@ -1,7 +1,7 @@
-# clasificaciones/admin.py
-
 from django.contrib import admin
 from .models import Talle, TallesXPrendas, Color, Modelo, Marca
+from inventario.models import Prenda  # ✅ necesario para contar prendas relacionadas
+
 
 # ========================================
 # ADMIN PARA TALLE
@@ -24,12 +24,12 @@ class TallesXPrendasAdmin(admin.ModelAdmin):
     search_fields = ('prenda__Prenda_nombre', 'talle__Talle_codigo')
     ordering = ('prenda', 'talle')
     list_per_page = 50
-    
+
     def get_prenda_nombre(self, obj):
         return obj.prenda.Prenda_nombre
     get_prenda_nombre.short_description = 'Prenda'
     get_prenda_nombre.admin_order_field = 'prenda__Prenda_nombre'
-    
+
     def get_talle_codigo(self, obj):
         return obj.talle.Talle_codigo
     get_talle_codigo.short_description = 'Talle'
@@ -45,10 +45,10 @@ class ColorAdmin(admin.ModelAdmin):
     search_fields = ('Color_nombre',)
     ordering = ('Color_nombre',)
     list_per_page = 20
-    
+
+    @admin.display(description='Prendas con este color')
     def cantidad_prendas(self, obj):
-        return obj.prendas.count()
-    cantidad_prendas.short_description = 'Prendas con este color'
+        return Prenda.objects.filter(Prenda_color=obj).count()
 
 
 # ========================================
@@ -60,10 +60,10 @@ class ModeloAdmin(admin.ModelAdmin):
     search_fields = ('Modelo_nombre',)
     ordering = ('Modelo_nombre',)
     list_per_page = 20
-    
+
+    @admin.display(description='Prendas con este modelo')
     def cantidad_prendas(self, obj):
-        return obj.prendas.count()
-    cantidad_prendas.short_description = 'Prendas con este modelo'
+        return Prenda.objects.filter(Prenda_modelo=obj).count()
 
 
 # ========================================
@@ -75,7 +75,7 @@ class MarcaAdmin(admin.ModelAdmin):
     search_fields = ('Marca_nombre',)
     ordering = ('Marca_nombre',)
     list_per_page = 20
-    
+
+    @admin.display(description='Prendas de esta marca')
     def cantidad_prendas(self, obj):
-        return obj.prendas.count()
-    cantidad_prendas.short_description = 'Prendas de esta marca'
+        return Prenda.objects.filter(Prenda_marca=obj).count()

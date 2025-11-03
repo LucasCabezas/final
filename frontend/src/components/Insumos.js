@@ -529,13 +529,37 @@ function Insumos() {
   const [isNavbarCollapsed, setIsNavbarCollapsed] = useState(false);
   const [insumos, setInsumos] = useState([]);
   const [alertas, setAlertas] = useState([]);
+  const [unidades, setUnidades] = useState([]);
+  const [tipos, setTipos] = useState([]);
 
   React.useEffect(() => {
     cargarInsumos();
     cargarAlertas();
+    cargarUnidades();
+    cargarTipos();
     const interval = setInterval(cargarAlertas, 300000);
     return () => clearInterval(interval);
   }, []);
+
+  const cargarUnidades = async () => {
+    try {
+      const res = await fetch('http://localhost:8000/api/inventario/unidades/');
+      const data = await res.json();
+      setUnidades(data);
+    } catch (error) {
+      console.error('Error cargando unidades:', error);
+    }
+  };
+
+  const cargarTipos = async () => {
+    try {
+      const res = await fetch('http://localhost:8000/api/inventario/tipos/');
+      const data = await res.json();
+      setTipos(data);
+    } catch (error) {
+      console.error('Error cargando tipos:', error);
+    }
+  };
 
   const cargarInsumos = async () => {
     try {
@@ -565,8 +589,11 @@ function Insumos() {
     nombre: '',
     cantidad: '',
     unidad: '',
-    precioUnitario: ''
+    tipo: '',
+    precioUnitario: '',
+    cantidadMinima: ''
   });
+  
   const [isAddMode, setIsAddMode] = useState(false);
   const [alert, setAlert] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -591,22 +618,37 @@ function Insumos() {
   });
 
   const handleOpenModal = (insumo = null) => {
-    if (insumo) {
-      setEditingInsumo(insumo);
-      setFormData({
-        nombre: insumo.Insumo_nombre,
-        cantidad: insumo.Insumo_cantidad,
-        unidad: insumo.Insumo_unidad_medida,
-        precioUnitario: insumo.Insumo_precio_unitario
-      });
-      setIsAddMode(false);
-    } else {
-      setEditingInsumo(null);
-      setFormData({ nombre: '', cantidad: '', unidad: '', precioUnitario: '' });
-      setIsAddMode(false);
-    }
-    setShowModal(true);
-  };
+  if (insumo) {
+    // 🧩 Cuando se edita un insumo existente
+    setEditingInsumo(insumo);
+
+    setFormData({
+      nombre: insumo.Insumo_nombre,
+      cantidad: insumo.Insumo_cantidad,
+      unidad: insumo.unidad_medida || insumo.unidad_medida_id || '', // ID de la unidad
+      tipo: insumo.tipo_insumo || insumo.tipo_insumo_id || '',        // ID del tipo
+      precioUnitario: insumo.Insumo_precio_unitario,
+      cantidadMinima: insumo.Insumo_cantidad_minima || ''             // Nueva propiedad
+    });
+
+    setIsAddMode(false);
+  } else {
+    // 🧩 Cuando se agrega un nuevo insumo
+    setEditingInsumo(null);
+    setFormData({
+      nombre: '',
+      cantidad: '',
+      unidad: '',
+      tipo: '',
+      precioUnitario: '',
+      cantidadMinima: ''
+    });
+    setIsAddMode(false);
+  }
+
+  setShowModal(true);
+};
+
 
   const handleCloseModal = () => {
     setShowModal(false);
@@ -673,11 +715,18 @@ function Insumos() {
         finalQuantity = editingInsumo.Insumo_cantidad + Number(confirmData.cantidad || formData.cantidad);
       }
 
+      const precioUnitario = Number(confirmData.precioUnitario || formData.precioUnitario);
+      const cantidad = Number(finalQuantity);
+      const precioTotal = precioUnitario * cantidad;
+
       const payload = {
         Insumo_nombre: confirmData.nombre || formData.nombre,
-        Insumo_cantidad: finalQuantity,
-        Insumo_unidad_medida: confirmData.unidad || formData.unidad,
-        Insumo_precio_unitario: Number(confirmData.precioUnitario || formData.precioUnitario)
+        Insumo_cantidad: cantidad,
+        unidad_medida: confirmData.unidad || formData.unidad,   // ID
+        tipo_insumo: confirmData.tipo || formData.tipo,         // ID
+        Insumo_precio_unitario: precioUnitario,
+        Insumo_precio_total: precioTotal,                       // 💥 NUEVO campo
+        Insumo_cantidad_minima: Number(confirmData.cantidadMinima || formData.cantidadMinima) || 0
       };
 
       if (confirmAction === 'edit' || confirmAction === 'edit_with_impact') {
@@ -794,17 +843,21 @@ function Insumos() {
   };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    
-    if (name === 'nombre' || name === 'unidad') {
-      const regex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/;
-      if (!regex.test(value)) {
-        return;
-      }
+  const { name, value } = e.target;
+
+  if (name === 'nombre') {
+    const regex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/;
+    if (!regex.test(value)) {
+      return; // evita caracteres no válidos en nombre
     }
-    
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+  }
+
+  setFormData((prev) => ({
+    ...prev,
+    [name]: value
+  }));
+};
+
 
   const getConfirmModalContent = () => {
     if (confirmAction === 'add') {
@@ -976,7 +1029,7 @@ function Insumos() {
                       <tr key={insumo.Insumo_ID} style={styles.tr} className="hover-row">
                         <td style={styles.td}>{insumo.Insumo_nombre}</td>
                         <td style={styles.td}>{insumo.Insumo_cantidad}</td>
-                        <td style={styles.td}>{insumo.Insumo_unidad_medida}</td>
+                        <td style={styles.td}>{insumo.unidad_medida_nombre}</td>
                         <td style={styles.td}>{insumo.Insumo_precio_unitario?.toFixed(2)}</td>
                         <td style={styles.td}>{insumo.Insumo_precio_total?.toFixed(2)}</td>
                         <td style={styles.tdCenter}>
@@ -1004,128 +1057,196 @@ function Insumos() {
               </table>
             </div>
 
-            {showModal && (
-              <div style={styles.modalOverlay} onClick={handleCloseModal}>
-                <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-                  <div style={styles.modalHeader}>
-                    <h2 style={styles.modalTitle}>
-                      {editingInsumo ? 'Editar Insumo' : 'Agregar Insumo'}
-                    </h2>
-                    <button
-                      onClick={handleCloseModal}
-                      style={styles.closeButton}
-                      className="hover-icon"
-                    >
-                      <X style={{ width: '24px', height: '24px', color: '#9ca3af' }} />
-                    </button>
-                  </div>
+           {showModal && (
+  <div style={styles.modalOverlay} onClick={handleCloseModal}>
+    <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+      <div style={styles.modalHeader}>
+        <h2 style={styles.modalTitle}>
+          {editingInsumo ? 'Editar Insumo' : 'Agregar Insumo'}
+        </h2>
+        <button
+          onClick={handleCloseModal}
+          style={styles.closeButton}
+          className="hover-icon"
+        >
+          <X style={{ width: '24px', height: '24px', color: '#9ca3af' }} />
+        </button>
+      </div>
 
-                  <div>
-                    <div style={styles.formGroup}>
-                      <label style={styles.label}>Nombre del Insumo</label>
-                      <input
-                        type="text"
-                        name="nombre"
-                        value={formData.nombre}
-                        onChange={handleInputChange}
-                        style={styles.input}
-                        className="form-input"
-                        placeholder="Ej: Algodón Premium"
-                      />
-                    </div>
+      {/* ================= FORMULARIO ================= */}
+      <div>
+        {/* 🔹 NOMBRE */}
+        <div style={styles.formGroup}>
+          <label style={styles.label}>Nombre del Insumo</label>
+          <input
+            type="text"
+            name="nombre"
+            value={formData.nombre}
+            onChange={handleInputChange}
+            style={styles.input}
+            className="form-input"
+            placeholder="Ej: Algodón Premium"
+          />
+        </div>
 
-                    {editingInsumo && (
-                      <div style={styles.toggleContainer}>
-                        <label style={styles.toggleLabel}>Agregar más cantidad</label>
-                        <button
-                          onClick={() => {
-                            setIsAddMode(!isAddMode);
-                            setFormData(prev => ({ ...prev, cantidad: '' }));
-                          }}
-                          style={{
-                            ...styles.toggleSwitch,
-                            ...(isAddMode && styles.toggleSwitchActive)
-                          }}
-                        >
-                          <div style={{
-                            ...styles.toggleIndicator,
-                            ...(isAddMode && styles.toggleIndicatorActive)
-                          }} />
-                        </button>
-                      </div>
-                    )}
+        {/* 🔹 MODO AGREGAR CANTIDAD */}
+        {editingInsumo && (
+          <div style={styles.toggleContainer}>
+            <label style={styles.toggleLabel}>Agregar más cantidad</label>
+            <button
+              onClick={() => {
+                setIsAddMode(!isAddMode);
+                setFormData(prev => ({ ...prev, cantidad: '' }));
+              }}
+              style={{
+                ...styles.toggleSwitch,
+                ...(isAddMode && styles.toggleSwitchActive)
+              }}
+            >
+              <div
+                style={{
+                  ...styles.toggleIndicator,
+                  ...(isAddMode && styles.toggleIndicatorActive)
+                }}
+              />
+            </button>
+          </div>
+        )}
 
-                    {editingInsumo && isAddMode && (
-                      <div style={styles.quantityInfo}>
-                        <p style={styles.quantityInfoText}>
-                          Cantidad actual: <strong>{editingInsumo.Insumo_cantidad}</strong>
-                        </p>
-                      </div>
-                    )}
+        {editingInsumo && isAddMode && (
+          <div style={styles.quantityInfo}>
+            <p style={styles.quantityInfoText}>
+              Cantidad actual: <strong>{editingInsumo.Insumo_cantidad}</strong>
+            </p>
+          </div>
+        )}
 
-                    <div style={styles.formGroup}>
-                      <label style={styles.label}>{isAddMode && editingInsumo ? 'Cantidad a agregar' : 'Cantidad'}</label>
-                      <input
-                        type="number"
-                        name="cantidad"
-                        value={formData.cantidad}
-                        onChange={handleInputChange}
-                        min="0"
-                        step="0.01"
-                        style={styles.input}
-                        className="form-input"
-                        placeholder="0"
-                      />
-                    </div>
+        {/* 🔹 CANTIDAD */}
+        <div style={styles.formGroup}>
+          <label style={styles.label}>
+            {isAddMode && editingInsumo
+              ? 'Cantidad a agregar'
+              : 'Cantidad disponible'}
+          </label>
+          <input
+            type="number"
+            name="cantidad"
+            value={formData.cantidad}
+            onChange={handleInputChange}
+            min="0"
+            step="0.01"
+            style={styles.input}
+            className="form-input"
+            placeholder="0"
+          />
+        </div>
 
-                    <div style={styles.formGroup}>
-                      <label style={styles.label}>Unidad de Medida</label>
-                      <input
-                        type="text"
-                        name="unidad"
-                        value={formData.unidad}
-                        onChange={handleInputChange}
-                        style={styles.input}
-                        className="form-input"
-                        placeholder="Ej: KG, metros, unidades"
-                      />
-                    </div>
+        {/* 🔹 UNIDAD DE MEDIDA (select dinámico) */}
+        <div style={styles.formGroup}>
+          <label style={styles.label}>Unidad de Medida</label>
+          <select
+              name="unidad"
+              value={formData.unidad}
+              onChange={handleInputChange}
+              style={styles.input}
+            >
+              <option value="">Seleccione unidad...</option>
+              {unidades.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.nombre}
+                </option>
+              ))}
+            </select>
 
-                    <div style={styles.formGroup}>
-                      <label style={styles.label}>Precio Unitario</label>
-                      <input
-                        type="number"
-                        name="precioUnitario"
-                        value={formData.precioUnitario}
-                        onChange={handleInputChange}
-                        min="0"
-                        step="0.01"
-                        style={styles.input}
-                        className="form-input"
-                        placeholder="0.00"
-                      />
-                    </div>
-                  </div>
+        </div>
 
-                  <div style={styles.modalActions}>
-                    <button
-                      onClick={handleCloseModal}
-                      style={styles.cancelButton}
-                      className="hover-cancel"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      onClick={handleSubmit}
-                      style={styles.submitButton}
-                      className="hover-button"
-                    >
-                      {editingInsumo ? 'Guardar Cambios' : 'Agregar'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+        {/* 🔹 TIPO DE INSUMO (select dinámico) */}
+        <div style={styles.formGroup}>
+          <label style={styles.label}>Tipo de Insumo</label>
+          <select
+            name="tipo"
+            value={formData.tipo}
+            onChange={handleInputChange}
+            style={styles.input}
+          >
+            <option value="">Seleccione tipo...</option>
+            {tipos.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* 🔹 PRECIO UNITARIO */}
+        <div style={styles.formGroup}>
+          <label style={styles.label}>Precio Unitario</label>
+          <input
+            type="number"
+            name="precioUnitario"
+            value={formData.precioUnitario}
+            onChange={handleInputChange}
+            min="0"
+            step="0.01"
+            style={styles.input}
+            className="form-input"
+            placeholder="0.00"
+          />
+        </div>
+            {/* 🔹 PREVISUALIZAR PRECIO TOTAL */}
+        {formData.precioUnitario && formData.cantidad && (
+          <div style={{
+            marginTop: '8px',
+            padding: '8px 12px',
+            backgroundColor: 'rgba(255,255,255,0.08)',
+            borderRadius: '8px',
+            color: '#fff',
+            fontSize: '14px'
+          }}>
+            Precio total estimado: <strong>${(formData.precioUnitario * formData.cantidad).toFixed(2)}</strong>
+          </div>
+        )}
+        {/* 🔹 CANTIDAD MÍNIMA (nuevo campo) */}
+        <div style={styles.formGroup}>
+          <label style={styles.label}>Cantidad Mínima</label>
+          <input
+            type="number"
+            name="cantidadMinima"
+            value={formData.cantidadMinima || ''}
+            onChange={handleInputChange}
+            min="0"
+            step="0.01"
+            style={styles.input}
+            className="form-input"
+            placeholder="Ej: 10"
+          />
+          <p style={{ color: '#9ca3af', fontSize: '13px', marginTop: '4px' }}>
+            Se generará una alerta cuando el stock sea menor o igual a esta cantidad.
+          </p>
+        </div>
+      </div>
+
+      {/* ================= BOTONES ================= */}
+      <div style={styles.modalActions}>
+        <button
+          onClick={handleCloseModal}
+          style={styles.cancelButton}
+          className="hover-cancel"
+        >
+          Cancelar
+        </button>
+        <button
+          onClick={handleSubmit}
+          style={styles.submitButton}
+          className="hover-button"
+        >
+          {editingInsumo ? 'Guardar Cambios' : 'Agregar'}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
 
             {showConfirmModal && (() => {
               const content = getConfirmModalContent();

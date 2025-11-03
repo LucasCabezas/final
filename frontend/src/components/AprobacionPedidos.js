@@ -133,13 +133,8 @@ const styles = {
 
 // Función para obtener el estado (compatibilidad con la lógica de RealizarPedido)
 const obtenerEstadoPedido = (pedido) => {
-    // Usamos el campo 'estado' si existe
-    const estadoRaw = pedido.estado;
-
-    if (typeof estadoRaw === 'string') {
-        return estadoRaw.toUpperCase();
-    }
-    return 'ESTADO DESCONOCIDO';
+  const estadoRaw = pedido.Pedido_estado || pedido.estado || "";
+  return estadoRaw.toUpperCase();
 };
 
 // Función para obtener texto y estilo del badge (adaptada de RealizarPedido.js)
@@ -186,31 +181,46 @@ function AprobacionPedidos() {
     }, [user, loading, userRole]); 
 
     const cargarPedidos = async () => {
-        setIsLoading(true);
-        setError(null);
+    setIsLoading(true);
+    setError(null);
         try {
-            // Se asume que el endpoint está bien: "http://localhost:8000/api/pedidos/"
-            const response = await fetch(API_PEDIDOS_URL); 
+            const response = await fetch(API_PEDIDOS_URL);
             if (!response.ok) {
-                throw new Error(`Error ${response.status}: No se pudo cargar la lista de pedidos.`);
-            }
-            let data = await response.json();
-            
-            // FILTRADO DE PEDIDOS SEGÚN EL ROL
-            if (userRole === 'Costurero') {
-                // El costurero ve pedidos en APROBADO_DUENO, PENDIENTE_ESTAMPADO y COMPLETADO
-                data = data.filter(p => p.estado === 'APROBADO_DUENO' || p.estado === 'PENDIENTE_ESTAMPADO' || p.estado === 'COMPLETADO');
-            } else if (userRole === 'Estampador') {
-                // El estampador ve pedidos en PENDIENTE_ESTAMPADO y COMPLETADO
-                data = data.filter(p => p.estado === 'PENDIENTE_ESTAMPADO' || p.estado === 'COMPLETADO');
-            } else if (userRole === 'Dueño') {
-                // El dueño ve solo los pendientes de su aprobación (PENDIENTE_DUENO) y los que ya aprobó
-                data = data.filter(p => p.estado === 'PENDIENTE_DUENO' || p.estado === 'CANCELADO' || p.estado === 'APROBADO_DUENO');
-            } else {
-                // Si el rol es desconocido o no autorizado, no mostrar nada
-                data = [];
+            throw new Error(`Error ${response.status}: No se pudo cargar la lista de pedidos.`);
             }
 
+            let data = await response.json();
+
+            // ⚙️ Normalizar clave del estado (Django la envía como "Pedido_estado")
+            data = data.map(p => ({
+            ...p,
+            estado: p.Pedido_estado?.toUpperCase() || "DESCONOCIDO"
+            }));
+
+            // 🔹 FILTRADO SEGÚN ROL
+            if (userRole === "Costurero") {
+            data = data.filter(
+                p =>
+                p.estado === "APROBADO_DUENO" ||
+                p.estado === "PENDIENTE_ESTAMPADO" ||
+                p.estado === "COMPLETADO"
+            );
+            } else if (userRole === "Estampador") {
+            data = data.filter(
+                p => p.estado === "PENDIENTE_ESTAMPADO" || p.estado === "COMPLETADO"
+            );
+            } else if (userRole === "Dueño") {
+            data = data.filter(
+                p =>
+                p.estado === "PENDIENTE_DUENO" ||
+                p.estado === "CANCELADO" ||
+                p.estado === "APROBADO_DUENO"
+            );
+            } else {
+            data = [];
+            }
+
+            console.log(`✅ Pedidos filtrados (${userRole}):`, data);
             setPedidos(data);
         } catch (err) {
             console.error("Error cargando pedidos:", err);
@@ -218,7 +228,8 @@ function AprobacionPedidos() {
         } finally {
             setIsLoading(false);
         }
-    };
+        };
+
 
     // La URL de PATCH necesita el ID al final, ajustamos la llamada fetch
     const actualizarEstadoPedido = async (pedidoId, newStatus) => {
@@ -316,6 +327,36 @@ function AprobacionPedidos() {
         return <span style={{ color: '#9ca3af', fontSize: '13px' }}>Sin acción pendiente</span>;
     };
 
+// =========================
+// 🧾 Modal Detalle Pedido
+// =========================
+const [modalOpen, setModalOpen] = useState(false);
+const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
+
+const abrirModalDetalles = async (pedido) => {
+  try {
+    // Si ya tiene detalles cargados, los mostramos
+    if (pedido.detalles && pedido.detalles.length > 0) {
+      setPedidoSeleccionado(pedido);
+      setModalOpen(true);
+      return;
+    }
+
+    // Si no los tiene, los obtenemos del backend
+    const res = await fetch(`${API_PEDIDOS_URL}${pedido.Pedido_ID}/`);
+    if (!res.ok) throw new Error("No se pudo cargar el detalle del pedido.");
+    const data = await res.json();
+    setPedidoSeleccionado(data);
+    setModalOpen(true);
+  } catch (error) {
+    console.error("❌ Error al cargar detalles:", error);
+  }
+};
+
+const cerrarModal = () => {
+  setModalOpen(false);
+  setPedidoSeleccionado(null);
+};
 
     
     if (isLoading) {
@@ -335,71 +376,214 @@ function AprobacionPedidos() {
     }
 
     return (
-        <div style={styles.container}>
-            <Componente onToggle={setIsNavbarCollapsed} />
-            <main style={styles.main(navbarWidth)}>
-                <div style={styles.contentWrapper}>
-                    <h2 style={styles.title}>
-                        Gestión y Aprobación de Pedidos
-                    </h2>
-                    <p style={styles.subtitle}>
-                        {userRole}: Vista de los pedidos pendientes de tu acción o seguimiento.
-                    </p>
+  <div style={styles.container}>
+    <Componente onToggle={setIsNavbarCollapsed} />
+    <main style={styles.main(navbarWidth)}>
+      <div style={styles.contentWrapper}>
+        <h2 style={styles.title}>Gestión y Aprobación de Pedidos</h2>
+        <p style={styles.subtitle}>
+          {userRole}: Vista de los pedidos pendientes de tu acción o seguimiento.
+        </p>
 
-                    {pedidos.length > 0 ? (
-                        <div style={styles.tableContainer}>
-                            <table style={styles.table}>
-                                <thead>
-                                    <tr>
-                                        <th style={styles.th}>ID</th>
-                                        <th style={styles.th}>Cliente</th>
-                                        <th style={styles.th}>Descripción</th>
-                                        <th style={styles.th}>Cantidad</th>
-                                        <th style={styles.th}>Estado Actual</th>
-                                        <th style={styles.th}>Acción</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {pedidos.map((pedido) => {
-                                        const estado = obtenerEstadoPedido(pedido);
-                                        const { texto, estilo } = obtenerEstiloEstado(estado);
+        {pedidos.length > 0 ? (
+          <div style={styles.tableContainer}>
+            <table style={styles.table}>
+  <thead>
+    <tr>
+      <th style={styles.th}>ID</th>
+      <th style={styles.th}>Cliente</th>
+      <th style={styles.th}>Estado Actual</th>
+      <th style={styles.th}>Acción</th>
+    </tr>
+  </thead>
+  <tbody>
+    {pedidos.map((pedido) => {
+      const estado = obtenerEstadoPedido(pedido);
+      const { texto, estilo } = obtenerEstiloEstado(estado);
 
-                                        return (
-                                            <tr key={pedido.Pedido_ID}>
-                                                <td style={styles.td}>PED{pedido.Pedido_ID.toString().padStart(3, '0')}</td>
-                                                <td style={styles.td}>{pedido.Cliente_nombre || 'N/A'}</td>
-                                                <td style={styles.td}>{pedido.Descripcion_pedido || 'N/A'}</td>
-                                                <td style={styles.td}>{pedido.Cantidad_prendas || 0}</td>
-                                                <td style={styles.td}>
-                                                    <span style={{ ...styles.estadoBadge, ...estilo }}> 
-                                                        {texto}
-                                                    </span>
-                                                </td>
-                                                <td style={styles.td}>
-                                                    {renderActions(pedido)}
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-                    ) : (
-                        <div style={styles.emptyState}>
-                            <Package size={64} color="#4b5563" />
-                            <h3 style={{ marginTop: '16px', color: '#9ca3af' }}>
-                                No hay pedidos para tu rol.
-                            </h3>
-                            <p style={{ color: '#6b7280' }}>
-                                Si eres Dueño, no hay pedidos pendientes de aprobación. 
-                                Si eres Costurero/Estampador, no hay pedidos en tu etapa.
-                            </p>
-                        </div>
-                    )}
+      return (
+        <tr key={pedido.Pedido_ID}>
+          <td style={styles.td}>
+            PED{pedido.Pedido_ID.toString().padStart(3, "0")}
+          </td>
+          <td style={styles.td}>{pedido.Cliente_nombre || "N/A"}</td>
+          <td style={styles.td}>
+            <span style={{ ...styles.estadoBadge, ...estilo }}>
+              {texto}
+            </span>
+          </td>
+          <td style={styles.td}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "6px",
+                alignItems: "flex-start",
+              }}
+            >
+              {renderActions(pedido)}
+              <button
+                onClick={() => abrirModalDetalles(pedido)}
+                style={{
+                  ...styles.actionButton("detail"),
+                  backgroundColor: "#6b7280",
+                  fontSize: "12px",
+                  padding: "6px 10px",
+                }}
+              >
+                Ver Detalle
+              </button>
+            </div>
+          </td>
+        </tr>
+      );
+    })}
+  </tbody>
+</table>
+          </div>
+        ) : (
+          <div style={styles.emptyState}>
+            <Package size={64} color="#4b5563" />
+            <h3 style={{ marginTop: "16px", color: "#9ca3af" }}>
+              No hay pedidos para tu rol.
+            </h3>
+            <p style={{ color: "#6b7280" }}>
+              Si eres Dueño, no hay pedidos pendientes de aprobación. Si eres
+              Costurero/Estampador, no hay pedidos en tu etapa.
+            </p>
+          </div>
+        )}
+      </div>
+    </main>
+
+    {/* ====================== 🧾 MODAL DETALLES DEL PEDIDO ====================== */}
+    {modalOpen && pedidoSeleccionado && (
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100vw",
+          height: "100vh",
+          backgroundColor: "rgba(0, 0, 0, 0.75)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000,
+        }}
+        onClick={cerrarModal}
+      >
+        <div
+          style={{
+            backgroundColor: "rgba(30,30,30,0.95)",
+            borderRadius: "12px",
+            padding: "24px",
+            width: "90%",
+            maxWidth: "700px",
+            color: "#fff",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "20px",
+            }}
+          >
+            <h2 style={{ fontSize: "22px", fontWeight: "bold" }}>
+              Detalles del Pedido #{pedidoSeleccionado.Pedido_ID}
+            </h2>
+            <button
+              onClick={cerrarModal}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "#fff",
+                fontSize: "20px",
+                cursor: "pointer",
+              }}
+            >
+              ✖
+            </button>
+          </div>
+
+          <div>
+            {pedidoSeleccionado.detalles &&
+            pedidoSeleccionado.detalles.length > 0 ? (
+              pedidoSeleccionado.detalles.map((d, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    backgroundColor: "rgba(255,255,255,0.05)",
+                    borderRadius: "8px",
+                    padding: "10px",
+                    marginBottom: "10px",
+                  }}
+                >
+                  {d.prenda_imagen && (
+                    <img
+                      src={`http://localhost:8000${d.prenda_imagen}`}
+                      alt="prenda"
+                      style={{
+                        width: "70px",
+                        height: "70px",
+                        borderRadius: "6px",
+                        marginRight: "12px",
+                        objectFit: "cover",
+                      }}
+                    />
+                  )}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: "bold", fontSize: "15px" }}>
+                      {d.prenda_nombre}
+                    </div>
+                    <div style={{ fontSize: "13px", color: "#9ca3af" }}>
+                      Talle: {d.talle} | Cantidad: {d.cantidad}
+                    </div>
+                    <div style={{ fontSize: "13px", color: "#9ca3af" }}>
+                      Tipo: {d.tipo} | Color: {d.prenda_color} | Modelo:{" "}
+                      {d.prenda_modelo}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      textAlign: "right",
+                      fontWeight: "600",
+                      minWidth: "80px",
+                    }}
+                  >
+                    ${d.precio_total.toLocaleString("es-AR")}
+                  </div>
                 </div>
-            </main>
+              ))
+            ) : (
+              <p style={{ color: "#9ca3af" }}>No hay detalles disponibles.</p>
+            )}
+          </div>
+
+          <div
+            style={{
+              marginTop: "20px",
+              textAlign: "right",
+              fontWeight: "bold",
+              borderTop: "1px solid rgba(255,255,255,0.1)",
+              paddingTop: "10px",
+            }}
+          >
+            Total del pedido: $
+            {pedidoSeleccionado.total_pedido?.toLocaleString("es-AR")}
+          </div>
         </div>
-    );
+      </div>
+    )}
+  </div>
+);
+
 }
 
 export default AprobacionPedidos;

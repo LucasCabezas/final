@@ -16,23 +16,21 @@ function Costurero({ usuarioId }) { // Recibe el usuarioId, similar a Dueno.js
 
   const navbarWidth = isNavbarCollapsed ? 70 : 250;
 
-  useEffect(() => {
-    console.log("🔍 Costurero - usuarioId recibido:", usuarioId);
-    
-    // Cargar información del usuario
-    if (usuarioId) {
-      fetch(`http://localhost:8000/api/usuarios/${usuarioId}`)
-        .then((res) => res.json())
-        .then((data) => {
-          console.log("👤 Costurero - Usuario cargado:", data);
-          setUsuario(data);
-        })
-        .catch((err) => console.error("❌ Costurero - Error al cargar usuario:", err));
-    }
-
-    // Cargar inventario de insumos
-    cargarInsumos();
-  }, [usuarioId]);
+ useEffect(() => {
+  console.log("🔍 Costurero - usuarioId recibido:", usuarioId);
+  cargarInsumos();
+  cargarPedidosCostura(); // Ejecutar igual aunque usuarioId sea null
+  
+  if (usuarioId) {
+    fetch(`http://localhost:8000/api/usuarios/${usuarioId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("👤 Costurero - Usuario cargado:", data);
+        setUsuario(data);
+      })
+      .catch((err) => console.error("❌ Costurero - Error al cargar usuario:", err));
+  }
+}, []); 
 
   const cargarInsumos = async () => {
     try {
@@ -45,7 +43,7 @@ function Costurero({ usuarioId }) { // Recibe el usuarioId, similar a Dueno.js
       }
       
       const data = await response.json();
-      
+      console.log("📦 Data pedidos recibida:", data);
       
 
       // Calcular bajo stock (muy relevante para el Costurero)
@@ -58,6 +56,52 @@ function Costurero({ usuarioId }) { // Recibe el usuarioId, similar a Dueno.js
       console.error("❌ Costurero - Error cargando insumos:", error);
     }
   };
+ const [pedidosCostura, setPedidosCostura] = useState([]);
+
+const cargarPedidosCostura = async () => {
+  try {
+    console.log("🔄 Costurero - Cargando pedidos en costura...");
+    const response = await fetch("http://localhost:8000/api/pedidos/?estado=APROBADO_DUENO");
+    if (!response.ok) {
+      console.error("❌ Error al cargar pedidos:", response.status);
+      return;
+    }
+
+    const data = await response.json();
+    console.log("🧵 Pedidos recibidos (Costura):", data);
+
+    if (Array.isArray(data) && data.length > 0) {
+      console.log(`✅ Seteando ${data.length} pedidos en costura`);
+      setPedidosCostura([...data]); // ⚡ fuerza actualización
+    } else {
+      console.warn("⚠️ No hay pedidos en estado APROBADO_DUENO");
+      setPedidosCostura([]);
+    }
+  } catch (err) {
+    console.error("❌ Error al cargar pedidos en costura:", err);
+  }
+};
+
+  const actualizarEstadoPedido = async (id, nuevoEstado) => {
+  try {
+    const res = await fetch(`http://localhost:8000/api/pedidos/${id}/`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado: nuevoEstado }),
+    });
+
+    if (!res.ok) {
+      console.error("❌ Error al actualizar estado:", res.status);
+      return;
+    }
+
+    console.log(`✅ Pedido ${id} cambiado a estado: ${nuevoEstado}`);
+    // Recargar lista
+    cargarPedidosCostura();
+  } catch (err) {
+    console.error("❌ Error en actualización de estado:", err);
+  }
+};
 
   // Preparar datos para el gráfico de distribución de insumos
   const datosGrafico = insumos.map((item) => ({
@@ -288,6 +332,70 @@ function Costurero({ usuarioId }) { // Recibe el usuarioId, similar a Dueno.js
               </li>
             </ul>
           </section>
+          {/* ========================================= */}
+        {/* 🔹 Gestión y Aprobación de Pedidos (Costurero) */}
+        {/* ========================================= */}
+        <section style={{ ...styles.alertasSection, marginTop: "40px" }}>
+          <h3 style={styles.alertasTitle}>Gestión y Aprobación de Pedidos</h3>
+          
+          {pedidosCostura.length === 0 ? (
+            <p style={{ color: "#9ca3af" }}>
+              No hay pedidos pendientes en costura por el momento.
+            </p>
+          ) : (
+            <div style={{
+              overflowX: "auto",
+              borderRadius: "8px",
+              border: "1px solid rgba(255,255,255,0.1)",
+              marginTop: "12px",
+            }}>
+              <table style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                color: "#fff",
+                fontSize: "14px",
+              }}>
+                <thead>
+                  <tr style={{ backgroundColor: "rgba(255,255,255,0.05)" }}>
+                    <th style={{ padding: "10px", textAlign: "left" }}>ID Pedido</th>
+                    <th style={{ padding: "10px", textAlign: "left" }}>Usuario</th>
+                    <th style={{ padding: "10px", textAlign: "left" }}>Fecha</th>
+                    <th style={{ padding: "10px", textAlign: "left" }}>Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pedidosCostura.map((pedido) => (
+                    <tr key={pedido.Pedido_ID}
+                        style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                      <td style={{ padding: "10px" }}>PED{pedido.Pedido_ID.toString().padStart(3, "0")}</td>
+                      <td style={{ padding: "10px" }}>{pedido.usuario || "Dueño"}</td>
+                      <td style={{ padding: "10px" }}>
+                        {new Date(pedido.Pedido_fecha).toLocaleDateString("es-AR")}
+                      </td>
+                      <td style={{ padding: "10px" }}>
+                        <button
+                          onClick={() => actualizarEstadoPedido(pedido.Pedido_ID, "PENDIENTE_ESTAMPADO")}
+                          style={{
+                            backgroundColor: "#3b82f6",
+                            border: "none",
+                            padding: "6px 14px",
+                            borderRadius: "6px",
+                            color: "#fff",
+                            cursor: "pointer",
+                            fontWeight: "600",
+                          }}
+                        >
+                          Enviar a Estampado
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
         </div>
       </main>
     </div>

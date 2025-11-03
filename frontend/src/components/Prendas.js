@@ -418,8 +418,10 @@ function Prendas() {
   const [form, setForm] = useState({
     nombre: "",
     marca: "",
+    nuevaMarca: "",
     modelo: "",
     color: "",
+    nuevoColor: "",
     precioUnitario: "",
     imagen: null,
   });
@@ -436,13 +438,12 @@ useEffect(() => {
   cargarClasificaciones();
   cargarTalles();
 }, []);
-
-  const showAlert = (message, type = "success") => {
-    setAlert({ message, type });
-    setTimeout(() => {
-      setAlert(null);
-    }, 3000);
-  };
+    const showAlert = (message, type = "success") => {
+      setAlert({ message, type });
+      setTimeout(() => {
+        setAlert(null);
+      }, 3000);
+    };
   const cargarTalles = async () => {
   try {
     const res = await fetch(`${CDN}/api/clasificaciones/talle/`);
@@ -479,6 +480,7 @@ const cargarClasificaciones = async () => {
     try {
       const res = await fetch(`${CDN}/api/inventario/prendas/`);
       const data = await res.json();
+      console.log("🧩 Respuesta del backend prendas:", data);
       console.log("Prendas cargadas:", data);
       setPrendas(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -488,16 +490,16 @@ const cargarClasificaciones = async () => {
     }
   };
 
-  const cargarInsumos = async () => {
-    try {
-      const res = await fetch(`${CDN}/api/inventario/insumos/`);
-      const data = await res.json();
-      setInsumos(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Error al cargar insumos:", error);
-      setInsumos([]);
-    }
-  };
+const cargarInsumos = async () => {
+  try {
+    const res = await fetch(`${CDN}/api/inventario/insumos/`);
+    const data = await res.json();
+    setInsumos(Array.isArray(data) ? data : []);
+  } catch (error) {
+    console.error("Error al cargar insumos:", error);
+    setInsumos([]);
+  }
+};
 
   const insumoPorId = useMemo(() => {
     const map = new Map();
@@ -505,14 +507,33 @@ const cargarClasificaciones = async () => {
     return map;
   }, [insumos]);
 
-  const prendasFiltradas = search.trim() === "" 
-    ? [] 
-    : prendas.filter((p) =>
-        (p.Prenda_nombre || "").toLowerCase().includes(search.toLowerCase()) ||
-        (p.Prenda_marca_nombre || "").toLowerCase().includes(search.toLowerCase()) ||
-        (p.Prenda_modelo_nombre || "").toLowerCase().includes(search.toLowerCase()) ||
-        (p.Prenda_color_nombre || "").toLowerCase().includes(search.toLowerCase())
-      );
+ const prendasFiltradas = React.useMemo(() => {
+  // 🔒 Protección total
+  if (!prendas || !Array.isArray(prendas)) {
+    console.warn("⚠️ prendas no es un array:", prendas);
+    return [];
+  }
+
+  // 🔍 Si no hay búsqueda, mostrar todas
+  const s = (search || "").trim().toLowerCase();
+  if (s === "") return prendas;
+
+  // 🔎 Filtro
+  return prendas.filter((p) => {
+    const nombre = (p.Prenda_nombre || "").toLowerCase();
+    const marca = (p.Prenda_marca_nombre || "").toLowerCase();
+    const modelo = (p.Prenda_modelo_nombre || "").toLowerCase();
+    const color = (p.Prenda_color_nombre || "").toLowerCase();
+    return (
+      nombre.includes(s) ||
+      marca.includes(s) ||
+      modelo.includes(s) ||
+      color.includes(s)
+    );
+  });
+}, [prendas, search]);
+
+
 
   const handleClearSearch = () => {
     setSearch("");
@@ -640,32 +661,45 @@ const cargarClasificaciones = async () => {
 };
 
 
-  const handleChange = (e) => {
-    const { name, value, files } = e.target;
-    
-    if (name === "nombre" || name === "color") {
-      const regex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/;
-      if (!regex.test(value)) {
-        return;
-      }
+ const handleChange = (e) => {
+  const { name, value, files } = e.target;
+
+  // 🧩 Si es un archivo (imagen)
+  if (files) {
+    setForm((prev) => ({ ...prev, [name]: files[0] }));
+    return;
+  }
+
+  // 🧩 Validación básica de texto (solo letras/números/espacios)
+  if (["nombre", "nuevaMarca", "nuevoColor"].includes(name)) {
+    const regex = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]*$/;
+    if (!regex.test(value)) return;
+  }
+
+  // 🟡 Si es uno de los selects de clasificación
+  if (name === "marca" || name === "modelo" || name === "color") {
+    if (value === "__new__") {
+      // Muestra el input "nuevo"
+      setForm((prev) => ({
+        ...prev,
+        [name]: value,
+        [`nuevo${name.charAt(0).toUpperCase() + name.slice(1)}`]: "", // limpia el campo nuevo
+      }));
+    } else {
+      // Guarda el ID numérico real
+      setForm((prev) => ({
+        ...prev,
+        [name]: value ? Number(value) : "",
+        [`nuevo${name.charAt(0).toUpperCase() + name.slice(1)}`]: "", // limpia si cambia de idea
+      }));
     }
-    
-    if (name === "marca") {
-      const regex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/;
-      if (!regex.test(value)) {
-        return;
-      }
-    }
-    
-    if (name === "modelo") {
-      const regex = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]*$/;
-      if (!regex.test(value)) {
-        return;
-      }
-    }
-    
-    setForm((prev) => ({ ...prev, [name]: files ? files[0] : value }));
-  };
+    return;
+  }
+
+  // 🟢 Caso general
+  setForm((prev) => ({ ...prev, [name]: value }));
+};
+
 
   const addInsumo = () => setInsumosPrenda([...insumosPrenda, { insumo: "", cantidad: "" }]);
   const removeInsumo = (idx) => setInsumosPrenda(insumosPrenda.filter((_, i) => i !== idx));
@@ -725,8 +759,36 @@ const cargarClasificaciones = async () => {
 // ============================================================
 const handleConfirmSubmit = async () => {
   try {
+    let marcaId = confirmData.marca;
+    let colorId = confirmData.color;
+
     // ================================
-    // 🧩 Preparar datos del formulario
+    // 🆕 Crear nueva marca o color si corresponde
+    // ================================
+    if (confirmData.marca === "__new__" && confirmData.nuevaMarca.trim()) {
+      const resMarca = await fetch(`${CDN}/api/clasificaciones/marca/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ Marca_nombre: confirmData.nuevaMarca }),
+      });
+      const nueva = await resMarca.json();
+      if (!resMarca.ok) throw new Error("Error al crear marca");
+      marcaId = nueva.Marca_ID;
+    }
+
+    if (confirmData.color === "__new__" && confirmData.nuevoColor.trim()) {
+      const resColor = await fetch(`${CDN}/api/clasificaciones/color/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ Color_nombre: confirmData.nuevoColor }),
+      });
+      const nuevo = await resColor.json();
+      if (!resColor.ok) throw new Error("Error al crear color");
+      colorId = nuevo.Color_ID;
+    }
+
+    // ================================
+    // 🧩 Preparar datos
     // ================================
     const payloadInsumos = insumosPrenda
       .filter((r) => r.insumo && r.cantidad)
@@ -735,23 +797,18 @@ const handleConfirmSubmit = async () => {
         cantidad: Number(r.cantidad),
       }));
 
-    const payloadTalles = tallesPrenda.filter(
-      (t) => t && t.trim() !== ""
-    );
+    const payloadTalles = tallesPrenda.filter((t) => t && t.trim() !== "");
 
-    const jsonData = {
+    const data = {
       Prenda_nombre: confirmData.nombre,
-      Prenda_marca: confirmData.marca,
-      Prenda_modelo: confirmData.modelo,
-      Prenda_color: confirmData.color,
+      Prenda_marca: Number(marcaId),
+      Prenda_modelo: Number(confirmData.modelo),
+      Prenda_color: Number(colorId),
       Prenda_precio_unitario: Number(confirmData.precioUnitario),
       insumos_prendas: payloadInsumos,
       talles: payloadTalles,
     };
 
-    // ================================
-    // 🛣️ Definir URL y método
-    // ================================
     const url = editing
       ? `${CDN}/api/inventario/prendas/${editing.Prenda_ID}/`
       : `${CDN}/api/inventario/prendas/`;
@@ -760,62 +817,62 @@ const handleConfirmSubmit = async () => {
     let res;
 
     // ================================
-    // 📸 Envío con o sin imagen
+    // 📸 Envío (si hay imagen o no)
     // ================================
-    if (confirmData.imagen) {
+    if (confirmData.imagen || method === "POST") {
       const fd = new FormData();
-      fd.append("Prenda_nombre", confirmData.nombre);
-      fd.append("Prenda_marca", confirmData.marca);
-      fd.append("Prenda_modelo", confirmData.modelo);
-      fd.append("Prenda_color", confirmData.color);
-      fd.append("Prenda_precio_unitario", confirmData.precioUnitario);
-      fd.append("Prenda_imagen", confirmData.imagen);
-      fd.append("insumos_prendas", JSON.stringify(payloadInsumos));
-      fd.append("talles", JSON.stringify(payloadTalles));
-
+      Object.entries(data).forEach(([key, value]) => {
+        fd.append(key, typeof value === "object" ? JSON.stringify(value) : value);
+      });
+      if (confirmData.imagen) fd.append("Prenda_imagen", confirmData.imagen);
       res = await fetch(url, { method, body: fd });
     } else {
       res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(jsonData),
+        body: JSON.stringify(data),
       });
     }
 
+    const result = await res.json().catch(() => ({}));
+
     // ================================
-    // ⚠️ Manejo de errores del servidor
+    // ⚠️ Manejo de error del servidor
     // ================================
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      console.error("Error del servidor:", errorData);
-      const msg =
-        errorData.error ||
-        "Error al guardar la prenda. Verifica los campos ingresados.";
-      showAlert(msg, "error");
+      console.error("Error del servidor:", result);
+      const msg = Object.entries(result)
+        .map(([campo, errores]) => `${campo}: ${errores.join(", ")}`)
+        .join(" | ");
+      showAlert(`❌ ${msg}`, "error");
       return;
     }
 
     // ================================
-    // ✅ Éxito
+    // ✅ Éxito — aseguramos recarga completa
     // ================================
-    await cargarPrendas();
     showAlert(
       editing
-        ? `Prenda "${confirmData.nombre}" actualizada exitosamente`
-        : `Prenda "${confirmData.nombre}" creada exitosamente`,
+        ? `Prenda "${confirmData.nombre}" actualizada correctamente`
+        : `Prenda "${confirmData.nombre}" creada correctamente`,
       "success"
     );
 
-    // Cerrar modales y limpiar estado
-    setShowConfirmModal(false);
-    setConfirmAction(null);
-    setConfirmData(null);
-    setShowModal(false);
+    // 🕓 Pequeño delay para garantizar que el backend haya guardado todo
+    setTimeout(async () => {
+      await cargarPrendas();
+      setShowModal(false);
+    }, 300);
+
   } catch (error) {
-    console.error("Error al guardar prenda:", error);
+    console.error("❌ Error al guardar:", error);
     showAlert("Error inesperado al guardar la prenda", "error");
   }
 };
+
+
+
+
 
 // ============================================================
 // 🔘 CANCELAR MODAL DE CONFIRMACIÓN
@@ -857,6 +914,17 @@ const handleCancelConfirm = () => {
     }
     return null;
   };
+// ============================================================
+// 💰 Calcular costo total de producción en tiempo real
+// ============================================================
+const costoProduccion = useMemo(() => {
+  const costoInsumos = insumosPrenda.reduce((total, row) => {
+    const insumo = insumos.find((i) => i.Insumo_ID === Number(row.insumo));
+    if (!insumo) return total;
+    return total + (Number(row.cantidad) || 0) * (Number(insumo.Insumo_precio_unitario) || 0);
+  }, 0);
+  return costoInsumos + Number(form.precioUnitario || 0);
+}, [insumosPrenda, form.precioUnitario, insumos]);
 
   return (
     <>
@@ -949,15 +1017,19 @@ const handleCancelConfirm = () => {
                   </button>
                 </div>
                 <div style={styles.cardBody}>
-                  <div style={styles.cardTitle}>{p.Prenda_nombre}</div>
-                  {p.Prenda_marca_nombre && (
-                    <div style={styles.cardSubtitle}>Marca: {p.Prenda_marca_nombre}</div>
-                  )}
-                  {p.Prenda_modelo_nombre && (
-                    <div style={styles.cardSubtitle}>Modelo: {p.Prenda_modelo_nombre}</div>
-                  )}
-                  <div style={styles.price}>${p.Prenda_precio_unitario}</div>
+                <div style={styles.cardTitle}>{p.Prenda_nombre}</div>
+
+                {p.Prenda_marca_nombre && (
+                  <div style={styles.cardSubtitle}>Marca: {p.Prenda_marca_nombre}</div>
+                )}
+                {p.Prenda_modelo_nombre && (
+                  <div style={styles.cardSubtitle}>Modelo: {p.Prenda_modelo_nombre}</div>
+                )}
+
+                <div style={styles.price}>
+                  ${p.Prenda_precio_unitario ? Number(p.Prenda_precio_unitario).toFixed(2) : "0.00"}
                 </div>
+              </div>
               </div>
             ))}
           </div>
@@ -994,7 +1066,8 @@ const handleCancelConfirm = () => {
                 placeholder="Ej: Remera Oversize"
               />
 
-              <label style={styles.label}>Marca *</label>
+{/* 🔹 MARCA */}
+<label style={styles.label}>Marca *</label>
 <select
   name="marca"
   value={form.marca}
@@ -1003,12 +1076,25 @@ const handleCancelConfirm = () => {
 >
   <option value="">Seleccionar marca</option>
   {marcas.map((m) => (
-    <option key={m.Marca_ID} value={m.Marca_nombre}>
+    <option key={m.Marca_ID} value={m.Marca_ID}>
       {m.Marca_nombre}
     </option>
   ))}
+  <option value="__new__">+ Nueva marca</option>
 </select>
 
+{form.marca === "__new__" && (
+  <input
+    type="text"
+    name="nuevaMarca"
+    placeholder="Escriba el nombre de la nueva marca"
+    value={form.nuevaMarca}
+    onChange={handleChange}
+    style={{ ...styles.input, marginTop: 6 }}
+  />
+)}
+
+{/* 🔹 MODELO */}
 <label style={styles.label}>Modelo *</label>
 <select
   name="modelo"
@@ -1018,12 +1104,13 @@ const handleCancelConfirm = () => {
 >
   <option value="">Seleccionar modelo</option>
   {modelos.map((m) => (
-    <option key={m.Modelo_ID} value={m.Modelo_nombre}>
+    <option key={m.Modelo_ID} value={m.Modelo_ID}>
       {m.Modelo_nombre}
     </option>
   ))}
 </select>
 
+{/* 🔹 COLOR */}
 <label style={styles.label}>Color *</label>
 <select
   name="color"
@@ -1033,15 +1120,40 @@ const handleCancelConfirm = () => {
 >
   <option value="">Seleccionar color</option>
   {colores.map((c) => (
-    <option key={c.Color_ID} value={c.Color_nombre}>
+    <option key={c.Color_ID} value={c.Color_ID}>
       {c.Color_nombre}
     </option>
   ))}
+  <option value="__new__">+ Nuevo color</option>
 </select>
 
+{form.color === "__new__" && (
+  <input
+    type="text"
+    name="nuevoColor"
+    placeholder="Escriba el nombre del nuevo color"
+    value={form.nuevoColor}
+    onChange={handleChange}
+    style={{ ...styles.input, marginTop: 6 }}
+  />
+)}
 
-              <label style={styles.label}>Precio Unitario *</label>
-              <input
+
+
+{/* Campo dinámico si elige crear nuevo color */}
+{form.color === "__new__" && (
+  <input
+    type="text"
+    name="nuevoColor"
+    placeholder="Escriba el nuevo color"
+    value={form.nuevoColor || ""}
+    onChange={handleChange}
+    style={{ ...styles.input, marginTop: 6 }}
+  />
+)}
+
+
+  <label style={styles.label}>Precio de Producción *</label>              <input
                 type="number"
                 name="precioUnitario"
                 value={form.precioUnitario}
@@ -1111,6 +1223,24 @@ const handleCancelConfirm = () => {
                   </div>
                 );
               })}
+              <div
+  style={{
+    marginTop: 20,
+    paddingTop: 16,
+    borderTop: "1px solid rgba(255,255,255,0.1)",
+    textAlign: "right",
+  }}
+>
+  <h4
+    style={{
+      fontSize: "17px",
+      color: "#a3e635",
+      fontWeight: 700,
+    }}
+  >
+    💰 Costo total de producción: ${costoProduccion.toFixed(2)}
+  </h4>
+</div>
 
               <button style={styles.addBtn} className="hover-button" onClick={addInsumo}>
                 <Plus size={18} /> Agregar insumo
@@ -1180,129 +1310,154 @@ const handleCancelConfirm = () => {
         </div>
       )}
 
-      {/* MODAL DETALLE */}
-      {showDetail && detalle && (
-        <div style={styles.overlay} onClick={cerrarDetalle}>
+ {/* ====================== 🧾 MODAL DETALLE DE PRENDA ====================== */}
+{showDetail && detalle && (
+  <div style={styles.overlay} onClick={cerrarDetalle}>
+    <div
+      style={{
+        ...styles.modal,
+        maxWidth: "600px",
+        maxHeight: "90vh",
+        overflowY: "auto",
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* CABECERA */}
+      <div style={styles.modalHeader}>
+        <h2 style={styles.modalTitle}>{detalle?.Prenda_nombre || "Prenda"}</h2>
+        <button
+          style={styles.closeBtn}
+          className="hover-icon"
+          onClick={cerrarDetalle}
+        >
+          <X size={24} />
+        </button>
+      </div>
+
+      {/* IMAGEN */}
+      <div style={{ textAlign: "center", marginBottom: 20 }}>
+        <img
+          src={getImageUrl(detalle)}
+          alt={detalle?.Prenda_nombre || "Prenda"}
+          style={{
+            width: "100%",
+            maxHeight: "350px",
+            objectFit: "contain",
+            borderRadius: "10px",
+            backgroundColor: "#111",
+            padding: "8px",
+          }}
+          onError={(e) => {
+            e.target.src =
+              "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='350'%3E%3Crect fill='%231a1a1a' width='400' height='350'/%3E%3Ctext fill='%23666' font-family='Arial' font-size='18' x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle'%3EError al cargar%3C/text%3E%3C/svg%3E";
+          }}
+        />
+      </div>
+
+      {/* DATOS PRINCIPALES */}
+      <div style={{ fontSize: "15px", lineHeight: "1.6", color: "#fff" }}>
+        <p><strong>Marca:</strong> {detalle?.Prenda_marca_nombre || "-"}</p>
+        <p><strong>Modelo:</strong> {detalle?.Prenda_modelo_nombre || "-"}</p>
+        <p><strong>Color:</strong> {detalle?.Prenda_color_nombre || "-"}</p>
+
+        <p
+          style={{
+            color: "rgba(255,215,15,1)",
+            fontWeight: 700,
+            marginTop: 10,
+          }}
+        >
+          Precio base de producción: ${Number(detalle?.Prenda_precio_unitario || 0).toFixed(2)}
+        </p>
+
+        {/* INSUMOS */}
+        <h3 style={{ marginTop: 20, marginBottom: 10, color: "#fff" }}>
+          Insumos utilizados:
+        </h3>
+        {(detalle?.insumos_prendas || []).length === 0 ? (
+          <p style={{ color: "#aaa" }}>No hay insumos registrados.</p>
+        ) : (
+          <ul style={{ marginTop: 10, paddingLeft: "20px" }}>
+            {detalle.insumos_prendas.map((i, idx) => (
+              <li key={idx} style={{ marginBottom: 6, color: "#ddd" }}>
+                🧵 <strong>{i.insumo_nombre || "Insumo"}</strong> —{" "}
+                {i.Insumo_prenda_cantidad_utilizada}{" "}
+                {i.Insumo_prenda_unidad_medida || ""} — $
+                {Number(i.Insumo_prenda_costo_total || 0).toFixed(2)}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {/* TALLES */}
+        <h3 style={{ marginTop: 20, marginBottom: 10, color: "#fff" }}>
+          Talles disponibles:
+        </h3>
+        {!detalle?.talles || detalle?.talles.length === 0 ? (
+          <p style={{ color: "#aaa" }}>No hay talles registrados.</p>
+        ) : (
           <div
             style={{
-              ...styles.modal,
-              maxWidth: "600px",
-              maxHeight: "90vh",
-              overflowY: "auto",
+              marginTop: 10,
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "8px",
             }}
-            onClick={(e) => e.stopPropagation()}
           >
-            <div style={styles.modalHeader}>
-              <h2 style={styles.modalTitle}>{detalle.Prenda_nombre}</h2>
-              <button style={styles.closeBtn} className="hover-icon" onClick={cerrarDetalle}>
-                <X size={24} />
-              </button>
-            </div>
-
-            <div style={{ textAlign: "center", marginBottom: 20 }}>
-              <img
-                src={getImageUrl(detalle)}
-                alt={detalle.Prenda_nombre}
+            {detalle.talles.map((talle, idx) => (
+              <span
+                key={idx}
                 style={{
-                  width: "100%",
-                  maxHeight: "350px",
-                  objectFit: "contain",
-                  borderRadius: "10px",
-                  backgroundColor: "#111",
-                  padding: "8px",
-                }}
-                onError={(e) => {
-                  e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='350'%3E%3Crect fill='%231a1a1a' width='400' height='350'/%3E%3Ctext fill='%23666' font-family='Arial' font-size='18' x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle'%3EError al cargar%3C/text%3E%3C/svg%3E";
-                }}
-              />
-            </div>
-
-            <div style={{ fontSize: "15px", lineHeight: "1.6", color: "#fff" }}>
-              <p><strong>Marca:</strong> {detalle.Prenda_marca_nombre || "-"}</p>
-              <p><strong>Modelo:</strong> {detalle.Prenda_modelo_nombre || "-"}</p>
-              <p><strong>Color:</strong> {detalle.Prenda_color_nombre || "-"}</p>
-              <p style={{ color: "rgba(255,215,15,1)", fontWeight: 700 }}>
-                Precio unitario: ${detalle.Prenda_precio_unitario}
-              </p>
-
-              <h3 style={{ marginTop: 20, marginBottom: 10, color: "#fff" }}>Insumos utilizados:</h3>
-              {(detalle.insumos_prendas || []).length === 0 ? (
-                <p style={{ color: "#aaa" }}>No hay insumos registrados.</p>
-              ) : (
-                <ul style={{ marginTop: 10, paddingLeft: "20px" }}>
-                  {detalle.insumos_prendas.map((i, idx) => {
-                    const insumoId = Number(i.insumo) || Number(i.Insumo_ID);
-                    const cantidad = Number(i.Insumo_prenda_cantidad_utilizada || i.cantidad || 0);
-                    const insumo = insumoPorId.get(insumoId) || {};
-                    const costo = (cantidad * Number(insumo.Insumo_precio_unitario || 0)).toFixed(2);
-
-                    return (
-                      <li key={idx} style={{ marginBottom: 6, color: "#ddd" }}>
-                        🧵 <strong>{insumo.Insumo_nombre || "Insumo"}</strong> — {cantidad}{" "}
-                        {insumo.Insumo_unidad_medida || ""} — ${costo}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-
-              <h3 style={{ marginTop: 20, marginBottom: 10, color: "#fff" }}>Talles disponibles:</h3>
-              {!detalle.talles || detalle.talles.length === 0 ? (
-                <p style={{ color: "#aaa" }}>No hay talles registrados.</p>
-              ) : (
-                <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                  {detalle.talles.map((talle, idx) => {
-                    const nombreTalle = typeof talle === 'string' ? talle : (talle.Talle_nombre || 'N/A');
-                    return (
-                      <span
-                        key={idx}
-                        style={{
-                          backgroundColor: "rgba(255,215,15,0.2)",
-                          color: "#ffd70f",
-                          padding: "6px 12px",
-                          borderRadius: "6px",
-                          fontSize: "14px",
-                          fontWeight: "600",
-                        }}
-                      >
-                        {nombreTalle}
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
-
-              <div
-                style={{
-                  marginTop: 20,
-                  paddingTop: 16,
-                  borderTop: "1px solid rgba(255,255,255,0.1)",
-                  textAlign: "right",
+                  backgroundColor: "rgba(255,215,15,0.2)",
+                  color: "#ffd70f",
+                  padding: "6px 12px",
+                  borderRadius: "6px",
+                  fontSize: "14px",
+                  fontWeight: "600",
                 }}
               >
-                <h4
-                  style={{
-                    fontSize: "17px",
-                    color: "#a3e635",
-                    fontWeight: 700,
-                  }}
-                >
-                  💰 Costo total de producción: $
-                  {(
-                    (detalle.insumos_prendas || []).reduce((acc, i) => {
-                      const insumoId = Number(i.insumo) || Number(i.Insumo_ID);
-                      const cantidad = Number(i.Insumo_prenda_cantidad_utilizada || i.cantidad || 0);
-                      const insumo = insumoPorId.get(insumoId);
-                      const precio = insumo ? Number(insumo.Insumo_precio_unitario || 0) : 0;
-                      return acc + cantidad * precio;
-                    }, 0) || 0
-                  ).toFixed(2)}
-                </h4>
-              </div>
-            </div>
+                {typeof talle === "string"
+                  ? talle
+                  : talle?.Talle_codigo || "N/A"}
+              </span>
+            ))}
           </div>
+        )}
+
+        {/* TOTAL */}
+        <div
+          style={{
+            marginTop: 20,
+            paddingTop: 16,
+            borderTop: "1px solid rgba(255,255,255,0.1)",
+            textAlign: "right",
+          }}
+        >
+          <h4
+            style={{
+              fontSize: "17px",
+              color: "#a3e635",
+              fontWeight: 700,
+            }}
+          >
+            💰 Costo total de producción: $
+            {(() => {
+              const total =
+                Number(detalle?.Prenda_precio_unitario || 0) +
+                (detalle?.insumos_prendas || []).reduce(
+                  (acc, insumo) =>
+                    acc + Number(insumo.Insumo_prenda_costo_total || 0),
+                  0
+                );
+              return total.toFixed(2);
+            })()}
+          </h4>
         </div>
-      )}
+      </div>
+    </div>
+  </div>
+)}
+
 
       {/* MODAL DE CONFIRMACIÓN */}
       {showConfirmModal && (() => {
