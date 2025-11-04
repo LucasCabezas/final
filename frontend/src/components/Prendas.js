@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Plus, X, Search, Edit2, Trash2, CheckCircle, AlertCircle } from "lucide-react";
 import Componente from "./componente.jsx";
 import fondoImg from "./assets/fondo.png";
+import { useAuth } from '../context/AuthContext';
 
 const CDN = "http://localhost:8000";
 
@@ -402,6 +403,19 @@ function Prendas() {
   const [insumos, setInsumos] = useState([]);
   const [search, setSearch] = useState("");
 
+
+  // Control de permisos por rol
+  const { user } = useAuth();
+  const userRole = user?.rol;
+
+  // Función para verificar permisos de edición
+  const canEdit = () => {
+    console.log("🔍 DEBUG Prendas canEdit - userRole:", userRole);
+    console.log("🔍 DEBUG Prendas canEdit - user completo:", user);
+    const result = userRole === 'Dueño';
+    console.log("🔍 DEBUG Prendas canEdit - resultado:", result);
+    return result;
+  };
   // MODALES
   const [showModal, setShowModal] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
@@ -968,10 +982,12 @@ const costoProduccion = useMemo(() => {
                 {prendasFiltradas.length} de {prendas.length}
               </div>
             )}
-            <button style={styles.addBtn} className="hover-button" onClick={abrirCrear}>
-              <Plus style={{ width: '20px', height: '20px' }} />
-              Agregar Prenda
-            </button>
+            {canEdit() && (
+              <button style={styles.addBtn} className="hover-button" onClick={abrirCrear}>
+                <Plus style={{ width: '20px', height: '20px' }} />
+                Agregar Prenda
+              </button>
+            )}
           </div>
         </div>
 
@@ -1000,24 +1016,32 @@ const costoProduccion = useMemo(() => {
                     e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='200'%3E%3Crect fill='%231a1a1a' width='240' height='200'/%3E%3Ctext fill='%23666' font-family='Arial' font-size='16' x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle'%3EError al cargar%3C/text%3E%3C/svg%3E";
                   }}
                 />
-                <div style={styles.cardActions}>
-                  <button 
-                    title="Editar" 
-                    style={styles.iconBtn} 
-                    className="hover-icon" 
-                    onClick={(e) => abrirEditar(p, e)}
-                  >
-                    <Edit2 color="#60a5fa" size={18} />
-                  </button>
-                  <button 
-                    title="Eliminar" 
-                    style={styles.iconBtn} 
-                    className="hover-icon" 
-                    onClick={(e) => eliminarPrenda(p, e)}
-                  >
-                    <Trash2 color="#f87171" size={18} />
-                  </button>
-                </div>
+                {canEdit() ? (
+                  <div style={styles.cardActions}>
+                    <button 
+                      title="Editar" 
+                      style={styles.iconBtn} 
+                      className="hover-icon" 
+                      onClick={(e) => abrirEditar(p, e)}
+                    >
+                      <Edit2 color="#60a5fa" size={18} />
+                    </button>
+                    <button 
+                      title="Eliminar" 
+                      style={styles.iconBtn} 
+                      className="hover-icon" 
+                      onClick={(e) => eliminarPrenda(p, e)}
+                    >
+                      <Trash2 color="#f87171" size={18} />
+                    </button>
+                  </div>
+                ) : (
+                  <div style={styles.cardActions}>
+                    <span style={{ color: '#9ca3af', fontSize: '12px' }}>
+                      Solo lectura
+                    </span>
+                  </div>
+                )}
                 <div style={styles.cardBody}>
                 <div style={styles.cardTitle}>{p.Prenda_nombre}</div>
 
@@ -1028,10 +1052,14 @@ const costoProduccion = useMemo(() => {
                   <div style={styles.cardSubtitle}>Modelo: {p.Prenda_modelo_nombre}</div>
                 )}
 
-                <div style={styles.cardSubtitle}>Costo total de producción:</div>
-                <div style={styles.price}>
-                  ${p.Prenda_costo_total_produccion ? Number(p.Prenda_costo_total_produccion).toFixed(2) : "0.00"}
-                </div>
+                {canEdit() && (
+                  <>
+                    <div style={styles.cardSubtitle}>Costo total de producción:</div>
+                    <div style={styles.price}>
+                      ${p.Prenda_costo_total_produccion ? Number(p.Prenda_costo_total_produccion).toFixed(2) : "0.00"}
+                    </div>
+                  </>
+                )}
               </div>
               </div>
             ))}
@@ -1363,15 +1391,17 @@ const costoProduccion = useMemo(() => {
         <p><strong>Modelo:</strong> {detalle?.Prenda_modelo_nombre || "-"}</p>
         <p><strong>Color:</strong> {detalle?.Prenda_color_nombre || "-"}</p>
 
-        <p
-          style={{
-            color: "rgba(255,215,15,1)",
-            fontWeight: 700,
-            marginTop: 10,
-          }}
-        >
-          Costo de confección: ${Number(detalle?.Prenda_precio_unitario || 0).toFixed(2)}
-        </p>
+        {canEdit() && (
+          <p
+            style={{
+              color: "rgba(255,215,15,1)",
+              fontWeight: 700,
+              marginTop: 10,
+            }}
+          >
+            Costo de confección: ${Number(detalle?.Prenda_precio_unitario || 0).toFixed(2)}
+          </p>
+        )}
 
         {/* INSUMOS */}
         <h3 style={{ marginTop: 20, marginBottom: 10, color: "#fff" }}>
@@ -1380,82 +1410,90 @@ const costoProduccion = useMemo(() => {
         {(detalle?.insumos_prendas || []).length === 0 ? (
           <p style={{ color: "#aaa" }}>No hay insumos registrados.</p>
         ) : (
-          <ul style={{ marginTop: 10, paddingLeft: "20px" }}>
-            {detalle.insumos_prendas.map((i, idx) => (
-              <li key={idx} style={{ marginBottom: 6, color: "#ddd" }}>
-                🧵 <strong>{i.insumo_nombre || "Insumo"}</strong> —{" "}
-                {i.Insumo_prenda_cantidad_utilizada}{" "}
-                {i.Insumo_prenda_unidad_medida || ""} — $
-                {Number(i.Insumo_prenda_costo_total || 0).toFixed(2)}
+          <ul style={{ marginTop: 10 }}>
+            {(detalle.insumos_prendas || []).map((i, idx) => (
+              <li key={idx} style={{ color: "#ddd", marginBottom: 6 }}>
+                🧵 <strong>{i.Insumo_nombre || i.insumo_nombre || "Insumo"}</strong> —{" "}
+                {i.Insumo_prenda_cantidad_utilizada ?? i.cantidad ?? 0}{" "}
+                {i.Insumo_prenda_unidad_medida || i.unidad_medida || ""}
+                {canEdit() && (
+                  <> — ${Number(i.Insumo_prenda_costo_total || 0).toFixed(2)}</>
+                )}
               </li>
             ))}
           </ul>
         )}
 
-        {/* TALLES */}
-        <h3 style={{ marginTop: 20, marginBottom: 10, color: "#fff" }}>
-          Talles disponibles:
-        </h3>
-        {!detalle?.talles || detalle?.talles.length === 0 ? (
-          <p style={{ color: "#aaa" }}>No hay talles registrados.</p>
-        ) : (
-          <div
-            style={{
-              marginTop: 10,
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "8px",
-            }}
-          >
-            {detalle.talles.map((talle, idx) => (
-              <span
-                key={idx}
+        {/* TALLES - Solo visible para Dueño */}
+        {canEdit() && (
+          <>
+            <h3 style={{ marginTop: 20, marginBottom: 10, color: "#fff" }}>
+              Talles disponibles:
+            </h3>
+            {!detalle?.talles || detalle?.talles.length === 0 ? (
+              <p style={{ color: "#aaa" }}>No hay talles registrados.</p>
+            ) : (
+              <div
                 style={{
-                  backgroundColor: "rgba(255,215,15,0.2)",
-                  color: "#ffd70f",
-                  padding: "6px 12px",
-                  borderRadius: "6px",
-                  fontSize: "14px",
-                  fontWeight: "600",
+                  marginTop: 10,
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: "8px",
                 }}
               >
-                {typeof talle === "string"
-                  ? talle
-                  : talle?.Talle_codigo || "N/A"}
-              </span>
-            ))}
-          </div>
+                {detalle.talles.map((talle, idx) => (
+                  <span
+                    key={idx}
+                    style={{
+                      backgroundColor: "rgba(255,215,15,0.2)",
+                      color: "#ffd70f",
+                      padding: "6px 12px",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                    }}
+                  >
+                    {typeof talle === "string"
+                      ? talle
+                      : talle?.Talle_codigo || "N/A"}
+                  </span>
+                ))}
+              </div>
+            )}
+          </>
         )}
 
-        {/* TOTAL */}
-        <div
-          style={{
-            marginTop: 20,
-            paddingTop: 16,
-            borderTop: "1px solid rgba(255,255,255,0.1)",
-            textAlign: "right",
-          }}
-        >
-          <h4
+        {/* TOTAL - Solo visible para Dueño */}
+        {canEdit() && (
+          <div
             style={{
-              fontSize: "17px",
-              color: "#a3e635",
-              fontWeight: 700,
+              marginTop: 20,
+              paddingTop: 16,
+              borderTop: "1px solid rgba(255,255,255,0.1)",
+              textAlign: "right",
             }}
           >
-            💰 Costo total de producción: $
-            {(() => {
-              const total =
-                Number(detalle?.Prenda_precio_unitario || 0) +
-                (detalle?.insumos_prendas || []).reduce(
-                  (acc, insumo) =>
-                    acc + Number(insumo.Insumo_prenda_costo_total || 0),
-                  0
-                );
-              return total.toFixed(2);
-            })()}
-          </h4>
-        </div>
+            <h4
+              style={{
+                fontSize: "17px",
+                color: "#a3e635",
+                fontWeight: 700,
+              }}
+            >
+              💰 Costo total de producción: $
+              {(() => {
+                const total =
+                  Number(detalle?.Prenda_precio_unitario || 0) +
+                  (detalle?.insumos_prendas || []).reduce(
+                    (acc, insumo) =>
+                      acc + Number(insumo.Insumo_prenda_costo_total || 0),
+                    0
+                  );
+                return total.toFixed(2);
+              })()}
+            </h4>
+          </div>
+        )}
       </div>
     </div>
   </div>
