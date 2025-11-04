@@ -43,11 +43,24 @@ function Costurero({ usuarioId }) { // Recibe el usuarioId, similar a Dueno.js
       }
       
       const data = await response.json();
-      console.log("📦 Data pedidos recibida:", data);
+      console.log("📦 Data insumos recibida:", data);
       
+      // 🔹 FILTRAR SOLO INSUMOS DE COSTURA
+      const insumosCostura = data.filter(item => 
+        item.tipo_insumo?.nombre === "Costura"
+      );
+      
+      console.log(`🧵 Insumos filtrados para Costurero: ${insumosCostura.length}/${data.length}`);
+      setInsumos(insumosCostura);
+      
+      // Calcular valor total solo de insumos de costura
+      const total = insumosCostura.reduce((acc, item) => 
+        acc + (item.Insumo_cantidad * item.Insumo_precio_unitario), 0
+      );
+      setTotalValor(total);
 
       // Calcular bajo stock (muy relevante para el Costurero)
-      const bajos = data.filter((item) => item.Insumo_cantidad < item.Insumo_cantidad_minima).length;
+      const bajos = insumosCostura.filter((item) => item.Insumo_cantidad < item.Insumo_cantidad_minima).length;
       console.log("⚠️ Costurero - Insumos bajo stock:", bajos);
       setBajoStock(bajos);
       

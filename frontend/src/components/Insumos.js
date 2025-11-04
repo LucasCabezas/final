@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Plus, Edit2, Trash2, X, CheckCircle, AlertCircle } from 'lucide-react';
 import Componente from './componente.jsx';
+import { useAuth } from '../context/AuthContext';
 import fondoImg from './assets/fondo.png';
 
 const styles = {
@@ -535,6 +536,15 @@ function Insumos() {
   const [unidades, setUnidades] = useState([]);
   const [tipos, setTipos] = useState([]);
 
+  // Control de permisos por rol
+  const { user } = useAuth();
+  const userRole = user?.rol;
+
+  // Función para verificar permisos de edición
+  const canEdit = () => {
+    return userRole === 'Dueño';
+  };
+
   React.useEffect(() => {
     cargarInsumos();
     cargarAlertas();
@@ -568,7 +578,38 @@ function Insumos() {
     try {
       const response = await fetch('http://localhost:8000/api/inventario/insumos/');
       const data = await response.json();
-      setInsumos(data);
+      
+      // Filtrado por rol de usuario
+      let insumosFiltrados = data;
+      
+      if (userRole === 'Costurero') {
+        // FILTRAR SOLO INSUMOS DE COSTURA
+        console.log("🔍 DEBUG Costurero - Datos completos:", data);
+        console.log("🔍 DEBUG Costurero - Primer insumo:", data[0]);
+        console.log("🔍 DEBUG Costurero - tipo_insumo del primer elemento:", data[0]?.tipo_insumo);
+        
+        insumosFiltrados = data.filter(item => {
+          console.log(`🔍 DEBUG Costurero - Insumo: ${item.Insumo_nombre}, tipo:`, item.tipo_insumo);
+          return item.tipo_insumo === 1; 
+        });
+        
+        console.log(`🧵 Costurero - Insumos filtrados: ${insumosFiltrados.length}/${data.length}`);
+      } else if (userRole === 'Estampador') {
+        // FILTRAR SOLO INSUMOS DE ESTAMPADO
+        console.log("🔍 DEBUG Estampador - Datos completos:", data);
+        console.log("🔍 DEBUG Estampador - Primer insumo:", data[0]);
+        console.log("🔍 DEBUG Estampador - tipo_insumo del primer elemento:", data[0]?.tipo_insumo);
+        
+        insumosFiltrados = data.filter(item => {
+          console.log(`🔍 DEBUG Estampador - Insumo: ${item.Insumo_nombre}, tipo:`, item.tipo_insumo);
+          return item.tipo_insumo === 2;
+        });
+        
+        console.log(`🎨 Estampador - Insumos filtrados: ${insumosFiltrados.length}/${data.length}`);
+      }
+      // Si es Dueño, ve todos los insumos (sin filtrar)
+      
+      setInsumos(insumosFiltrados);
     } catch (error) {
       console.error('Error cargando insumos:', error);
       showAlert('Error al cargar los insumos', 'error');
@@ -1006,14 +1047,16 @@ function Insumos() {
                     {filteredInsumos.length} de {insumos.length}
                   </div>
                 )}
-                <button
-                  onClick={() => handleOpenModal()}
-                  style={styles.addButton}
-                  className="hover-button"
-                >
-                  <Plus style={{ width: '20px', height: '20px' }} />
-                  Agregar Insumo
-                </button>
+                {canEdit() && (
+                  <button
+                    onClick={() => handleOpenModal()}
+                    style={styles.addButton}
+                    className="hover-button"
+                  >
+                    <Plus style={{ width: '20px', height: '20px' }} />
+                    Agregar Insumo
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1024,21 +1067,21 @@ function Insumos() {
                     <th style={styles.th}>Insumo</th>
                     <th style={styles.th}>Cantidad</th>
                     <th style={styles.th}>Unidad de medida</th>
-                    <th style={styles.th}>Precio Unitario</th>
-                    <th style={styles.th}>Precio total</th>
-                    <th style={styles.thCenter}>Acciones</th>
+                    {canEdit() && <th style={styles.th}>Precio Unitario</th>}
+                    {canEdit() && <th style={styles.th}>Precio total</th>}
+                    {canEdit() && <th style={styles.thCenter}>Acciones</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {searchTerm.trim() === '' ? (
                     <tr>
-                      <td colSpan="6" style={styles.emptyState}>
+                      <td colSpan={canEdit() ? "6" : "3"} style={styles.emptyState}>
                         Comienza a escribir en el buscador para ver los insumos
                       </td>
                     </tr>
                   ) : filteredInsumos.length === 0 ? (
                     <tr>
-                      <td colSpan="6" style={styles.emptyState}>
+                      <td colSpan={canEdit() ? "6" : "3"} style={styles.emptyState}>
                         No se encontraron insumos que coincidan con "{searchTerm}"
                       </td>
                     </tr>
@@ -1048,26 +1091,35 @@ function Insumos() {
                         <td style={styles.td}>{insumo.Insumo_nombre}</td>
                         <td style={styles.td}>{insumo.Insumo_cantidad}</td>
                         <td style={styles.td}>{insumo.unidad_medida_nombre}</td>
-                        <td style={styles.td}>{insumo.Insumo_precio_unitario?.toFixed(2)}</td>
-                        <td style={styles.td}>{insumo.Insumo_precio_total?.toFixed(2)}</td>
-                        <td style={styles.tdCenter}>
-                          <div style={styles.actionsContainer}>
-                            <button
-                              onClick={() => handleOpenModal(insumo)}
-                              style={styles.iconButton}
-                              className="hover-icon"
-                            >
-                              <Edit2 style={{ width: '20px', height: '20px', color: '#60a5fa' }} />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteClick(insumo)}
-                              style={styles.iconButton}
-                              className="hover-icon"
-                            >
-                              <Trash2 style={{ width: '20px', height: '20px', color: '#f87171' }} />
-                            </button>
+                        {canEdit() && <td style={styles.td}>{insumo.Insumo_precio_unitario?.toFixed(2)}</td>}
+                        {canEdit() && <td style={styles.td}>{insumo.Insumo_precio_total?.toFixed(2)}</td>}
+                        {canEdit() && (
+                          <td style={styles.tdCenter}>
+                            <div style={styles.actionsContainer}>
+                            {canEdit() ? (
+                              <>
+                                <button
+                                  onClick={() => handleOpenModal(insumo)}
+                                  style={styles.iconButton}
+                                  className="hover-icon"
+                                >
+                                  <Edit2 style={{ width: '20px', height: '20px', color: '#60a5fa' }} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteClick(insumo)}
+                                  style={styles.iconButton}
+                                  className="hover-icon"
+                                >
+                                  <Trash2 style={{ width: '20px', height: '20px', color: '#f87171' }} />
+                                </button>
+                              </>
+                            ) : (
+                              <span style={{ color: '#9ca3af', fontSize: '12px' }}>
+                                Solo lectura
+                              </span>
+                            )}
                           </div>
-                        </td>
+                        </td>)}
                       </tr>
                     ))
                   )}

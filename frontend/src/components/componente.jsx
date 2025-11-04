@@ -124,12 +124,12 @@ function Componente({ onToggle }) {
     // Los roles están escritos con Mayúscula Inicial para coincidir con la lógica de redirección en ProtectedRoute.jsx
     const access = {
         // Módulos
-        INVENTARIO: ['Dueño', 'Costurero'],
+        INVENTARIO: ['Dueño', 'Costurero', 'Estampador'],
         PEDIDOS: ['Dueño', 'Vendedor', 'Costurero', 'Estampador'],
         USUARIOS: ['Dueño'],
 
         // Submenús específicos
-        INSUMOS: ['Dueño', 'Costurero'],
+        INSUMOS: ['Dueño', 'Costurero', 'Estampador'],
         PRENDAS: ['Dueño', 'Costurero', 'Estampador'],
         REALIZAR_PEDIDO: ['Dueño', 'Vendedor'],
         APROBACION_PEDIDOS: ['Dueño', 'Costurero', 'Estampador'],

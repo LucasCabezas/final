@@ -35,11 +35,17 @@ function Estampador() {
   const [completadosHoy, setCompletadosHoy] = useState(0); // Métrica relevante
   const [isNavbarCollapsed, setIsNavbarCollapsed] = useState(false);
 
+  // 🔹 ESTADOS PARA INVENTARIO DE INSUMOS
+  const [insumos, setInsumos] = useState([]);
+  const [totalValor, setTotalValor] = useState(0);
+  const [bajoStock, setBajoStock] = useState(0);
+
   const navbarWidth = isNavbarCollapsed ? 70 : 250;
 
   useEffect(() => {
     if (!user || loading) return;
     cargarPedidosEstampador();
+    cargarInsumosEstampador(); // ✅ AGREGAR CARGA DE INSUMOS
   }, [user, loading]);
 
   const cargarPedidosEstampador = async () => {
@@ -83,6 +89,45 @@ function Estampador() {
     }
   };
   
+  // 🔹 NUEVA FUNCIÓN PARA CARGAR INSUMOS DE ESTAMPADO
+  const cargarInsumosEstampador = async () => {
+    try {
+      console.log("🔄 Estampador - Intentando cargar insumos...");
+      const response = await fetch("http://localhost:8000/api/inventario/insumos/");
+      
+      if (!response.ok) {
+        console.error("❌ Estampador - Error en la respuesta:", response.status, response.statusText);
+        return;
+      }
+      
+      const data = await response.json();
+      console.log("📦 Data insumos recibida:", data);
+      
+      // 🔹 FILTRAR SOLO INSUMOS DE ESTAMPADO
+      const insumosEstampado = data.filter(item => 
+        item.tipo_insumo?.nombre === "Estampado"
+      );
+      
+      console.log(`🎨 Insumos filtrados para Estampador: ${insumosEstampado.length}/${data.length}`);
+      setInsumos(insumosEstampado);
+      
+      // Calcular valor total solo de insumos de estampado
+      const total = insumosEstampado.reduce((acc, item) => 
+        acc + (item.Insumo_cantidad * item.Insumo_precio_unitario), 0
+      );
+      setTotalValor(total);
+
+      // Calcular bajo stock
+      const bajos = insumosEstampado.filter((item) => 
+        item.Insumo_cantidad < item.Insumo_cantidad_minima
+      ).length;
+      setBajoStock(bajos);
+      
+      console.log("✅ Estampador - Insumos cargados correctamente");
+    } catch (error) {
+      console.error("❌ Estampador - Error cargando insumos:", error);
+    }
+  };
 
   const styles = {
     // Estilos basados en Dueno.js y Vendedor.js
@@ -163,6 +208,81 @@ function Estampador() {
               </div>
             </div>
           </section>
+
+          {/* 🔹 NUEVA SECCIÓN: Inventario de Insumos de Estampado */}
+          <section style={{ marginBottom: "40px" }}>
+            <h3 style={{ ...styles.title, fontSize: "20px", marginBottom: "8px" }}>
+              Inventario de Insumos de Estampado
+            </h3>
+            <p style={styles.subtitle}>
+              Estado actual de tus materiales de trabajo.
+            </p>
+            
+            <div style={styles.resumenGrid}>
+              {/* Card 1: Valor Total de Insumos */}
+              <div style={styles.resumenCard}>
+                <h4 style={styles.cardLabel}>
+                  Valor Total de Insumos
+                </h4>
+                <p style={{ ...styles.cardValue, fontSize: "28px" }}>
+                  ${totalValor.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </div>
+
+              {/* Card 2: Artículos Bajo Stock */}
+              <div style={styles.resumenCard}>
+                <h4 style={styles.cardLabel}>
+                  Insumos con Bajo Stock
+                </h4>
+                <p style={{ ...styles.cardValue, fontSize: "28px", color: bajoStock > 0 ? "#e74c3c" : "#2ecc71" }}>
+                  {bajoStock}
+                </p>
+                <p style={styles.subtitle}>
+                  {bajoStock > 0 ? "Requieren atención" : "Stock adecuado"}
+                </p>
+              </div>
+            </div>
+            
+            {/* Tabla de Insumos */}
+            {insumos.length > 0 && (
+              <div style={{ ...styles.resumenCard, marginTop: "20px" }}>
+                <h4 style={{ color: "#ffffff", fontSize: "16px", fontWeight: "600", marginBottom: "15px" }}>
+                  Mis Insumos de Estampado
+                </h4>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={styles.table}>
+                    <thead>
+                      <tr>
+                        <th style={styles.th}>Insumo</th>
+                        <th style={styles.th}>Cantidad</th>
+                        <th style={styles.th}>Stock Mínimo</th>
+                        <th style={styles.th}>Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {insumos.map((insumo) => (
+                        <tr key={insumo.Insumo_ID}>
+                          <td style={styles.td}>{insumo.Insumo_nombre}</td>
+                          <td style={styles.td}>
+                            {insumo.Insumo_cantidad} {insumo.unidad_medida?.nombre || ''}
+                          </td>
+                          <td style={styles.td}>{insumo.Insumo_cantidad_minima}</td>
+                          <td style={styles.td}>
+                            <span style={{
+                              color: insumo.Insumo_cantidad <= insumo.Insumo_cantidad_minima ? '#e74c3c' : '#2ecc71',
+                              fontWeight: '600'
+                            }}>
+                              {insumo.Insumo_cantidad <= insumo.Insumo_cantidad_minima ? '⚠️ Bajo Stock' : '✅ OK'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </section>
           
           {/* Listado Detallado de Pedidos Pendientes */}
           <section>
@@ -194,7 +314,7 @@ function Estampador() {
                                     <td style={styles.td}>{pedido.Descripcion_pedido || 'Sin descripción'}</td>
                                     <td style={styles.td}>{pedido.Cantidad_prendas || 0}</td>
                                     <td style={styles.td}>
-                                        <span style={getStatusColor(pedido.estado)}>
+                                        <span style={{color: getStatusColor(pedido.estado)}}>
                                             {pedido.estado 
                                                 ? pedido.estado.replace('_', ' ') 
                                                 : 'ESTADO DESCONOCIDO'}

@@ -55,24 +55,24 @@ function App() {
         />
 
         {/* ============================================ */}
-        {/* RUTAS PROTEGIDAS PARA DUEÑO Y COSTURERO */}
+        {/* RUTAS PROTEGIDAS PARA DUEÑO, COSTURERO Y ESTAMPADOR */}
         {/* ============================================ */}
         
-        {/* Insumos - Dueño y Costurero */}
+        {/* Insumos - Dueño, Costurero y Estampador */}
         <Route
           path="/insumos"
           element={
-            <ProtectedRoute allowedRoles={['Dueño', 'Costurero']}>
+            <ProtectedRoute allowedRoles={['Dueño', 'Costurero', 'Estampador']}>
               <Insumos />
             </ProtectedRoute>
           }
         />
 
-        {/* Prendas - Dueño y Costurero */}
+        {/* Prendas - Dueño, Costurero y Estampador */}
         <Route
           path="/prendas"
           element={
-            <ProtectedRoute allowedRoles={['Dueño', 'Costurero']}>
+            <ProtectedRoute allowedRoles={['Dueño', 'Costurero', 'Estampador']}>
               <Prendas />
             </ProtectedRoute>
           }
