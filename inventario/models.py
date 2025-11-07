@@ -93,7 +93,7 @@ class InsumosXPrendas(models.Model):
     insumo = models.ForeignKey(Insumo, on_delete=models.CASCADE)
     prenda = models.ForeignKey(Prenda, on_delete=models.CASCADE, related_name='insumos_prendas')
     Insumo_prenda_cantidad_utilizada = models.IntegerField()
-    Insumo_prenda_unidad_medida = models.CharField(max_length=10)
+    Insumo_prenda_unidad_medida = models.CharField(max_length=50)
     Insumo_prenda_costo_total = models.FloatField()
 
     class Meta:

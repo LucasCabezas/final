@@ -36,12 +36,10 @@ function Vendedor() {
   const cargarPedidosVendedor = async (id) => {
     setIsLoading(true);
     try {
-      console.log(`🔄 Vendedor - Intentando cargar pedidos para usuario ID: ${id}...`);
+      console.log(`📄 Vendedor - Intentando cargar pedidos para usuario ID: ${id}...`);
       
-      // 🚨 IMPORTANTE: Asume que tu API permite filtrar por el ID del vendedor que creó el pedido
-      const urlFiltrada = `${API_PEDIDOS_URL}?vendedor_id=${id}`; 
-      
-      const response = await fetch(urlFiltrada);
+      // 🔥 USAR LA MISMA API QUE RealizarPedido.js (sin filtros en URL)
+      const response = await fetch(API_PEDIDOS_URL);
       
       if (!response.ok) {
         throw new Error(`Error en la respuesta: ${response.status} ${response.statusText}`);
@@ -49,22 +47,45 @@ function Vendedor() {
       
       const data = await response.json();
       
-      setPedidos(data);
-      setTotalPedidos(data.length);
+      // 🔥 NUEVO: Mostrar estadísticas de TODOS los pedidos del sistema
+      const todosPedidos = data; // Sin filtro - todos los pedidos
+      
+      console.log(`👤 Vendedor - Total pedidos del sistema: ${data.length}`);
+      console.log(`👤 Vendedor - Mostrando estadísticas de todos los pedidos`);
+      
+      setPedidos(todosPedidos);
+      setTotalPedidos(todosPedidos.length);
+
+      // 🔥 USAR LA MISMA FUNCIÓN DE ESTADO QUE RealizarPedido.js
+      const obtenerEstadoPedido = (pedido) => {
+        const estadoRaw = pedido.estado || pedido.Pedido_estado;
+        if (typeof estadoRaw === 'string') {
+          return estadoRaw.toUpperCase();
+        }
+        if (estadoRaw === true) {
+          return 'COMPLETADO';
+        } else if (estadoRaw === false) {
+          return 'PENDIENTE_DUENO';
+        }
+        return 'PENDIENTE_DUENO';
+      };
 
       // Calcular Pedidos Pendientes (Cualquier estado que no sea CANCELADO o COMPLETADO)
-      const pendientes = data.filter(
-          (item) => item.estado !== 'COMPLETADO' && item.estado !== 'CANCELADO'
-      ).length;
+      const pendientes = todosPedidos.filter((item) => {
+        const estado = obtenerEstadoPedido(item);
+        return estado !== 'COMPLETADO' && estado !== 'CANCELADO';
+      }).length;
       setPedidosPendientes(pendientes);
 
       // Calcular Pedidos Completados
-      const completados = data.filter(
-          (item) => item.estado === 'COMPLETADO'
-      ).length;
+      const completados = todosPedidos.filter((item) => {
+        const estado = obtenerEstadoPedido(item);
+        return estado === 'COMPLETADO';
+      }).length;
       setPedidosCompletados(completados);
 
       console.log("✅ Vendedor - Pedidos cargados correctamente");
+      console.log(`📊 Vendedor - Total: ${todosPedidos.length}, Pendientes: ${pendientes}, Completados: ${completados}`);
     } catch (error) {
       console.error("❌ Vendedor - Error cargando pedidos:", error);
     } finally {
@@ -222,52 +243,6 @@ function Vendedor() {
               </div>
             </div>
           </section>
-          
-          {/* Listado Detallado de Pedidos */}
-          <section>
-            <h3 style={{ ...styles.title, fontSize: "24px", marginBottom: "20px" }}>
-              Estado Actual de tus Pedidos
-            </h3>
-            <div style={styles.resumenCard}> {/* Reutilizamos el estilo de card para el contenedor de la tabla */}
-                {isLoading ? (
-                    <p style={{ color: '#9ca3af', textAlign: 'center' }}>Cargando pedidos...</p>
-                ) : pedidos.length > 0 ? (
-                    <table style={styles.table}>
-                        <thead>
-                            <tr>
-                                <th style={styles.th}>ID</th>
-                                <th style={styles.th}>Cliente</th>
-                                <th style={styles.th}>Descripción</th>
-                                <th style={styles.th}>Cantidad</th>
-                                <th style={styles.th}>Estado Actual</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {pedidos.map((pedido) => (
-                                <tr key={pedido.id}>
-                                    <td style={styles.td}>{pedido.id}</td>
-                                    <td style={styles.td}>{pedido.Cliente_nombre || 'N/A'}</td>
-                                    <td style={styles.td}>{pedido.Descripcion_pedido || 'Sin descripción'}</td>
-                                    <td style={styles.td}>{pedido.Cantidad_prendas || 0}</td>
-                                    <td style={styles.td}>
-                                        <span style={styles.statusBadge(pedido.estado)}>
-                                            {/* Manejo de error de 'undefined' como ya se discutió */}
-                                            {pedido.estado 
-                                                ? pedido.estado.replace('_', ' ') 
-                                                : 'ESTADO DESCONOCIDO'}
-                                        </span>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                ) : (
-                    <p style={{ color: '#9ca3af', textAlign: 'center' }}>
-                        Aún no has ingresado ningún pedido. ¡Empieza en la sección "Realizar Pedido"!
-                    </p>
-                )}
-            </div>
-          </section>
         </div>
       </main>
     </div>
@@ -275,5 +250,3 @@ function Vendedor() {
 }
 
 export default Vendedor;
-
-        

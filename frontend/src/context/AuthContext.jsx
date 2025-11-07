@@ -14,88 +14,122 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [accessToken, setAccessToken] = useState(null);
+  const [refreshToken, setRefreshToken] = useState(null);
+
+  // 🔥 CONFIGURAR AXIOS INTERCEPTORS
+  const setupAxiosInterceptors = () => {
+    const axios = require('axios');
+    
+    // Request interceptor - agregar token a todas las requests
+    axios.interceptors.request.use(
+      (config) => {
+        const token = localStorage.getItem('access_token');
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+      },
+      (error) => {
+        return Promise.reject(error);
+      }
+    );
+
+    // Response interceptor - manejar token expirado
+    axios.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const originalRequest = error.config;
+        
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          originalRequest._retry = true;
+          
+          const refresh = localStorage.getItem('refresh_token');
+          if (refresh) {
+            try {
+              const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
+              const response = await axios.post(`${API_URL}/api/usuarios/auth/refresh/`, {
+                refresh: refresh
+              });
+              
+              const { access } = response.data;
+              localStorage.setItem('access_token', access);
+              setAccessToken(access);
+              
+              // Reintentar request original
+              originalRequest.headers.Authorization = `Bearer ${access}`;
+              return axios(originalRequest);
+              
+            } catch (refreshError) {
+              console.error('❌ Error al refrescar token:', refreshError);
+              logout();
+              return Promise.reject(refreshError);
+            }
+          } else {
+            logout();
+          }
+        }
+        
+        return Promise.reject(error);
+      }
+    );
+  };
 
   // Verificar si hay sesión activa al cargar la app
   useEffect(() => {
     const cargarUsuarioDesdeStorage = async () => {
       try {
-        const usuarioId = localStorage.getItem('usuarioId');
-        const usuarioNombre = localStorage.getItem('usuarioNombre');
-        const rol = localStorage.getItem('rol');
+        const storedAccessToken = localStorage.getItem('access_token');
+        const storedRefreshToken = localStorage.getItem('refresh_token');
+        const usuarioData = localStorage.getItem('usuario_data');
         
-        // ✅ Cargar apellido y foto de perfil
-        const apellido = localStorage.getItem('usuarioApellido');
-        const correo = localStorage.getItem('usuarioCorreo');
-        const fotoPerfil = localStorage.getItem('usuarioFotoPerfil');
-
-        if (usuarioId && usuarioNombre && rol) {
-          console.log("📥 Cargando usuario desde localStorage:", {
-            id: usuarioId,
-            nombre: usuarioNombre,
-            apellido: apellido,
-            correo: correo,
-            rol: rol,
-            foto_perfil: fotoPerfil
-          });
-
-          // ✅ SIEMPRE intentar obtener datos completos desde la API al cargar
+        if (storedAccessToken && storedRefreshToken && usuarioData) {
+          console.log("🔥 Cargando sesión JWT desde localStorage");
+          
+          const userData = JSON.parse(usuarioData);
+          setUser(userData);
+          setAccessToken(storedAccessToken);
+          setRefreshToken(storedRefreshToken);
+          
+          // 🔥 Verificar si el token es válido llamando al endpoint protegido
           try {
             const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
-            const response = await fetch(`${API_URL}/api/usuarios/usuarios/${usuarioId}/`);
+            const response = await fetch(`${API_URL}/api/usuarios/usuarios/${userData.id}/`, {
+              headers: {
+                'Authorization': `Bearer ${storedAccessToken}`,
+                'Content-Type': 'application/json',
+              }
+            });
             
             if (response.ok) {
-              const userData = await response.json();
-              console.log("✅ Datos completos obtenidos desde API:", userData);
+              const freshUserData = await response.json();
+              console.log("✅ Token válido, datos actualizados:", freshUserData);
               
-              // ✅ Actualizar localStorage con datos completos y limpios
-              if (userData.nombre) {
-                localStorage.setItem('usuarioNombre', userData.nombre.trim());
-              }
-              if (userData.apellido) {
-                localStorage.setItem('usuarioApellido', userData.apellido.trim());
-              }
-              if (userData.correo) {
-                localStorage.setItem('usuarioCorreo', userData.correo);
-              }
-              if (userData.foto_perfil) {
-                localStorage.setItem('usuarioFotoPerfil', userData.foto_perfil);
-              } else {
-                localStorage.removeItem('usuarioFotoPerfil'); // Limpiar si no hay foto
-              }
+              // Actualizar datos del usuario
+              const updatedUser = {
+                ...userData,
+                nombre: freshUserData.nombre || userData.nombre,
+                apellido: freshUserData.apellido || userData.apellido,
+                correo: freshUserData.correo || userData.correo,
+                foto_perfil: freshUserData.foto_perfil || userData.foto_perfil
+              };
               
-              // ✅ Establecer usuario con datos completos de la API
-              setUser({
-                id: usuarioId,
-                nombre: (userData.nombre || usuarioNombre).trim(),
-                apellido: (userData.apellido || apellido || '').trim(),
-                correo: userData.correo || correo || '',
-                rol: rol,
-                foto_perfil: userData.foto_perfil || fotoPerfil || null
-              });
-            } else {
-              console.warn("⚠️ No se pudieron obtener datos desde API, usando localStorage");
-              // Si falla la API, usar datos del localStorage
-              setUser({
-                id: usuarioId,
-                nombre: (usuarioNombre || '').trim(),
-                apellido: (apellido || '').trim(),
-                correo: correo || '',
-                rol: rol,
-                foto_perfil: fotoPerfil || null
-              });
+              setUser(updatedUser);
+              localStorage.setItem('usuario_data', JSON.stringify(updatedUser));
+              
+            } else if (response.status === 401) {
+              console.warn("⚠️ Token expirado, intentando refrescar...");
+              await refreshAccessToken();
             }
           } catch (apiError) {
-            console.warn("⚠️ Error al conectar con API, usando localStorage:", apiError);
-            setUser({
-              id: usuarioId,
-              nombre: (usuarioNombre || '').trim(),
-              apellido: (apellido || '').trim(),
-              correo: correo || '',
-              rol: rol,
-              foto_perfil: fotoPerfil || null
-            });
+            console.warn("⚠️ Error verificando token, intentando refrescar:", apiError);
+            await refreshAccessToken();
           }
         }
+        
+        // 🔥 Configurar interceptors después de cargar tokens
+        setupAxiosInterceptors();
+        
       } catch (error) {
         console.error("❌ Error al cargar usuario:", error);
       } finally {
@@ -106,166 +140,168 @@ export const AuthProvider = ({ children }) => {
     cargarUsuarioDesdeStorage();
   }, []);
 
-  // ✅ FUNCIÓN LOGIN MEJORADA: Obtiene datos completos del usuario después del login
-  const login = async (userData) => {
-    console.log("📥 AuthContext - Recibiendo datos de login:", userData);
-    
+  // 🔥 FUNCIÓN PARA REFRESCAR ACCESS TOKEN
+  const refreshAccessToken = async () => {
     try {
-      // ✅ PASO 1: Obtener datos completos del usuario desde la API
+      const storedRefreshToken = localStorage.getItem('refresh_token');
+      if (!storedRefreshToken) {
+        logout();
+        return false;
+      }
+      
       const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
-      
-      console.log(`🔍 Obteniendo datos completos del usuario con ID: ${userData.id}`);
-      const response = await fetch(`${API_URL}/api/usuarios/usuarios/${userData.id}/`);
-      
-      let nombre = '';
-      let apellido = '';
-      let correo = '';
-      let fotoPerfil = null;
+      const response = await fetch(`${API_URL}/api/usuarios/auth/refresh/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refresh: storedRefreshToken })
+      });
       
       if (response.ok) {
-        const fullUserData = await response.json();
-        console.log("✅ Datos completos obtenidos desde API:", fullUserData);
-        
-        // Usar datos completos de la API
-        nombre = (fullUserData.nombre || '').trim();
-        apellido = (fullUserData.apellido || '').trim();
-        correo = fullUserData.correo || fullUserData.email || '';
-        fotoPerfil = fullUserData.foto_perfil || null;
+        const data = await response.json();
+        localStorage.setItem('access_token', data.access);
+        setAccessToken(data.access);
+        console.log("✅ Token refrescado correctamente");
+        return true;
       } else {
-        console.warn("⚠️ No se pudieron obtener datos completos, procesando datos básicos del login");
-        
-        // Procesar datos básicos del login
-        let nombreCompleto = userData.usuario || userData.nombre || '';
-        apellido = userData.apellido || '';
-        correo = userData.correo || userData.email || '';
-        fotoPerfil = userData.foto_perfil || null;
-        
-        // Si el nombre contiene espacios y no hay apellido, separar
-        if (!apellido && nombreCompleto && nombreCompleto.includes(' ')) {
-          const partes = nombreCompleto.trim().split(/\s+/); // Dividir por cualquier cantidad de espacios
-          nombre = partes[0];
-          apellido = partes.slice(1).join(' ');
-          console.log("⚠️ Apellido separado del nombre:", { nombre, apellido });
-        } else {
-          nombre = nombreCompleto.trim();
-        }
+        console.error("❌ Error al refrescar token:", response.status);
+        logout();
+        return false;
       }
-      
-      // ✅ PASO 2: Guardar TODOS los datos en localStorage (limpios)
-      localStorage.setItem('usuarioId', userData.id);
-      localStorage.setItem('usuarioNombre', nombre);
-      localStorage.setItem('usuarioApellido', apellido);
-      localStorage.setItem('usuarioCorreo', correo);
-      localStorage.setItem('rol', userData.rol);
-      
-      // Guardar foto de perfil si existe
-      if (fotoPerfil) {
-        localStorage.setItem('usuarioFotoPerfil', fotoPerfil);
-      } else {
-        localStorage.removeItem('usuarioFotoPerfil'); // Asegurar que no haya datos viejos
-      }
-      
-      console.log("💾 Datos guardados en localStorage:", {
-        usuarioId: userData.id,
-        usuarioNombre: nombre,
-        usuarioApellido: apellido,
-        usuarioCorreo: correo,
-        rol: userData.rol,
-        foto_perfil: fotoPerfil
-      });
-
-      // ✅ PASO 3: Actualizar estado con TODOS los datos
-      const newUser = {
-        id: userData.id,
-        nombre: nombre,
-        apellido: apellido,
-        correo: correo,
-        rol: userData.rol,
-        foto_perfil: fotoPerfil
-      };
-      
-      setUser(newUser);
-      console.log("✅ Estado de usuario actualizado:", newUser);
-      
-      return true;
     } catch (error) {
-      console.error("❌ Error en login:", error);
-      
-      // Fallback: usar datos básicos si falla todo
-      let nombreCompleto = userData.usuario || userData.nombre || '';
-      let nombre = nombreCompleto.trim();
-      let apellido = '';
-      
-      if (nombreCompleto.includes(' ')) {
-        const partes = nombreCompleto.trim().split(/\s+/);
-        nombre = partes[0];
-        apellido = partes.slice(1).join(' ');
-      }
-      
-      localStorage.setItem('usuarioId', userData.id);
-      localStorage.setItem('usuarioNombre', nombre);
-      localStorage.setItem('usuarioApellido', apellido);
-      localStorage.setItem('rol', userData.rol);
-      
-      setUser({
-        id: userData.id,
-        nombre: nombre,
-        apellido: apellido,
-        correo: '',
-        rol: userData.rol,
-        foto_perfil: null
-      });
-      
+      console.error("❌ Error en refreshAccessToken:", error);
+      logout();
       return false;
     }
   };
 
-  // ✅ FUNCIÓN MEJORADA para actualizar el perfil del usuario
+  // 🔥 FUNCIÓN LOGIN MEJORADA CON JWT
+  const login = async (credentials) => {
+    try {
+      const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
+      
+      // Opción 1: Usar endpoint JWT nuevo
+      let response;
+      let data;
+      
+      if (credentials.username && credentials.password) {
+        // Login con credenciales
+        response = await fetch(`${API_URL}/api/usuarios/auth/login/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            username: credentials.username,
+            password: credentials.password
+          })
+        });
+        
+        if (response.ok) {
+          data = await response.json();
+          
+          // 🔥 Guardar tokens JWT
+          localStorage.setItem('access_token', data.access);
+          localStorage.setItem('refresh_token', data.refresh);
+          
+          // 🔥 Guardar datos del usuario
+          const userData = data.user;
+          localStorage.setItem('usuario_data', JSON.stringify(userData));
+          
+          setUser(userData);
+          setAccessToken(data.access);
+          setRefreshToken(data.refresh);
+          
+          console.log("✅ Login JWT exitoso:", userData);
+          return true;
+        }
+      } else if (credentials.access_token) {
+        // Login con datos existentes (para compatibilidad)
+        localStorage.setItem('access_token', credentials.access_token);
+        localStorage.setItem('refresh_token', credentials.refresh_token);
+        
+        const userData = {
+          id: credentials.id,
+          username: credentials.usuario || credentials.username,
+          nombre: credentials.nombre,
+          apellido: credentials.apellido,
+          correo: credentials.correo,
+          rol: credentials.rol,
+          foto_perfil: credentials.foto_perfil
+        };
+        
+        localStorage.setItem('usuario_data', JSON.stringify(userData));
+        
+        setUser(userData);
+        setAccessToken(credentials.access_token);
+        setRefreshToken(credentials.refresh_token);
+        
+        console.log("✅ Login con tokens existentes:", userData);
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error("❌ Error en login JWT:", error);
+      return false;
+    }
+  };
+
+  // 🔥 FUNCIÓN LOGIN LEGACY (para compatibilidad con el sistema actual)
+  const loginLegacy = async (userData) => {
+    try {
+      console.log("🔥 AuthContext - Login legacy:", userData);
+      
+      // Si vienen tokens JWT, usarlos
+      if (userData.access_token && userData.refresh_token) {
+        return await login(userData);
+      }
+      
+      // Si no, hacer login legacy y obtener tokens
+      const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
+      
+      // Intentar obtener tokens haciendo login con usuario/contraseña si están disponibles
+      // Por ahora, guardar datos sin tokens (modo compatibilidad)
+      const userInfo = {
+        id: userData.id,
+        username: userData.usuario || userData.username || '',
+        nombre: userData.nombre || '',
+        apellido: userData.apellido || '',
+        correo: userData.correo || userData.email || '',
+        rol: userData.rol,
+        foto_perfil: userData.foto_perfil || null
+      };
+      
+      localStorage.setItem('usuario_data', JSON.stringify(userInfo));
+      setUser(userInfo);
+      
+      console.log("✅ Login legacy guardado:", userInfo);
+      return true;
+      
+    } catch (error) {
+      console.error("❌ Error en loginLegacy:", error);
+      return false;
+    }
+  };
+
+  // ✅ FUNCIÓN para actualizar el perfil del usuario
   const updateUser = (userData) => {
     console.log("🔄 AuthContext - Actualizando perfil del usuario:", userData);
     
     try {
-      // Crear objeto con todos los datos actualizados
       const updatedUser = {
-        id: user?.id || userData.id,
+        ...user,
         nombre: (userData.nombre || user?.nombre || '').trim(),
         apellido: (userData.apellido || user?.apellido || '').trim(),
         correo: userData.correo || user?.correo || '',
-        rol: user?.rol || userData.rol || '',
         foto_perfil: userData.foto_perfil !== undefined ? userData.foto_perfil : (user?.foto_perfil || null)
       };
       
-      console.log("📋 Datos a actualizar:", updatedUser);
-      
-      // ✅ Actualizar localStorage con TODOS los datos (limpios)
-      localStorage.setItem('usuarioId', updatedUser.id);
-      localStorage.setItem('usuarioNombre', updatedUser.nombre);
-      localStorage.setItem('usuarioApellido', updatedUser.apellido);
-      localStorage.setItem('usuarioCorreo', updatedUser.correo);
-      localStorage.setItem('rol', updatedUser.rol);
-      
-      // ✅ Manejar foto de perfil correctamente
-      if (updatedUser.foto_perfil) {
-        localStorage.setItem('usuarioFotoPerfil', updatedUser.foto_perfil);
-        console.log("📸 Foto de perfil guardada en localStorage:", updatedUser.foto_perfil);
-      } else {
-        localStorage.removeItem('usuarioFotoPerfil');
-        console.log("🗑️ Foto de perfil eliminada de localStorage");
-      }
-      
-      console.log("💾 localStorage actualizado:", {
-        usuarioId: updatedUser.id,
-        usuarioNombre: updatedUser.nombre,
-        usuarioApellido: updatedUser.apellido,
-        usuarioCorreo: updatedUser.correo,
-        rol: updatedUser.rol,
-        foto_perfil: updatedUser.foto_perfil
-      });
-      
-      // ✅ Actualizar estado
+      localStorage.setItem('usuario_data', JSON.stringify(updatedUser));
       setUser(updatedUser);
-      console.log("✅ Perfil de usuario actualizado en estado:", updatedUser);
       
+      console.log("✅ Perfil actualizado:", updatedUser);
       return true;
     } catch (error) {
       console.error("❌ Error al actualizar usuario:", error);
@@ -274,17 +310,30 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    console.log("🚪 Cerrando sesión...");
-    // Limpiar localStorage completamente
-    localStorage.clear();
+    console.log("🚪 Cerrando sesión JWT...");
     
-    // Limpiar estado
+    // Limpiar tokens y datos
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('usuario_data');
+    
+    // Limpiar datos legacy por si acaso
+    localStorage.removeItem('usuarioId');
+    localStorage.removeItem('usuarioNombre');
+    localStorage.removeItem('usuarioApellido');
+    localStorage.removeItem('usuarioCorreo');
+    localStorage.removeItem('rol');
+    localStorage.removeItem('usuarioFotoPerfil');
+    
     setUser(null);
+    setAccessToken(null);
+    setRefreshToken(null);
+    
     console.log("✅ Sesión cerrada correctamente");
   };
 
   const isAuthenticated = () => {
-    return user !== null;
+    return user !== null && accessToken !== null;
   };
 
   const hasRole = (roles) => {
@@ -295,14 +344,38 @@ export const AuthProvider = ({ children }) => {
     return user.rol === roles;
   };
 
+  // 🔥 NUEVA: Función para hacer requests autenticadas
+  const authenticatedFetch = async (url, options = {}) => {
+    const token = localStorage.getItem('access_token');
+    
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers
+    };
+    
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+    
+    return fetch(url, {
+      ...options,
+      headers
+    });
+  };
+
   const value = {
     user,
     loading,
+    accessToken,
+    refreshToken,
     login,
+    loginLegacy,  // Para compatibilidad
     logout,
     updateUser,
     isAuthenticated,
-    hasRole
+    hasRole,
+    refreshAccessToken,
+    authenticatedFetch  // Nueva función útil
   };
 
   return (

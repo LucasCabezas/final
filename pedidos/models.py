@@ -4,9 +4,19 @@ from inventario.models import Prenda
 
 class Pedido(models.Model):
     ESTADO_CHOICES = [
+        # Estados del flujo dueño (para futuras funcionalidades)
         ('PENDIENTE_DUENO', 'Pendiente Dueño'),
-        ('APROBADO_DUENO', 'Aprobado - En Costura'),
+        ('APROBADO_DUENO', 'Aprobado Dueño'),
+        
+        # Estados del flujo costurero
+        ('PENDIENTE_COSTURERO', 'Pendiente Costurero'),
+        ('EN_PROCESO_COSTURERO', 'En Proceso Costurero'),
+        
+        # Estados del flujo estampador
         ('PENDIENTE_ESTAMPADO', 'Pendiente Estampado'),
+        ('EN_PROCESO_ESTAMPADO', 'En Proceso Estampado'),
+        
+        # Estados finales
         ('COMPLETADO', 'Completado'),
         ('CANCELADO', 'Cancelado'),
     ]
@@ -14,10 +24,38 @@ class Pedido(models.Model):
     Usuario = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
     Pedido_fecha = models.DateField(auto_now_add=True)
     Pedido_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    Pedido_estado = models.CharField(max_length=30, choices=ESTADO_CHOICES, default='PENDIENTE_DUENO')
+    # 🔥 CAMBIO: Estado inicial específico para costurero
+    Pedido_estado = models.CharField(max_length=30, choices=ESTADO_CHOICES, default='PENDIENTE_COSTURERO')
+    
+    # Campos para tracking del flujo
+    costurero_asignado = models.ForeignKey(
+        User, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='pedidos_costurero'
+    )
+    estampador_asignado = models.ForeignKey(
+        User, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='pedidos_estampador'
+    )
 
     def __str__(self):
         return f"Pedido {self.Pedido_ID} - {self.Usuario}"
+
+    def requiere_estampado(self):
+        """Verifica si el pedido tiene prendas que requieren estampado"""
+        return self.detalles.filter(tipo='ESTAMPADA').exists()
+
+    def puede_ser_trasladado_a_estampado(self):
+        """Verifica si el pedido puede ser trasladado a estampado"""
+        return (
+            self.Pedido_estado == 'EN_PROCESO_COSTURERO' and 
+            self.requiere_estampado()
+        )
 
 class PedidosXPrendas(models.Model):
     pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE)
@@ -25,8 +63,8 @@ class PedidosXPrendas(models.Model):
     Pedido_prenda_cantidad = models.IntegerField()
     Pedido_prenda_precio_total = models.FloatField()
 
-    class Meta: # Metadatos del modelo
-        unique_together = ('pedido', 'prenda') # Asegura que la combinación de pedido y prenda sea única
+    class Meta:
+        unique_together = ('pedido', 'prenda')
 
 class DetallePedido(models.Model):
     """Detalle completo de cada item en un pedido con cálculo automático de costos"""
@@ -35,7 +73,6 @@ class DetallePedido(models.Model):
     pedido = models.ForeignKey('Pedido', related_name='detalles', on_delete=models.CASCADE)
     prenda = models.ForeignKey('inventario.Prenda', on_delete=models.CASCADE)
     cantidad = models.PositiveIntegerField(default=1)
-    tipo = models.CharField(max_length=50, default='LISA')
     talle = models.ForeignKey('clasificaciones.Talle', on_delete=models.SET_NULL, null=True, blank=True)
     color = models.ForeignKey('clasificaciones.Color', on_delete=models.SET_NULL, null=True, blank=True)
     modelo = models.ForeignKey('clasificaciones.Modelo', on_delete=models.SET_NULL, null=True, blank=True)
@@ -130,7 +167,6 @@ class DetallePedido(models.Model):
         if not skip_auto_costs:
             self.calcular_costos()
         super().save(*args, **kwargs)
-
     
     def __str__(self):
         return f"{self.prenda.Prenda_nombre} - {self.marca.Marca_nombre} {self.modelo.Modelo_nombre} ({self.cantidad}u)"

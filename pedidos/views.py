@@ -1,6 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.decorators import api_view
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.utils import timezone
@@ -26,6 +27,7 @@ class PedidoList(APIView):
         try:
             # 🔹 Leer parámetro opcional de filtro por estado
             estado = request.query_params.get("estado", None)
+            usuario_tipo = request.query_params.get("usuario_tipo", None)  # NUEVO
 
             pedidos = Pedido.objects.prefetch_related(
                 'detalles',
@@ -35,6 +37,27 @@ class PedidoList(APIView):
                 'detalles__modelo',
                 'detalles__marca',
             ).all().order_by("-Pedido_ID")
+
+            # 🔥 Filtros por tipo de usuario
+            if usuario_tipo == "costurero":
+                # Mostrar pedidos que están en estados de costura
+                pedidos = pedidos.filter(
+                    Pedido_estado__in=[
+                        'PENDIENTE_COSTURERO',  # Estado inicial para costurero
+                        'EN_PROCESO_COSTURERO'
+                    ]
+                )
+            elif usuario_tipo == "estampador":
+                # Mostrar pedidos que están en estados de estampado
+                pedidos = pedidos.filter(
+                    Pedido_estado__in=[
+                        'PENDIENTE_ESTAMPADO', 
+                        'EN_PROCESO_ESTAMPADO'
+                    ]
+                )
+            elif usuario_tipo == "dueno":
+                # Para el dueño, mostrar todos los pedidos
+                pass  # No aplicar filtro adicional
 
             # 🔥 Si viene el parámetro ?estado= filtrar
             if estado:
@@ -56,20 +79,36 @@ class PedidoList(APIView):
                         "cantidad": d.cantidad,
                         "tipo": d.get_tipo_display() if hasattr(d, "get_tipo_display") else d.tipo,
                         "talle": str(getattr(d.talle, "Talle_codigo", "-")),
-                        "precio_unitario": round(d.precio_unitario or 0, 2),
-                        "precio_total": subtotal,
+                        "precio_unitario": round(d.precio_unitario or 0, 2) if usuario_tipo != "costurero" and usuario_tipo != "estampador" else None,
+                        "precio_total": subtotal if usuario_tipo != "costurero" and usuario_tipo != "estampador" else None,
                     })
 
-                total_pedido = round(sum(d["precio_total"] for d in detalles), 2)
+                total_pedido = round(sum(d["precio_total"] for d in detalles if d["precio_total"]), 2) if usuario_tipo != "costurero" and usuario_tipo != "estampador" else None
+
+                # Mapear estados para mostrar en la interfaz
+                estado_display = p.Pedido_estado
+                if usuario_tipo == "costurero":
+                    if p.Pedido_estado == 'PENDIENTE_COSTURERO':
+                        estado_display = 'PENDIENTE'
+                    elif p.Pedido_estado == 'EN_PROCESO_COSTURERO':
+                        estado_display = 'EN_PROCESO'
+                elif usuario_tipo == "estampador":
+                    if p.Pedido_estado == 'PENDIENTE_ESTAMPADO':
+                        estado_display = 'PENDIENTE'
+                    elif p.Pedido_estado == 'EN_PROCESO_ESTAMPADO':
+                        estado_display = 'EN_PROCESO'
 
                 data.append({
                     "Pedido_ID": p.Pedido_ID,
                     "Usuario": p.Usuario_id,
                     "usuario": getattr(p.Usuario, "email", None),
                     "Pedido_fecha": p.Pedido_fecha,
-                    "Pedido_estado": p.Pedido_estado,
+                    "Pedido_estado": estado_display,
+                    "Pedido_estado_real": p.Pedido_estado,  # Estado real para las acciones
                     "total_pedido": total_pedido,
                     "detalles": detalles,
+                    "requiere_estampado": p.requiere_estampado(),
+                    "puede_trasladar_estampado": p.puede_ser_trasladado_a_estampado(),
                 })
 
             return Response(data, status=status.HTTP_200_OK)
@@ -86,7 +125,8 @@ class PedidoList(APIView):
             usuario_id = data.get("usuario", 1)
             prendas = data.get("prendas", [])
             porcentaje_ganancia = float(data.get("porcentaje_ganancia", 0))
-            estado = data.get("estado", "PENDIENTE_DUENO")
+            # 🔥 CAMBIO: Los pedidos van directo al costurero con estado específico
+            estado = 'PENDIENTE_COSTURERO'  # Estado específico para el flujo del costurero
 
             if not prendas:
                 return Response({"error": "No se enviaron prendas."}, status=status.HTTP_400_BAD_REQUEST)
@@ -132,11 +172,11 @@ class PedidoList(APIView):
                     ]
                 }, status=status.HTTP_400_BAD_REQUEST)
 
-            # 🔹 2️⃣ Si todo bien, crear el pedido normalmente
+            # 🔹 2️⃣ Si todo bien, crear el pedido directamente para costurero
             pedido = Pedido.objects.create(
                 Usuario=usuario,
                 Pedido_fecha=timezone.now().date(),
-                Pedido_estado=estado
+                Pedido_estado=estado  # PENDIENTE_COSTURERO = va directo al costurero
             )
 
             total_pedido = 0.0
@@ -145,115 +185,358 @@ class PedidoList(APIView):
             for item in prendas:
                 prenda_id = item.get("id_prenda")
                 cantidad = int(item.get("cantidad", 0))
-                tipo = item.get("tipo", "LISA")
+                tipo = item.get("tipo", "LISA").upper()
+                if tipo not in ['LISA', 'ESTAMPADA']:
+                    tipo = 'LISA'
                 talle_codigo = item.get("talle")
 
                 prenda = Prenda.objects.get(pk=prenda_id)
 
                 talle = None
                 if talle_codigo:
-                    talle = Talle.objects.filter(Talle_codigo__iexact=str(talle_codigo).strip()).first()
-                if not talle:
-                    talle, _ = Talle.objects.get_or_create(Talle_codigo="UNICO", defaults={"Talle_nombre": "Único"})
+                    try:
+                        talle = Talle.objects.get(Talle_codigo=talle_codigo)
+                    except Talle.DoesNotExist:
+                        pass
 
-                # 💰 Calcular costos
-                if not prenda.Prenda_costo_total_produccion or prenda.Prenda_costo_total_produccion == 0:
-                    from django.db.models import Sum, F
-                    costo_insumos = (
-                        InsumosXPrendas.objects.filter(prenda=prenda)
-                        .aggregate(total=Sum(F("Insumo_prenda_costo_total")))["total"] or 0
-                    )
-                    prenda.Prenda_costo_total_produccion = round(costo_insumos, 2)
-                    prenda.save(update_fields=["Prenda_costo_total_produccion"])
-
-                costo_produccion = float(prenda.Prenda_costo_total_produccion)
-                precio_unitario = round(costo_produccion * (1 + porcentaje_ganancia / 100), 2)
-                precio_total = round(precio_unitario * cantidad, 2)
-
+                # Crear detalle
                 detalle = DetallePedido.objects.create(
                     pedido=pedido,
                     prenda=prenda,
                     cantidad=cantidad,
                     tipo=tipo,
                     talle=talle,
-                    color=prenda.Prenda_color,
-                    modelo=prenda.Prenda_modelo,
                     marca=prenda.Prenda_marca,
-                    precio_unitario=precio_unitario,
-                    precio_total=precio_total,
+                    modelo=prenda.Prenda_modelo,
+                    color=prenda.Prenda_color,
                 )
 
-                total_pedido += precio_total
+                # Calcular precio
+                precio_unitario = detalle.calcular_precio_unitario()
+                precio_total = precio_unitario * cantidad
+                precio_con_ganancia = precio_total * (1 + porcentaje_ganancia / 100)
 
-                # 🔥 3️⃣ Descontar insumos del stock (ya verificados)
+                detalle.precio_unitario = precio_unitario
+                detalle.precio_total = precio_con_ganancia
+                detalle.save()
+
+                total_pedido += precio_con_ganancia
+
+                # 🔥 3️⃣ Descontar stock de insumos
                 for rel in InsumosXPrendas.objects.filter(prenda=prenda):
-                    insumo = rel.insumo
-                    cantidad_usada = rel.Insumo_prenda_cantidad_utilizada * cantidad
-                    insumo.Insumo_cantidad -= cantidad_usada
-                    insumo.save(update_fields=["Insumo_cantidad"])
-
-            pedido.Pedido_total = total_pedido
-            pedido.save(update_fields=["Pedido_total"])
+                    cantidad_necesaria = rel.Insumo_prenda_cantidad_utilizada * cantidad
+                    rel.insumo.Insumo_cantidad -= cantidad_necesaria
+                    rel.insumo.save()
 
             return Response({
-                "mensaje": "✅ Pedido creado correctamente.",
-                "tipo": "exito",
+                "message": "Pedido creado exitosamente",
                 "pedido_id": pedido.Pedido_ID,
-                "estado": pedido.Pedido_estado,
-                "total": round(total_pedido, 2)
+                "total": round(total_pedido, 2),
+                "estado": pedido.Pedido_estado
             }, status=status.HTTP_201_CREATED)
 
         except Exception as e:
-            import traceback; traceback.print_exc()
-            transaction.set_rollback(True)
+            import traceback
+            traceback.print_exc()
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 class PedidoDetail(APIView):
-    """API: Ver, editar o eliminar un pedido existente."""
-
+    """
+    API: Obtener, actualizar o eliminar un pedido específico desde React.
+    """
+    
     def get(self, request, pk):
-        pedido = get_object_or_404(Pedido, pk=pk)
-        serializer = PedidoSerializer(pedido)
-        return Response(serializer.data)
+        try:
+            # Buscar el pedido con relaciones precargadas
+            pedido = Pedido.objects.prefetch_related(
+                'detalles', 
+                'detalles__prenda',
+                'detalles__talle',
+                'detalles__color',
+                'detalles__modelo',
+                'detalles__marca',
+            ).get(pk=pk)
+            
+            # Serializar detalles
+            detalles = []
+            for d in pedido.detalles.all():
+                subtotal = round(d.precio_total or (d.precio_unitario * d.cantidad), 2)
+                detalles.append({
+                    "id": d.id,
+                    "prenda": d.prenda.Prenda_ID,
+                    "prenda_nombre": d.prenda.Prenda_nombre,
+                    "prenda_marca": getattr(d.prenda.Prenda_marca, "Marca_nombre", ""),
+                    "prenda_modelo": getattr(d.prenda.Prenda_modelo, "Modelo_nombre", ""),
+                    "prenda_color": getattr(d.prenda.Prenda_color, "Color_nombre", ""),
+                    "prenda_imagen": d.prenda.Prenda_imagen.url if d.prenda.Prenda_imagen else None,
+                    "cantidad": d.cantidad,
+                    "tipo": d.tipo,
+                    "talle": str(getattr(d.talle, "Talle_codigo", "-")),
+                    "precio_unitario": round(d.precio_unitario or 0, 2),
+                    "precio_total": subtotal,
+                })
+            
+            # Calcular total del pedido
+            total_pedido = round(sum(d["precio_total"] for d in detalles), 2)
+            
+            # Estructurar respuesta
+            data = {
+                "Pedido_ID": pedido.Pedido_ID,
+                "Usuario": pedido.Usuario_id,
+                "usuario": getattr(pedido.Usuario, "email", None),
+                "Pedido_fecha": pedido.Pedido_fecha,
+                "Pedido_estado": pedido.Pedido_estado,
+                "total_pedido": total_pedido,
+                "detalles": detalles,
+            }
+            
+            return Response(data, status=status.HTTP_200_OK)
 
-    # ✅ Agregar PATCH (no está habilitado en tu instancia actual)
+        except Pedido.DoesNotExist:
+            return Response({'error': 'Pedido no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     def patch(self, request, pk):
-        pedido = get_object_or_404(Pedido, pk=pk)
-        nuevo_estado = request.data.get('estado') or request.data.get('Pedido_estado')
-
-        if not nuevo_estado:
-            return Response({"error": "Campo 'estado' requerido"}, status=status.HTTP_400_BAD_REQUEST)
-
-        estados_validos = [
-            'PENDIENTE_DUENO',
-            'APROBADO_DUENO',
-            'PENDIENTE_ESTAMPADO',
-            'COMPLETADO',
-            'CANCELADO'
-        ]
-        if nuevo_estado not in estados_validos:
-            return Response(
-                {"error": f"Estado '{nuevo_estado}' no válido. Debe ser uno de {estados_validos}"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        pedido.Pedido_estado = nuevo_estado
-        pedido.save()
-        serializer = PedidoSerializer(pedido)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    def put(self, request, pk):
-        pedido = get_object_or_404(Pedido, pk=pk)
-        serializer = PedidoSerializer(pedido, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        """Actualizar solo ciertos campos del pedido (ej: estado)"""
+        try:
+            pedido = Pedido.objects.get(pk=pk)
+            
+            # Solo actualizar campos permitidos
+            nuevo_estado = request.data.get('Pedido_estado')
+            if nuevo_estado:
+                pedido.Pedido_estado = nuevo_estado
+                pedido.save()
+                
+                return Response({
+                    "message": f"Estado actualizado a {nuevo_estado}",
+                    "estado": pedido.Pedido_estado
+                }, status=status.HTTP_200_OK)
+            else:
+                return Response({"error": "No se especificó un nuevo estado"}, status=status.HTTP_400_BAD_REQUEST)
+                
+        except Pedido.DoesNotExist:
+            return Response({'error': 'Pedido no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def delete(self, request, pk):
-        pedido = get_object_or_404(Pedido, pk=pk)
-        pedido.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        """Eliminar un pedido"""
+        try:
+            pedido = Pedido.objects.get(pk=pk)
+            pedido.delete()
+            return Response({'message': 'Pedido eliminado exitosamente'}, status=status.HTTP_200_OK)
+        except Pedido.DoesNotExist:
+            return Response({'error': 'Pedido no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# =====================================================
+# 🔥 NUEVAS VISTAS PARA COSTURERO Y ESTAMPADOR - SIN JWT
+# =====================================================
+
+@api_view(['POST'])
+def aceptar_pedido_costurero(request, pedido_id):
+    """Costurero acepta un pedido"""
+    try:
+        pedido = get_object_or_404(Pedido, pk=pedido_id)
+        
+        if pedido.Pedido_estado != 'PENDIENTE_COSTURERO':
+            return Response({
+                "error": "El pedido no está en estado válido para ser aceptado por costurero"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        pedido.Pedido_estado = 'EN_PROCESO_COSTURERO'
+        
+        # 🔥 SOLUCIÓN SIN JWT: Manejar usuario autenticado o anónimo
+        if request.user.is_authenticated:
+            # Verificar que el usuario tenga rol de costurero
+            user_roles = [group.name for group in request.user.groups.all()]
+            if 'Costurero' in user_roles:
+                pedido.costurero_asignado = request.user
+                print(f"✅ Pedido {pedido_id} aceptado por costurero: {request.user.username}")
+            else:
+                print(f"⚠️ Usuario {request.user.username} no tiene rol de costurero")
+                pedido.costurero_asignado = None
+        else:
+            # Usuario no autenticado - asignar None
+            print(f"⚠️ Usuario no autenticado aceptando pedido {pedido_id}")
+            pedido.costurero_asignado = None
+        
+        pedido.save()
+        
+        return Response({
+            "mensaje": f"✅ Pedido aceptado por costurero {getattr(request.user, 'username', 'Anónimo')}",
+            "nuevo_estado": pedido.Pedido_estado,
+            "costurero": getattr(request.user, 'username', None)
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+def terminar_pedido_costurero(request, pedido_id):
+    """Costurero termina un pedido"""
+    try:
+        pedido = get_object_or_404(Pedido, pk=pedido_id)
+        
+        if pedido.Pedido_estado != 'EN_PROCESO_COSTURERO':
+            return Response({
+                "error": "El pedido no está en estado válido para ser terminado por costurero"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Verificar rol de costurero (opcional sin JWT)
+        if request.user.is_authenticated:
+            user_roles = [group.name for group in request.user.groups.all()]
+            if 'Costurero' not in user_roles:
+                return Response({
+                    "error": "Solo costurer@s pueden terminar pedidos"
+                }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Si requiere estampado, va a estampado. Si no, se completa.
+        if pedido.requiere_estampado():
+            return Response({
+                "error": "Este pedido requiere estampado. Debes usar la acción 'Enviar a Estampado'."
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Si no requiere estampado, se completa.
+        pedido.Pedido_estado = 'COMPLETADO'
+        mensaje = f"✅ Pedido completado por costurero {getattr(request.user, 'username', 'Anónimo')}."
+
+        pedido.save()
+
+        print(f"✅ Pedido {pedido_id} terminado por costurero: {getattr(request.user, 'username', 'Anónimo')}")
+
+        return Response({
+            "mensaje": mensaje,
+            "nuevo_estado": pedido.Pedido_estado,
+            "costurero": getattr(request.user, 'username', None)
+        }, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+def trasladar_pedido_estampado(request, pedido_id):
+    """Costurero traslada un pedido a estampado"""
+    try:
+        pedido = get_object_or_404(Pedido, pk=pedido_id)
+        
+        # Verificar que el usuario es costurero (opcional sin JWT)
+        if request.user.is_authenticated:
+            user_roles = [group.name for group in request.user.groups.all()]
+            if 'Costurero' not in user_roles:
+                return Response({
+                    "error": "Solo costurer@s pueden trasladar pedidos a estampado"
+                }, status=status.HTTP_403_FORBIDDEN)
+        
+        if not pedido.puede_ser_trasladado_a_estampado():
+            return Response({
+                "error": "El pedido no puede ser trasladado a estampado"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        pedido.Pedido_estado = 'PENDIENTE_ESTAMPADO'
+        pedido.save()
+        
+        print(f"✅ Pedido {pedido_id} trasladado a estampado por: {getattr(request.user, 'username', 'Anónimo')}")
+        
+        return Response({
+            "mensaje": f"✅ Pedido trasladado a estampado por {getattr(request.user, 'username', 'Anónimo')}",
+            "nuevo_estado": pedido.Pedido_estado,
+            "costurero": getattr(request.user, 'username', None)
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+def aceptar_pedido_estampador(request, pedido_id):
+    """Estampador acepta un pedido"""
+    try:
+        pedido = get_object_or_404(Pedido, pk=pedido_id)
+        
+        if pedido.Pedido_estado != 'PENDIENTE_ESTAMPADO':
+            return Response({
+                "error": "El pedido no está en estado válido para ser aceptado por estampador"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Verificar que el usuario tiene rol de estampador (opcional sin JWT)
+        if request.user.is_authenticated:
+            user_roles = [group.name for group in request.user.groups.all()]
+            if 'Estampador' not in user_roles:
+                return Response({
+                    "error": "Solo estampador@s pueden aceptar pedidos de estampado"
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            pedido.estampador_asignado = request.user
+        else:
+            # Usuario no autenticado - asignar None
+            print(f"⚠️ Usuario no autenticado aceptando pedido de estampado {pedido_id}")
+            pedido.estampador_asignado = None
+        
+        pedido.Pedido_estado = 'EN_PROCESO_ESTAMPADO'
+        pedido.save()
+        
+        print(f"✅ Pedido {pedido_id} aceptado por estampador: {getattr(request.user, 'username', 'Anónimo')}")
+        
+        return Response({
+            "mensaje": f"✅ Pedido aceptado por estampador {getattr(request.user, 'username', 'Anónimo')}",
+            "nuevo_estado": pedido.Pedido_estado,
+            "estampador": getattr(request.user, 'username', None)
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+def terminar_pedido_estampador(request, pedido_id):
+    """Estampador termina un pedido"""
+    try:
+        pedido = get_object_or_404(Pedido, pk=pedido_id)
+        
+        if pedido.Pedido_estado != 'EN_PROCESO_ESTAMPADO':
+            return Response({
+                "error": "El pedido no está en estado válido para ser terminado por estampador"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Verificar que el usuario tiene rol de estampador (opcional sin JWT)
+        if request.user.is_authenticated:
+            user_roles = [group.name for group in request.user.groups.all()]
+            if 'Estampador' not in user_roles:
+                return Response({
+                    "error": "Solo estampador@s pueden terminar pedidos de estampado"
+                }, status=status.HTTP_403_FORBIDDEN)
+        
+        pedido.Pedido_estado = 'COMPLETADO'
+        pedido.save()
+        
+        print(f"✅ Pedido {pedido_id} completado por estampador: {getattr(request.user, 'username', 'Anónimo')}")
+        
+        return Response({
+            "mensaje": f"✅ Pedido completado por estampador {getattr(request.user, 'username', 'Anónimo')}",
+            "nuevo_estado": pedido.Pedido_estado,
+            "estampador": getattr(request.user, 'username', None)
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 # =====================================================
 # 💻 Vistas del panel Django (uso interno / administrativo)
 # =====================================================
@@ -264,7 +547,7 @@ def crear_pedido(request):
         usuario_id = data.get('usuario')
         prendas = data.get('prendas', [])
         porcentaje_ganancia = float(data.get('porcentaje_ganancia', 0))
-        estado = data.get('estado', 'PENDIENTE')
+        estado = data.get('estado', 'PENDIENTE_COSTURERO')  # Van directo al costurero
 
         # Crear el pedido
         pedido = Pedido.objects.create(
@@ -308,7 +591,7 @@ def crear_pedido(request):
 
         return Response({
             "tipo": "exito",
-            "mensaje": "✅ Pedido creado correctamente.",
+            "mensaje": "✅ Pedido creado correctamente y enviado al costurero.",
             "pedido_id": pedido.Pedido_ID,
             "estado": pedido.Pedido_estado,
             "total": round(total_pedido, 2)
@@ -331,7 +614,6 @@ def eliminar_item(request, item_id):
 def finalizar_pedido(request, pedido_id):
     """Finaliza un pedido manualmente en el panel Django."""
     pedido = get_object_or_404(Pedido, Pedido_ID=pedido_id)
-    # 🔥 CAMBIADO: Cambiar a estado 'COMPLETADO' en lugar de True
     pedido.Pedido_estado = 'COMPLETADO'
     pedido.save()
     messages.success(request, '🎉 ¡Pedido realizado exitosamente!')

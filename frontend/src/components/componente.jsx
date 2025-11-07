@@ -98,6 +98,8 @@ function Componente({ onToggle }) {
     const handleUsuarios = () => navigate("/agregarUsuario");
     const handlePerfil = () => navigate("/perfil");
     const handleInsumos = () => navigate("/insumos");
+    const handlePedidosCosturero = () => navigate("/pedidos-costurero");
+    const handlePedidosEstampador = () => navigate("/pedidos-estampador");
 
     // --- Lógica de Modales y Toggle (SIN CAMBIOS) ---
     const handleToggle = () => {
@@ -127,12 +129,13 @@ function Componente({ onToggle }) {
         INVENTARIO: ['Dueño', 'Costurero', 'Estampador'],
         PEDIDOS: ['Dueño', 'Vendedor', 'Costurero', 'Estampador'],
         USUARIOS: ['Dueño'],
-
+        PEDIDOS_COSTURERO: ['Costurero'],
+        PEDIDOS_ESTAMPADOR: ['Estampador'],
         // Submenús específicos
         INSUMOS: ['Dueño', 'Costurero', 'Estampador'],
         PRENDAS: ['Dueño', 'Costurero', 'Estampador'],
         REALIZAR_PEDIDO: ['Dueño', 'Vendedor'],
-        APROBACION_PEDIDOS: ['Dueño', 'Costurero', 'Estampador'],
+        APROBACION_PEDIDOS: ['Dueño'],
         
         // Elementos universales
         PERFIL: true,
@@ -191,7 +194,7 @@ function Componente({ onToggle }) {
                         </div>
                     </li>
 
-                    {/* 2. Inventario (Dueño, Costurero) */}
+                    {/* 2. Inventario (Dueño, Costurero, Estampador) */}
                     {canSee('INVENTARIO') && (
                         <li style={styles.menuItem}>
                             <div style={styles.menuLabel} onClick={() => setOpenInventario((v) => !v)} onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,215,15,0.1)"; e.currentTarget.style.borderLeft = "3px solid rgba(255,215,15,1)"; }} onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderLeft = "3px solid transparent"; }}>
@@ -203,7 +206,7 @@ function Componente({ onToggle }) {
                             </div>
                             {!isCollapsed && (
                                 <ul style={openInventario ? styles.submenuShow : styles.submenu}>
-                                    {/* Submenú: Insumos (Dueño, Costurero) */}
+                                    {/* Submenú: Insumos (Dueño, Costurero, Estampador) */}
                                     {canSee('INSUMOS') && (
                                         <li style={styles.submenuItem} onClick={handleInsumos} onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255, 215, 15, 1)")} onMouseLeave={(e) => (e.currentTarget.style.color = "#ccc")}>
                                             Insumos
@@ -242,6 +245,19 @@ function Componente({ onToggle }) {
                                     {canSee('APROBACION_PEDIDOS') && (
                                         <li style={styles.submenuItem} onClick={handleAprobacionPedidos} onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255, 215, 15, 1)")} onMouseLeave={(e) => (e.currentTarget.style.color = "#ccc")}>
                                             Aprobación/Seguimiento
+                                        </li>
+                                    )}
+                                    {/* 🔥 NUEVO: Gestión de Pedidos - SOLO COSTURERO */}
+                                    {canSee('PEDIDOS_COSTURERO') && (
+                                        <li style={styles.submenuItem} onClick={handlePedidosCosturero} onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255, 215, 15, 1)")} onMouseLeave={(e) => (e.currentTarget.style.color = "#ccc")}>
+                                            ✂️ Gestión de Costura
+                                        </li>
+                                    )}
+
+                                    {/* 🔥 NUEVO: Gestión de Pedidos - SOLO ESTAMPADOR */}
+                                    {canSee('PEDIDOS_ESTAMPADOR') && (
+                                        <li style={styles.submenuItem} onClick={handlePedidosEstampador} onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255, 215, 15, 1)")} onMouseLeave={(e) => (e.currentTarget.style.color = "#ccc")}>
+                                            🎨 Gestión de Estampado
                                         </li>
                                     )}
                                 </ul>

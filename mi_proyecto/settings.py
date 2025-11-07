@@ -3,6 +3,7 @@ Django settings for mi_proyecto project.
 """
 
 from pathlib import Path
+from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -14,7 +15,7 @@ DEBUG = True
 ALLOWED_HOSTS = ['*']  # ✅ Permite conexiones desde cualquier origen en desarrollo
 
 # ---------------------------------------------------
-# 🔧 Aplicaciones instaladas
+# 📧 Aplicaciones instaladas
 # ---------------------------------------------------
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -24,6 +25,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework_simplejwt',  # 🔥 NUEVO: JWT
     'corsheaders',
     # Apps locales
     'clasificaciones',
@@ -48,6 +50,41 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'mi_proyecto.urls'
+
+# ---------------------------------------------------
+# 🔥 CONFIGURACIÓN JWT
+# ---------------------------------------------------
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',  # Mantener para admin
+    ),
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',  # Por defecto requiere auth
+    ],
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=2),  # Token dura 2 horas
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),  # Refresh dura 7 días
+    'ROTATE_REFRESH_TOKENS': True,  # Rota refresh tokens
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': True,
+    
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'VERIFYING_KEY': None,
+    'AUDIENCE': None,
+    'ISSUER': None,
+    
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+    
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+}
 
 # ---------------------------------------------------
 # 🧩 Templates
@@ -88,7 +125,7 @@ DATABASES = {
 }
 
 # ---------------------------------------------------
-# 🔑 Validación de contraseñas
+# 🔒 Validación de contraseñas
 # ---------------------------------------------------
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -123,6 +160,19 @@ STATICFILES_DIRS = [
 # 🌐 CORS
 # ---------------------------------------------------
 CORS_ALLOW_ALL_ORIGINS = True
+
+# 🔥 HEADERS CORS PARA JWT
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
 
 # ---------------------------------------------------
 # 📧 Configuración de Email - MODO PRUEBA (CONSOLA)
@@ -170,6 +220,6 @@ LOGGING = {
 }
 
 # ---------------------------------------------------
-# 🔧 Default primary key
+# 📧 Default primary key
 # ---------------------------------------------------
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

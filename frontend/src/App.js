@@ -4,7 +4,6 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
-
 // Componentes
 import Login from "./components/Login";
 import Recuperar from "./components/Recuperar";
@@ -20,7 +19,9 @@ import Costurero from "./components/Costurero";
 import AprobacionPedidos from "./components/AprobacionPedidos";
 import Estampador from "./components/Estampador";
 
-
+// 🔥 NUEVOS COMPONENTES PARA GESTIÓN DE PEDIDOS
+import AprobacionPedidosCosturero from "./components/Aprobacionpedidoscosturero";
+import AprobacionPedidosEstampador from "./components/Aprobacionpedidosestampador";
 
 function App() {
   return (
@@ -92,12 +93,36 @@ function App() {
           }
         />
 
-        {/* Aprobación de Pedidos - Dueño */}
+        {/* ============================================ */}
+        {/* 🔥 RUTAS ESPECÍFICAS PARA GESTIÓN DE PEDIDOS */}
+        {/* ============================================ */}
+
+        {/* Aprobación de Pedidos - Solo DUEÑO (el original) */}
         <Route
           path="/aprobacion-pedidos"
           element={
-            <ProtectedRoute allowedRoles={['Dueño', 'Costurero','Estampador']}>
-              < AprobacionPedidos />
+            <ProtectedRoute allowedRoles={['Dueño']}>
+              <AprobacionPedidos />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* 🔥 NUEVA: Gestión de Pedidos - Solo COSTURERO */}
+        <Route
+          path="/pedidos-costurero"
+          element={
+            <ProtectedRoute allowedRoles={['Costurero']}>
+              <AprobacionPedidosCosturero />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* 🔥 NUEVA: Gestión de Pedidos - Solo ESTAMPADOR */}
+        <Route
+          path="/pedidos-estampador"
+          element={
+            <ProtectedRoute allowedRoles={['Estampador']}>
+              <AprobacionPedidosEstampador />
             </ProtectedRoute>
           }
         />
