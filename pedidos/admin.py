@@ -1,13 +1,9 @@
 from django.contrib import admin
-from .models import Pedido, PedidosXPrendas, DetallePedido
+from .models import Pedido, DetallePedido
 
 class PedidoAdmin(admin.ModelAdmin):
     list_display = ('Pedido_ID', 'Usuario', 'Pedido_fecha', 'Pedido_estado')
     search_fields = ('Pedido_ID',)
-
-class PedidosXPrendasAdmin(admin.ModelAdmin):
-    list_display = ('pedido', 'prenda', 'Pedido_prenda_cantidad', 'Pedido_prenda_precio_total')
-    search_fields = ('pedido', 'prenda')
 
 # NUEVO: Admin para DetallePedido
 class DetallePedidoAdmin(admin.ModelAdmin):
@@ -48,5 +44,4 @@ class DetallePedidoAdmin(admin.ModelAdmin):
 
 # Registros
 admin.site.register(Pedido, PedidoAdmin)
-admin.site.register(PedidosXPrendas, PedidosXPrendasAdmin)
 admin.site.register(DetallePedido, DetallePedidoAdmin)  # NUEVO

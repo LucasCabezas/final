@@ -51,15 +51,16 @@ def verificar_stock(request):
             # 🔹 Recorremos los insumos asociados
             for rel in InsumosXPrendas.objects.filter(prenda=prenda):
                 insumo = rel.insumo
-                cantidad_necesaria = rel.Insumo_prenda_cantidad_utilizada * cantidad
+                cantidad_necesaria = float(rel.Insumo_prenda_cantidad_utilizada) * float(cantidad)
+                stock_disponible = float(insumo.Insumo_cantidad)
 
-                if insumo.Insumo_cantidad < cantidad_necesaria:
+                if stock_disponible < cantidad_necesaria:
                     insumos_insuficientes.append({
                         "nombre": insumo.Insumo_nombre,
-                        "disponible": insumo.Insumo_cantidad,
+                        "disponible": stock_disponible,
                         "requerido": cantidad_necesaria,
-                        "faltante": round(cantidad_necesaria - insumo.Insumo_cantidad, 2),
-                        "unidad": getattr(insumo.unidad_medida, "UnidadMedida_nombre", "")
+                        "faltante": round(cantidad_necesaria - stock_disponible, 2),
+                        "unidad": getattr(insumo.unidad_medida, "nombre", ""    )
                     })
 
         if insumos_insuficientes:

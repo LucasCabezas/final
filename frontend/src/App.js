@@ -22,6 +22,7 @@ import Estampador from "./components/Estampador";
 // 🔥 NUEVOS COMPONENTES PARA GESTIÓN DE PEDIDOS
 import AprobacionPedidosCosturero from "./components/Aprobacionpedidoscosturero";
 import AprobacionPedidosEstampador from "./components/Aprobacionpedidosestampador";
+import VendedorPedidos from "./components/VendedorPedidos";
 
 function App() {
   return (
@@ -87,7 +88,7 @@ function App() {
         <Route
           path="/realizar-pedido"
           element={
-            <ProtectedRoute allowedRoles={['Dueño', 'Vendedor']}>
+            <ProtectedRoute allowedRoles={['Dueño']}>
               <RealizarPedido />
             </ProtectedRoute>
           }
@@ -96,6 +97,15 @@ function App() {
         {/* ============================================ */}
         {/* 🔥 RUTAS ESPECÍFICAS PARA GESTIÓN DE PEDIDOS */}
         {/* ============================================ */}
+        
+        <Route
+          path="/pedidos-vendedor"
+          element={
+            <ProtectedRoute allowedRoles={['Vendedor']}>
+              <VendedorPedidos />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Aprobación de Pedidos - Solo DUEÑO (el original) */}
         <Route

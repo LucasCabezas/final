@@ -14,6 +14,7 @@ import Componente from "./componente.jsx";
 import fondoImg from "./assets/fondo.png";
 import { useAuth } from "../context/AuthContext";
 
+// (Todos los estilos de RealizarPedido.js están copiados aquí)
 const styles = {
   container: {
     padding: "32px",
@@ -304,11 +305,8 @@ const styles = {
     fontSize: "11px",
     marginBottom: "2px"
   },
-  prendaPrecio: {
-    color: "#ffd70f",
-    fontSize: "13px",
-    fontWeight: "700",
-    marginTop: "6px"
+  prendaPrecio: { // Vendedor no ve precio
+    display: "none" 
   },
   formContainer: {
     backgroundColor: "rgba(30, 30, 30, 0.6)",
@@ -392,11 +390,8 @@ const styles = {
     color: "#9ca3af",
     marginTop: "4px"
   },
-  pedidoPrecio: {
-    fontSize: "16px",
-    fontWeight: "700",
-    color: "#ffd70f",
-    marginRight: "12px"
+  pedidoPrecio: { // Vendedor no ve precio
+    display: "none"
   },
   resultadoContainer: {
     backgroundColor: "rgba(30, 30, 30, 0.8)",
@@ -404,30 +399,6 @@ const styles = {
     padding: "24px",
     marginTop: "20px",
     border: "1px solid rgba(255, 215, 15, 0.3)"
-  },
-  resultadoGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-    gap: "16px",
-    marginBottom: "20px"
-  },
-  resultadoItem: {
-    backgroundColor: "rgba(0,0,0,0.3)",
-    padding: "16px",
-    borderRadius: "8px",
-    border: "1px solid rgba(255,255,255,0.05)",
-    color: "#fff",
-    textAlign: "center"
-  },
-  resultadoLabel: {
-    fontSize: "12px",
-    color: "#9ca3af",
-    marginBottom: "4px"
-  },
-  resultadoValue: {
-    fontSize: "20px",
-    fontWeight: "bold",
-    color: "#ffd70f"
   },
   btnConfirmar: {
     display: "flex",
@@ -486,7 +457,7 @@ const styles = {
   }
 };
 
-export default function RealizarPedido() {
+export default function VendedorPedidos() { // ✅ Nombre cambiado
   const { user, loading } = useAuth();
 
   const [isNavbarCollapsed, setIsNavbarCollapsed] = useState(false);
@@ -499,20 +470,20 @@ export default function RealizarPedido() {
   const [formData, setFormData] = useState({
     cantidad: 1,
     talle: "",
-    tipo: "LISA",
-    recargoTalle: 10,
-    porcentajeGanancia: 25
+    tipo: "LISA"
+    // ✅ Eliminados recargoTalle y porcentajeGanancia
   });
   const [filtros, setFiltros] = useState({
     id: "",
-    estado: "",
+    estado: "PENDIENTE_DUENO", // ✅ Estado por defecto para Vendedor
     fecha: ""
   });
   const [alert, setAlert] = useState(null);
-  const [resultado, setResultado] = useState(null);
+  // ✅ Eliminado 'resultado'
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
   const [modalDetallesOpen, setModalDetallesOpen] = useState(false);
 
+  // ✅ Eliminado 'isVendedor', este componente es SÓLO para Vendedor
   const navbarWidth = isNavbarCollapsed ? 70 : 250;
 
   const showAlert = (message, type = "success") => {
@@ -528,38 +499,15 @@ export default function RealizarPedido() {
     return "PENDIENTE_DUENO";
   };
 
-  const obtenerSubEstado = (pedidoId) => {
-    try {
-      const sub = JSON.parse(localStorage.getItem("pedidos_sub_estados") || "{}");
-      return sub[pedidoId] || null;
-    } catch {
-      return null;
-    }
-  };
-
-  const obtenerEstadoDetallado = (p) => {
-    const estadoBackend = obtenerEstadoPedido(p);
-    const sub = obtenerSubEstado(p.Pedido_ID);
-    if (estadoBackend === "APROBADO_DUENO") {
-      return sub || "PENDIENTE_COSTURERO";
-    }
-    if (estadoBackend === "PENDIENTE_ESTAMPADO") {
-      return sub || "PENDIENTE_ESTAMPADOR";
-    }
-    if (estadoBackend === "EN_PROCESO_ESTAMPADO") {
-      return sub || "EN_PROCESO_ESTAMPADOR";
-    }
-    return estadoBackend;
-  };
-
+  // Función de traducción de estados (sin cambios)
   const obtenerEstiloEstado = (estado) => {
     switch (estado) {
       case "PENDIENTE_DUENO":
         return { texto: "Pendiente Aprobación", estilo: styles.estadoPendiente };
-      case "APROBADO_DUENO":
-      case "PENDIENTE_COSTURERO":
+      case "APROBADO_DUENO": 
+      case "PENDIENTE_COSTURERO": 
         return { texto: "Pendiente Costurero", estilo: styles.estadoPendiente };
-      case "EN_PROCESO_COSTURERO":
+      case "EN_PROCESO_COSTURERO": 
         return { texto: "En Proceso Costurero", estilo: styles.estadoEnProceso };
       case "PENDIENTE_ESTAMPADO":
       case "PENDIENTE_ESTAMPADOR":
@@ -576,6 +524,7 @@ export default function RealizarPedido() {
     }
   };
 
+  // Cargar prendas (sin cambios)
   useEffect(() => {
     const fetchPrendas = async () => {
       try {
@@ -588,6 +537,7 @@ export default function RealizarPedido() {
     fetchPrendas();
   }, []);
 
+  // Cargar pedidos (simplificado para Vendedor)
   useEffect(() => {
     if (loading || !user) return;
 
@@ -604,12 +554,11 @@ export default function RealizarPedido() {
           }))
         }));
 
-        let filtrados = pedidosNormalizados;
-        // El Dueño ve todo MENOS los pendientes (esos están en AprobacionPedidos)
-        filtrados = filtrados.filter((p) => {
-          const est = obtenerEstadoDetallado(p);
-          return est !== "PENDIENTE_DUENO";
-        });
+        // ✅ Vendedor SÓLO ve sus pedidos
+        let misPedidos = pedidosNormalizados.filter(p => p.Usuario === user.id);
+        let filtrados = misPedidos.filter(p => 
+            obtenerEstadoPedido(p) === "PENDIENTE_DUENO"
+        );
         setPedidosFiltrados(filtrados);
       } catch (err) {
         showAlert("Error al cargar pedidos", "error");
@@ -625,6 +574,7 @@ export default function RealizarPedido() {
     (p.Prenda_modelo_nombre || "").toLowerCase().includes(searchPrenda.toLowerCase())
   );
 
+  // Agregar prenda (simplificado sin precio)
   const agregarPrenda = () => {
     if (!selectedPrenda) {
       showAlert("Seleccioná una prenda", "error");
@@ -638,16 +588,13 @@ export default function RealizarPedido() {
     const prendaBase = prendas.find((p) => p.Prenda_ID === selectedPrenda.Prenda_ID);
     if (!prendaBase) return;
 
-    let precioFinal = prendaBase.Prenda_precio_unitario || 0;
-    const recargo = (String(formData.talle).toUpperCase().includes("XL") ? Number(formData.recargoTalle) / 100 : 0);
-    precioFinal = precioFinal * (1 + recargo);
-
+    // ✅ Vendedor no maneja precios
     const nueva = {
       ...prendaBase,
       cantidad: Number(formData.cantidad) || 1,
       talle: formData.talle,
       tipo: formData.tipo,
-      precioUnitario: precioFinal
+      // (precioUnitario eliminado)
     };
 
     setPedido((prev) => [...prev, nueva]);
@@ -659,24 +606,12 @@ export default function RealizarPedido() {
     setPedido((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const calcularTotales = () => {
-    try {
-      if (!pedido || pedido.length === 0) {
-        showAlert("No hay prendas en el pedido", "error");
-        return;
-      }
-      const subtotal = pedido.reduce((acc, p) => acc + (p.precioUnitario || 0) * (Number(p.cantidad) || 0), 0);
-      const porcentaje = Number(formData.porcentajeGanancia) || 0;
-      const ganancia = (subtotal * porcentaje) / 100;
-      const total = subtotal + ganancia;
-      setResultado({ subtotal, ganancia, total });
-      showAlert("Totales calculados correctamente", "success");
-    } catch (error) {
-      showAlert("Error al calcular totales", "error");
-    }
-  };
+  // ✅ Eliminada función 'calcularTotales'
 
-  const verificarStockAntesDeConfirmar = async () => {
+  // Verificar stock (sin cambios)
+  // En VendedorPedidos.js
+
+const verificarStockAntesDeConfirmar = async () => {
     try {
       const prendasConCantidades = pedido.map((p) => ({
         id_prenda: p.Prenda_ID,
@@ -696,14 +631,18 @@ export default function RealizarPedido() {
       if (error.response && error.response.data) {
         const data = error.response.data;
 
-        // Caso 1: Error de "insumos_insuficientes" (¡Lo que queremos!)
+        // ======================================================
+        // AQUÍ ESTÁ EL CAMBIO QUE PEDISTE
+        // ======================================================
+        // Caso 1: Error de "insumos_insuficientes"
         if (data.insumos_insuficientes && data.insumos_insuficientes.length > 0) {
-          const mensajes = (data.insumos_insuficientes || []).map(i => `• ${i.nombre}: faltan ${i.faltante} ${i.unidad}`).join("\n");
-          showAlert(`❌ Stock insuficiente:\n\n${mensajes}`, "error");
+          // Mostramos la ALERTA GENERAL en lugar de los detalles
+          showAlert(`❌ No hay stock suficiente para procesar este pedido.`, "error");
           return false; // No se puede continuar
         }
+        // ======================================================
 
-        // Caso 2: Otro error 400 (ej: "Prenda no encontrada" o "No se enviaron prendas")
+        // Caso 2: Otro error 400 (ej: "Prenda no encontrada")
         if (data.error) {
           showAlert(`Error al verificar: ${data.error}`, "error");
           return false;
@@ -711,11 +650,31 @@ export default function RealizarPedido() {
       }
 
       // Caso 3: Error de red u otro error inesperado
-      showAlert("Error al verificar stock con el servidor (catch inesperado)", "error");
+      showAlert("Error al conectar con el servidor para verificar stock", "error");
       return false;
     }
   };
+  // ✅ NUEVA FUNCIÓN CENTRALIZADA PARA RECARGAR
+  const recargarPedidosFiltrados = async () => {
+    try {
+      const res = await axios.get("http://localhost:8000/api/pedidos/");
+      const data = res.data || [];
 
+      // 1. Obtener solo mis pedidos
+      let misPedidos = data.filter(p => p.Usuario === user.id);
+
+      // 2. Aplicar el filtro de estado actual
+      if (filtros.estado && filtros.estado !== "") {
+        misPedidos = misPedidos.filter(p => obtenerEstadoPedido(p) === filtros.estado);
+      }
+      
+      setPedidosFiltrados(misPedidos);
+
+    } catch (err) {
+      showAlert("Error al recargar la lista de pedidos", "error");
+    }
+  };
+  // Confirmar pedido (simplificado para Vendedor)
   const confirmarPedido = async () => {
     if (loading || !user || !user.id) {
       showAlert("Error: Usuario no autenticado o no cargado.", "error");
@@ -725,8 +684,8 @@ export default function RealizarPedido() {
     if (!stockOk) return;
 
     try {
-      // El Dueño siempre aprueba sus propios pedidos
-      let estadoInicial = "PENDIENTE_COSTURERO";
+      // ✅ Vendedor SIEMPRE crea como PENDIENTE_DUENO
+      let estadoInicial = "PENDIENTE_DUENO";
       const data = {
         usuario: user.id,
         estado: estadoInicial,
@@ -737,17 +696,14 @@ export default function RealizarPedido() {
           tipo: p.tipo || "LISA"
         }))
       };
-      data.porcentaje_ganancia = formData.porcentajeGanancia; // El Dueño siempre ve la ganancia
+      // ✅ Eliminada 'porcentaje_ganancia'
 
       await axios.post("http://localhost:8000/api/pedidos/", data);
 
       showAlert("✅ Pedido realizado correctamente y enviado para aprobación", "success");
 
-      const resPedidos = await axios.get("http://localhost:8000/api/pedidos/");
-      setPedidosFiltrados(resPedidos.data || []);
-
-      setPedido([]);
-      setResultado(null);
+      recargarPedidosFiltrados();
+      // ✅ Eliminado 'setResultado'
       setModalOpen(false);
     } catch (err) {
       const responseData = err.response?.data || {};
@@ -759,20 +715,20 @@ export default function RealizarPedido() {
     }
   };
 
+  // Buscar pedidos (simplificado para Vendedor)
   const buscarPedidos = async () => {
     try {
       const res = await axios.get("http://localhost:8000/api/pedidos/");
       const data = res.data || [];
-      let filtrados = data;
-      filtrados = filtrados.filter((p) => {
-        const est = obtenerEstadoDetallado(p);
-        return est !== "PENDIENTE_DUENO";
-      });
+      
+      // ✅ Vendedor SÓLO ve sus pedidos
+      let filtrados = data.filter(p => p.Usuario === user.id);
+
       if (filtros.id && filtros.id.trim() !== "") {
         filtrados = filtrados.filter((p) => String(p.Pedido_ID || p.id || "").includes(filtros.id.trim()));
       }
       if (filtros.estado && filtros.estado !== "") {
-        filtrados = filtrados.filter((p) => obtenerEstadoDetallado(p) === filtros.estado);
+        filtrados = filtrados.filter((p) => obtenerEstadoPedido(p) === filtros.estado);
       }
       if (filtros.fecha && filtros.fecha !== "") {
         filtrados = filtrados.filter((p) => {
@@ -787,15 +743,16 @@ export default function RealizarPedido() {
     }
   };
 
+  // Limpiar filtros (simplificado para Vendedor)
   const limpiarFiltros = async () => {
-    setFiltros({ id: "", estado: "", fecha: "" });
+    setFiltros({ id: "", estado: "PENDIENTE_DUENO", fecha: "" }); // ✅ Resetea a "Pendiente"
     try {
       const res = await axios.get("http://localhost:8000/api/pedidos/");
-      let pedidosRecargados = res.data || [];
-      pedidosRecargados = pedidosRecargados.filter((p) => {
-        const est = obtenerEstadoDetallado(p);
-        return est !== "PENDIENTE_DUENO";
-      });
+      
+      let misPedidos = (res.data || []).filter(p => p.Usuario === user.id);
+      let pedidosRecargados = misPedidos.filter(p => 
+          obtenerEstadoPedido(p) === "PENDIENTE_DUENO"
+      );
       setPedidosFiltrados(pedidosRecargados);
       showAlert("Filtros limpiados", "success");
     } catch {
@@ -803,41 +760,21 @@ export default function RealizarPedido() {
     }
   };
 
+  // Cancelar pedido (sin cambios)
   const cancelarPedido = async (id) => {
     if (!window.confirm("¿Estás seguro de cancelar este pedido?")) return;
     try {
       await axios.patch(`http://localhost:8000/api/pedidos/${id}/`, { Pedido_estado: "CANCELADO" });
       showAlert("✅ Pedido cancelado correctamente", "success");
-      const resPedidos = await axios.get("http://localhost:8000/api/pedidos/");
-      setPedidosFiltrados(resPedidos.data || []);
+
+      recargarPedidosFiltrados(); // ✅ USA LA NUEVA FUNCIÓN
+
     } catch {
       showAlert("❌ Error al conectar con el servidor", "error");
     }
   };
 
-  const eliminarPedido = async (id) => {
-    if (!window.confirm("¿Estás seguro de eliminar este pedido? Esta acción no se puede deshacer.")) return;
-    try {
-      await axios.delete(`http://localhost:8000/api/pedidos/${id}/`);
-      showAlert("✅ Pedido eliminado correctamente", "success");
-      const resPedidos = await axios.get("http://localhost:8000/api/pedidos/");
-      setPedidosFiltrados(resPedidos.data || []);
-    } catch {
-      showAlert("❌ Error al conectar con el servidor", "error");
-    }
-  };
-
-  const actualizarEstadoPedido = async (id, nuevoEstado) => {
-    try {
-      await axios.patch(`http://localhost:8000/api/pedidos/${id}/`, { Pedido_estado: nuevoEstado });
-      showAlert(`✅ Estado actualizado a "${nuevoEstado.replace("_", " ")}"`, "success");
-      const resPedidos = await axios.get("http://localhost:8000/api/pedidos/");
-      setPedidosFiltrados(resPedidos.data || []);
-    } catch {
-      showAlert("Error al conectar con el servidor", "error");
-    }
-  };
-
+  // Ver detalles (simplificado sin precio)
   const verDetallesPedido = async (p) => {
     try {
       const res = await axios.get(`http://localhost:8000/api/pedidos/${p.Pedido_ID || p.id}/`);
@@ -867,9 +804,9 @@ export default function RealizarPedido() {
         <div style={styles.contentWrapper}>
           <div style={styles.header}>
             <div style={styles.headerLeft}>
-              <h1 style={styles.title}>Pedidos</h1>
+              <h1 style={styles.title}>Mis Pedidos</h1>
               <p style={styles.subtitle}>
-                Gestión de pedidos - Por defecto se muestran pedidos pendientes
+                Crea y da seguimiento a tus pedidos
               </p>
             </div>
             <button style={styles.btnRealizarPedido} onClick={() => setModalOpen(true)}>
@@ -885,17 +822,19 @@ export default function RealizarPedido() {
               onChange={(e) => setFiltros({ ...filtros, id: e.target.value })}
               style={styles.searchInput}
             />
+            {/* ✅ Filtro simplificado solo para Vendedor */}
             <select value={filtros.estado} onChange={(e) => setFiltros({ ...filtros, estado: e.target.value })} style={styles.select}>
-              <option value="">Todos los Estados</option>
-              <option value="PENDIENTE_COSTURERO">Pendiente Costurero</option>
-              <option value="EN_PROCESO_COSTURERO">En Proceso Costurero</option>
-              <option value="PENDIENTE_ESTAMPADOR">Pendiente Estampador</option>
-              <option value="EN_PROCESO_ESTAMPADOR">En Proceso Estampador</option>
-              <option value="COMPLETADO">Completado</option>
-              <option value="CANCELADO">Cancelado</option>
+                <option value="">Mis Pedidos (Todos)</option>
+                <option value="PENDIENTE_DUENO">Pendiente Aprobación</option>
+                <option value="PENDIENTE_COSTURERO">Pendiente Costurero</option>
+                <option value="EN_PROCESO_COSTURERO">En Proceso Costurero</option>
+                <option value="PENDIENTE_ESTAMPADO">Pendiente Estampador</option>
+                <option value="EN_PROCESO_ESTAMPADO">En Proceso Estampador</option>
+                <option value="COMPLETADO">Completado</option>
+                <option value="CANCELADO">Cancelado</option>
             </select>
 
-            <input type="date" value={filtros.fecha} onChange={(e) => setFiltros({ ...filtros, fecha: e.target.value })} style={styles.searchInput} />
+            {/* ✅ Eliminado filtro de fecha */}
 
             <button style={styles.btnBuscar} onClick={buscarPedidos}><Search size={18} /> Buscar</button>
             <button style={styles.btnLimpiar} onClick={limpiarFiltros}><X size={18} /> Limpiar</button>
@@ -909,34 +848,28 @@ export default function RealizarPedido() {
                     <th style={styles.th}>Pedido ID</th>
                     <th style={styles.th}>Estado</th>
                     <th style={styles.th}>Fecha</th>
-                    <th style={styles.th}>Detalles</th>
+                    {/* ✅ Eliminada columna 'Detalles' */}
                     <th style={styles.th}>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pedidosFiltrados.map((p) => {
-                    const estado = obtenerEstadoDetallado(p);
+                    const estado = obtenerEstadoPedido(p);
                     const { texto, estilo } = obtenerEstiloEstado(estado);
                     return (
                       <tr key={p.Pedido_ID || p.id}>
                         <td style={styles.td}>PED{String(p.Pedido_ID || p.id || "").padStart(3, "0")}</td>
                         <td style={styles.td}><span style={{ ...styles.estadoBadge, ...estilo }}>{texto}</span></td>
                         <td style={styles.td}>{p.Pedido_fecha ? new Date(p.Pedido_fecha).toLocaleDateString() : "-"}</td>
+                        
+                        {/* ✅ Eliminada celda 'Detalles' */}
 
-                        <td style={styles.td}>
-                          <button style={styles.btnVerDetalles} onClick={() => verDetallesPedido(p)}>VER DETALLES</button>
-                        </td>
-
+                        {/* ✅ Acciones simplificadas para Vendedor */}
                         <td style={styles.td}>
                           <div style={styles.actionsContainer}>
-                            {(estado !== "COMPLETADO" && estado !== "CANCELADO") && (
+                            {p.usuario === user.id && estado === "PENDIENTE_DUENO" && (
                               <button style={styles.btnCancelar} onClick={() => cancelarPedido(p.Pedido_ID || p.id)} title="Cancelar pedido">
                                 <XCircle size={16} /> Cancelar
-                              </button>
-                            )}
-                            {(estado === "COMPLETADO" || estado === "CANCELADO") && (
-                              <button style={styles.btnEliminar} onClick={() => eliminarPedido(p.Pedido_ID || p.id)} title="Eliminar pedido">
-                                <Trash2 size={16} /> Eliminar
                               </button>
                             )}
                           </div>
@@ -950,11 +883,12 @@ export default function RealizarPedido() {
           ) : (
             <div style={styles.emptyState}>
               <Package size={64} color="#4b5563" />
-              <h3 style={{ marginTop: "16px", color: "#9ca3af" }}>No hay pedidos</h3>
-              <p style={{ color: "#6b7280" }}>Usa el buscador para ver pedidos con otros estados o realiza uno nuevo.</p>
+              <h3 style={{ marginTop: "16px", color: "#9ca3af" }}>No has realizado pedidos</h3>
+              <p style={{ color: "#6b7280" }}>Usa el botón "Realizar Pedido" para crear tu primero.</p>
             </div>
           )}
 
+          {/* ----- INICIO MODAL CREAR PEDIDO ----- */}
           {modalOpen && (
             <div style={styles.modalOverlay} onClick={() => setModalOpen(false)}>
               <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
@@ -980,7 +914,7 @@ export default function RealizarPedido() {
                               <div style={styles.prendaNombre}>{prenda.Prenda_nombre}</div>
                               <div style={styles.prendaDetalle}>{prenda.Prenda_marca_nombre || "Sin marca"}</div>
                               <div style={styles.prendaDetalle}>{prenda.Prenda_modelo_nombre || "Sin modelo"}</div>
-                              <div style={styles.prendaPrecio}>{"$" + (prenda.Prenda_costo_total_produccion || prenda.Prenda_precio_unitario || 0)}</div>
+                              {/* ✅ Eliminado precio de la tarjeta */}
                             </div>
                           </div>
                         );
@@ -1018,13 +952,10 @@ export default function RealizarPedido() {
                         <input type="number" min="1" value={formData.cantidad} onChange={(e) => setFormData({ ...formData, cantidad: e.target.value })} style={styles.input} />
                       </div>
 
-                      <div style={styles.formGroup}>
-                        <label style={styles.label}>Recargo XL (%)</label>
-                        <input type="number" min="0" value={formData.recargoTalle} onChange={(e) => setFormData({ ...formData, recargoTalle: e.target.value })} style={styles.input} />
-                      </div>
+                      {/* ✅ Eliminado Recargo XL */}
 
                       <div>
-                        <button onClick={agregarPrenda} style={{ ...styles.addBtn, gridColumn: "auto" }}><Plus size={18} /> Agregar</button>
+                        <button onClick={agregarPrenda} style={{ ...styles.addBtn, gridColumn: "span 1" }}><Plus size={18} /> Agregar</button>
                       </div>
                     </div>
                   </div>
@@ -1038,51 +969,34 @@ export default function RealizarPedido() {
                         <div style={styles.pedidoInfo}>
                           <div style={styles.pedidoNombre}>{p.Prenda_nombre}</div>
                           <div style={styles.pedidoDetalles}>
-                            Talle: {p.talle} | Cantidad: {p.cantidad} | Precio unit: {"$" + (p.precioUnitario || 0).toFixed(2)}
+                            Talle: {p.talle} | Cantidad: {p.cantidad}
+                            {/* ✅ Eliminado precio unitario */}
                           </div>
                         </div>
 
-                        <div style={styles.pedidoPrecio}>{"$" + ((p.precioUnitario || 0) * (p.cantidad || 0)).toFixed(2)}</div>
+                        {/* ✅ Eliminado precio total del item */}
 
                         <button onClick={() => eliminarPrendaPedido(idx)} style={styles.btnEliminar}><Trash2 size={18} /></button>
                       </div>
                     ))}
 
-                    <>
-                      <div style={{ marginTop: "20px" }}>
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>Porcentaje de Ganancia (%)</label>
-                          <input type="number" min="0" value={formData.porcentajeGanancia} onChange={(e) => setFormData({ ...formData, porcentajeGanancia: e.target.value })} style={styles.input} />
-                        </div>
-                      </div>
-                      <button onClick={calcularTotales} style={{ ...styles.addBtn, marginTop: "20px", width: "100%" }}><Package size={18} /> Calcular Totales</button>
-                    </>
+                    {/* ✅ Eliminado cálculo de ganancia y totales */}
 
-                    {resultado && (
-                      <div style={styles.resultadoContainer}>
-                        <div style={styles.resultadoGrid}>
-                          <div style={styles.resultadoItem}>
-                            <div style={styles.resultadoLabel}>Subtotal</div>
-                            <div style={styles.resultadoValue}>{"$" + resultado.subtotal.toFixed(2)}</div>
-                          </div>
-                          <div style={styles.resultadoItem}>
-                            <div style={styles.resultadoLabel}>Ganancia ({formData.porcentajeGanancia}%)</div>
-                            <div style={styles.resultadoValue}>{"$" + resultado.ganancia.toFixed(2)}</div>
-                          </div>
-                          <div style={styles.resultadoItem}>
-                            <div style={styles.resultadoLabel}>Total Final</div>
-                            <div style={styles.resultadoValue}>{"$" + resultado.total.toFixed(2)}</div>
-                          </div>
-                        </div>
-                        <button onClick={confirmarPedido} style={styles.btnConfirmar}><CheckCircle size={20} /> Confirmar Pedido</button>
-                      </div>
-                    )}
+                    {/* ✅ Simplificado contenedor de confirmación */}
+                    <div style={styles.resultadoContainer}>
+                      <p style={{ color: "#d1d5db", textAlign: "center", marginBottom: "16px" }}>El precio final se calculará automáticamente en el sistema central.</p>
+                      <button onClick={confirmarPedido} style={styles.btnConfirmar}><CheckCircle size={20} /> Confirmar Pedido</button>
+                    </div>
+
                   </div>
                 )}
               </div>
             </div>
           )}
+          {/* ----- FIN MODAL CREAR PEDIDO ----- */}
 
+
+          {/* ----- INICIO MODAL DETALLES (Simplificado) ----- */}
           {modalDetallesOpen && pedidoSeleccionado && (
             <div style={styles.modalOverlay} onClick={() => setModalDetallesOpen(false)}>
               <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
@@ -1091,17 +1005,14 @@ export default function RealizarPedido() {
                   <button style={styles.btnClose} onClick={() => setModalDetallesOpen(false)}><X size={24} /></button>
                 </div>
 
-                <div style={styles.infoBox}>
-                  <div style={styles.infoLabel}>Usuario que realizó el pedido</div>
-                  <div style={styles.infoValue}>{pedidoSeleccionado.usuario || pedidoSeleccionado.Usuario_nombre || "N/A"}</div>
-                </div>
+                {/* ✅ Eliminado infoBox de Usuario (es obvio que es él) */}
 
                 <div style={{ backgroundColor: "rgba(30, 30, 30, 0.6)", borderRadius: "12px", padding: "20px", marginBottom: "20px", border: "1px solid rgba(255,255,255,0.1)" }}>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px" }}>
                     <div>
                       <div style={{ fontSize: "12px", color: "#9ca3af", marginBottom: "4px" }}>Estado</div>
                       {(() => {
-                        const est = obtenerEstadoDetallado(pedidoSeleccionado);
+                        const est = obtenerEstadoPedido(pedidoSeleccionado);
                         const { texto, estilo } = obtenerEstiloEstado(est);
                         return <span style={{ ...styles.estadoBadge, ...estilo }}>{texto}</span>;
                       })()}
@@ -1141,18 +1052,7 @@ export default function RealizarPedido() {
                           </div>
                         </div>
 
-                        {detalle.precio_total !== undefined && (
-                          <div style={{ textAlign: "right", minWidth: "140px" }}>
-                            <div style={{ fontSize: "12px", color: "#9ca3af" }}>Subtotal</div>
-                            <div style={{ fontSize: "14px", color: "#f59e0b", marginBottom: "4px" }}>{"$" + parseFloat(detalle.precio_total || 0).toFixed(2)}</div>
-                            <div style={{ fontSize: "12px", color: "#9ca3af" }}>Ganancia (25%)</div>
-                            <div style={{ fontSize: "14px", color: "#10b981", marginBottom: "8px" }}>{"$" + ((parseFloat(detalle.precio_total || 0) * 0.25).toFixed(2))}</div>
-                            <div style={{ fontSize: "12px", color: "#9ca3af" }}>TOTAL REAL</div>
-                            <div style={{ fontSize: "18px", fontWeight: "bold", color: "#ffd70f", marginTop: "4px", borderTop: "1px solid rgba(255,255,255,0.2)", paddingTop: "4px" }}>
-                              {"$" + ((parseFloat(detalle.precio_total || 0) * 1.25).toFixed(2))}
-                            </div>
-                          </div>
-                        )}
+                        {/* ✅ Eliminado bloque de precios */}
                       </div>
                     ))
                   ) : (
@@ -1163,27 +1063,12 @@ export default function RealizarPedido() {
                   )}
                 </div>
 
-                {pedidoSeleccionado.detalles && (
-                  <div style={{ backgroundColor: "rgba(255, 215, 15, 0.1)", borderRadius: "12px", padding: "20px", marginTop: "20px", border: "1px solid rgba(255, 215, 15, 0.3)" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", width: "100%", color: "#d1d5db", fontSize: "14px", marginBottom: "8px" }}>
-                      <span>Subtotal del Pedido:</span>
-                      <span>{"$" + pedidoSeleccionado.detalles.reduce((acc, d) => acc + parseFloat(d.precio_total || 0), 0).toFixed(2)}</span>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", width: "100%", color: "#10b981", fontSize: "14px", marginBottom: "12px" }}>
-                      <span>Ganancia Total (25%):</span>
-                      <span>{"$" + ((pedidoSeleccionado.detalles.reduce((acc, d) => acc + parseFloat(d.precio_total || 0), 0) * 0.25).toFixed(2))}</span>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(255,255,255,0.2)", paddingTop: "12px" }}>
-                      <div style={{ color: "#d1d5db", fontSize: "18px", fontWeight: "600" }}>TOTAL FINAL DEL PEDIDO</div>
-                      <div style={{ color: "#ffd70f", fontSize: "28px", fontWeight: "bold" }}>
-                        {"$" + ((pedidoSeleccionado.detalles.reduce((acc, d) => acc + parseFloat(d.precio_total || 0), 0) * 1.25).toFixed(2))}
-                      </div>
-                    </div>
-                  </div>
-                )}
+                {/* ✅ Eliminado bloque de totales finales */}
               </div>
             </div>
           )}
+          {/* ----- FIN MODAL DETALLES ----- */}
+
 
           {alert && (
             <div style={{ ...styles.alert, ...(alert.type === "success" ? styles.alertSuccess : styles.alertError) }}>
@@ -1197,4 +1082,4 @@ export default function RealizarPedido() {
       </div>
     </>
   );
-}
+};

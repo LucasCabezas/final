@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { Search, Plus, Edit2, Trash2, X, CheckCircle, AlertCircle, User } from 'lucide-react';
 import Componente from './componente.jsx';
 import fondoImg from './assets/fondo.png';
@@ -408,6 +409,7 @@ const styleSheet = `
 `;
 
 function GestionUsuarios() {
+  const { authenticatedFetch } = useAuth();
   const [isNavbarCollapsed, setIsNavbarCollapsed] = useState(false);
   const [usuarios, setUsuarios] = useState([]);
   const [roles, setRoles] = useState([]);
@@ -434,7 +436,7 @@ function GestionUsuarios() {
 
   const cargarUsuarios = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/usuarios/usuarios/');
+      const response = await authenticatedFetch('http://localhost:8000/api/usuarios/usuarios/');
       const data = await response.json();
       setUsuarios(data);
     } catch (error) {
@@ -445,7 +447,7 @@ function GestionUsuarios() {
 
   const cargarRoles = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/usuarios/roles/');
+      const response = await authenticatedFetch('http://localhost:8000/api/usuarios/roles/');
       const data = await response.json();
       setRoles(data);
     } catch (error) {
@@ -600,7 +602,7 @@ function GestionUsuarios() {
       }
 
       if (confirmAction === 'edit') {
-        const response = await fetch(`http://localhost:8000/api/usuarios/usuarios/${editingUsuario.id}/`, {
+        const response = await authenticatedFetch(`http://localhost:8000/api/usuarios/usuarios/${editingUsuario.id}/`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
@@ -614,7 +616,7 @@ function GestionUsuarios() {
         await cargarUsuarios();
         showAlert(`Usuario "${payload.nombre} ${payload.apellido}" actualizado exitosamente`, 'success');
       } else {
-        const response = await fetch('http://localhost:8000/api/usuarios/usuarios/', {
+        const response = await authenticatedFetch('http://localhost:8000/api/usuarios/usuarios/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
@@ -647,7 +649,7 @@ function GestionUsuarios() {
 
   const handleConfirmDelete = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/api/usuarios/usuarios/${confirmData.id}/`, {
+      const response = await authenticatedFetch(`http://localhost:8000/api/usuarios/usuarios/${confirmData.id}/`, {
         method: 'DELETE'
       });
 

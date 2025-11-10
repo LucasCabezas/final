@@ -1,45 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Componente from './componente.jsx';
 import fondoImg from "./assets/fondo.png";
 import { XCircle, CheckCircle, Package, Send, Play, Square, X, AlertCircle } from 'lucide-react';
 
 const API_PEDIDOS_URL = "http://localhost:8000/api/pedidos/";
-
-// 🔥 SISTEMA DE SUB-ESTADOS PARA FLUJO DETALLADO
-
-// Obtener sub-estado desde localStorage
-const obtenerSubEstado = (pedidoId) => {
-    const subEstados = JSON.parse(localStorage.getItem('pedidos_sub_estados') || '{}');
-    return subEstados[pedidoId] || null;
-};
-
-// Guardar sub-estado en localStorage
-const guardarSubEstado = (pedidoId, subEstado) => {
-    const subEstados = JSON.parse(localStorage.getItem('pedidos_sub_estados') || '{}');
-    subEstados[pedidoId] = subEstado;
-    localStorage.setItem('pedidos_sub_estados', JSON.stringify(subEstados));
-    console.log(`💾 Sub-estado guardado: Pedido ${pedidoId} → ${subEstado}`);
-};
-
-// Limpiar sub-estados de pedidos completados/cancelados
-const limpiarSubEstados = (pedidos) => {
-    const subEstados = JSON.parse(localStorage.getItem('pedidos_sub_estados') || '{}');
-    const pedidosActivos = new Set(pedidos.map(p => p.Pedido_ID.toString()));
-    
-    let cambios = false;
-    Object.keys(subEstados).forEach(pedidoId => {
-        if (!pedidosActivos.has(pedidoId)) {
-            delete subEstados[pedidoId];
-            cambios = true;
-        }
-    });
-    
-    if (cambios) {
-        localStorage.setItem('pedidos_sub_estados', JSON.stringify(subEstados));
-        console.log('🧹 Sub-estados obsoletos limpiados');
-    }
-};
 
 const styles = {
     container: {
@@ -309,7 +275,6 @@ const AprobacionPedidos = () => {
         setAlert({ message, type });
         setTimeout(() => setAlert(null), 5000);
     };
-
     const cargarPedidos = async () => {
         if (!user || !user.rol) {
             console.log('Usuario no disponible, esperando...');
@@ -318,27 +283,18 @@ const AprobacionPedidos = () => {
 
         try {
             setLoading(true);
-            const response = await fetch(API_PEDIDOS_URL);
-            if (!response.ok) throw new Error("Error al cargar pedidos");
+            const response = await axios.get(API_PEDIDOS_URL); // ✅ (Usando axios)
             
-            const data = await response.json();
-            console.log('Datos recibidos:', data);
-            console.log('Rol del usuario:', user.rol);
+            const data = response.data;
             
-            // Filtrar pedidos según el rol
-            let pedidosFiltrados;
-            if (user.rol === 'Estampador') {
-                pedidosFiltrados = data.filter(pedido => 
-                    pedido.estado === 'en proceso' && 
-                    obtenerSubEstado(pedido.Pedido_ID) === 'enviado_a_estampado'
-                );
-            } else {
-                pedidosFiltrados = data.filter(pedido => pedido.estado === 'pendiente');
-            }
+            // El Dueño en esta vista SÓLO ve los pedidos pendientes de su aprobación
+            let pedidosFiltrados = data.filter(pedido => 
+                pedido.Pedido_estado === 'PENDIENTE_DUENO'
+            );
             
             console.log('Pedidos filtrados:', pedidosFiltrados);
             setPedidos(pedidosFiltrados);
-            limpiarSubEstados(pedidosFiltrados);
+            // Ya no se llama a limpiarSubEstados()
         } catch (error) {
             console.error("Error al cargar pedidos:", error);
             mostrarAlert("Error al cargar los pedidos", "error");
@@ -355,21 +311,14 @@ const AprobacionPedidos = () => {
         }
     }, [user?.rol]);
 
-    const actualizarEstadoPedido = async (pedidoId, nuevoEstado, subEstado = null) => {
+    const actualizarEstadoPedido = async (pedidoId, nuevoEstado) => {
         try {
-            const response = await fetch(`${API_PEDIDOS_URL}${pedidoId}/`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ estado: nuevoEstado }),
+            // ✅ Usa PATCH (mejor para actualizar un solo campo) y la clave correcta
+            const response = await axios.patch(`${API_PEDIDOS_URL}${pedidoId}/`, { 
+                Pedido_estado: nuevoEstado // ✅ Clave correcta
             });
-
-            if (!response.ok) throw new Error("Error al actualizar pedido");
-
-            if (subEstado) {
-                guardarSubEstado(pedidoId, subEstado);
-            }
-
-            mostrarAlert(`Pedido ${nuevoEstado === 'en proceso' ? 'aceptado' : nuevoEstado} exitosamente`);
+            mostrarAlert(`Pedido ${nuevoEstado.toLowerCase().replace('_', ' ')} exitosamente`);
+            // ...
             cargarPedidos();
         } catch (error) {
             console.error("Error al actualizar pedido:", error);
@@ -378,161 +327,36 @@ const AprobacionPedidos = () => {
     };
 
     const aceptarPedido = (pedidoId) => {
-        if (!user || !user.rol) return;
-        
-        if (user.rol === 'Estampador') {
-            actualizarEstadoPedido(pedidoId, 'en proceso', 'iniciado_estampado');
-        } else {
-            actualizarEstadoPedido(pedidoId, 'en proceso', null);
-        }
+        // Al aceptar, lo aprueba y pasa a 'PENDIENTE_COSTURERO'
+        // (Este estado lo recogerá el Costurero)
+        actualizarEstadoPedido(pedidoId, 'PENDIENTE_COSTURERO');
     };
 
     const rechazarPedido = (pedidoId) => {
-        actualizarEstadoPedido(pedidoId, 'cancelado');
-    };
-
-    const enviarAEstampado = (pedidoId) => {
-        guardarSubEstado(pedidoId, 'enviado_a_estampado');
-        mostrarAlert("Pedido enviado al estampador");
-        cargarPedidos();
-    };
-
-    const terminarEstampado = (pedidoId) => {
-        actualizarEstadoPedido(pedidoId, 'completado');
-    };
-
-    const obtenerEstadoDisplay = (pedido) => {
-        const subEstado = obtenerSubEstado(pedido.Pedido_ID);
-        
-        if (pedido.estado === 'pendiente') return 'Pendiente';
-        if (pedido.estado === 'cancelado') return 'Cancelado';
-        if (pedido.estado === 'completado') return 'Completado';
-        if (pedido.estado === 'en proceso') {
-            switch (subEstado) {
-                case 'enviado_a_estampado': return 'Enviado a Estampado';
-                case 'iniciado_estampado': return 'En Estampado';
-                default: return 'En Proceso';
-            }
-        }
-        return pedido.estado;
-    };
-
-    const obtenerEstiloEstado = (pedido) => {
-        if (pedido.estado === 'pendiente') return { ...styles.estadoBadge, ...styles.estadoPendiente };
-        if (pedido.estado === 'cancelado') return { ...styles.estadoBadge, ...styles.estadoCancelado };
-        if (pedido.estado === 'completado') return { ...styles.estadoBadge, ...styles.estadoCompletado };
-        return { ...styles.estadoBadge, ...styles.estadoEnProceso };
+        actualizarEstadoPedido(pedidoId, 'CANCELADO'); //
     };
 
     const renderAcciones = (pedido) => {
-        if (!user || !user.rol) return null;
-        
-        const subEstado = obtenerSubEstado(pedido.Pedido_ID);
-        
-        if (user.rol === 'Estampador') {
-            if (pedido.estado === 'en proceso' && subEstado === 'enviado_a_estampado') {
-                return (
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                            style={styles.btnAceptar}
-                            onClick={() => aceptarPedido(pedido.Pedido_ID)}
-                        >
-                            <Play size={14} />
-                            Iniciar
-                        </button>
-                        <button
-                            style={styles.btnVer}
-                            onClick={() => setPedidoSeleccionado(pedido)}
-                        >
-                            <Package size={14} />
-                            Ver
-                        </button>
-                    </div>
-                );
-            }
-            
-            if (pedido.estado === 'en proceso' && subEstado === 'iniciado_estampado') {
-                return (
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                            style={styles.btnTerminar}
-                            onClick={() => terminarEstampado(pedido.Pedido_ID)}
-                        >
-                            <CheckCircle size={14} />
-                            Terminar
-                        </button>
-                        <button
-                            style={styles.btnVer}
-                            onClick={() => setPedidoSeleccionado(pedido)}
-                        >
-                            <Package size={14} />
-                            Ver
-                        </button>
-                    </div>
-                );
-            }
-        } else {
-            if (pedido.estado === 'pendiente') {
-                return (
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                            style={styles.btnAceptar}
-                            onClick={() => aceptarPedido(pedido.Pedido_ID)}
-                        >
-                            <CheckCircle size={14} />
-                            Aceptar
-                        </button>
-                        <button
-                            style={styles.btnRechazar}
-                            onClick={() => rechazarPedido(pedido.Pedido_ID)}
-                        >
-                            <XCircle size={14} />
-                            Rechazar
-                        </button>
-                        <button
-                            style={styles.btnVer}
-                            onClick={() => setPedidoSeleccionado(pedido)}
-                        >
-                            <Package size={14} />
-                            Ver
-                        </button>
-                    </div>
-                );
-            }
-            
-            if (pedido.estado === 'en proceso' && !subEstado) {
-                return (
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                            style={styles.btnEnviarEstampado}
-                            onClick={() => enviarAEstampado(pedido.Pedido_ID)}
-                        >
-                            <Send size={14} />
-                            Enviar a Estampado
-                        </button>
-                        <button
-                            style={styles.btnVer}
-                            onClick={() => setPedidoSeleccionado(pedido)}
-                        >
-                            <Package size={14} />
-                            Ver
-                        </button>
-                    </div>
-                );
-            }
-        }
-        
         return (
-            <button
-                style={styles.btnVer}
-                onClick={() => setPedidoSeleccionado(pedido)}
-            >
-                <Package size={14} />
-                Ver
-            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                    style={styles.btnAceptar}
+                    onClick={() => aceptarPedido(pedido.Pedido_ID)}
+                >
+                    <CheckCircle size={14} />
+                    Aceptar
+                </button>
+                <button
+                    style={styles.btnRechazar}
+                    onClick={() => rechazarPedido(pedido.Pedido_ID)}
+                >
+                    <XCircle size={14} />
+                    Rechazar
+                </button>
+                {/* ✅ Botón Ver eliminado de aquí */}
+            </div>
         );
     };
-
     if (loading || !user) {
         return (
             <div style={styles.container}>
@@ -605,29 +429,42 @@ const AprobacionPedidos = () => {
                                 <thead>
                                     <tr>
                                         <th style={styles.th}>ID Pedido</th>
-                                        <th style={styles.th}>Cliente</th>
-                                        <th style={styles.th}>Fecha</th>
                                         <th style={styles.th}>Estado</th>
-                                        <th style={styles.th}>Total Items</th>
+                                        <th style={styles.th}>Fecha</th>
+                                        <th style={styles.th}>Detalle</th> 
                                         <th style={styles.th}>Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {pedidos.map((pedido) => (
                                         <tr key={pedido.Pedido_ID}>
+                                            {/* 1. ID */}
                                             <td style={styles.td}>#{pedido.Pedido_ID}</td>
-                                            <td style={styles.td}>{pedido.cliente_nombre}</td>
+
+                                            {/* 2. Estado (Movido) */}
                                             <td style={styles.td}>
-                                                {new Date(pedido.fecha_pedido).toLocaleDateString()}
-                                            </td>
-                                            <td style={styles.td}>
-                                                <span style={obtenerEstiloEstado(pedido)}>
-                                                    {obtenerEstadoDisplay(pedido)}
+                                                <span style={{...styles.estadoBadge, ...styles.estadoPendiente}}>
+                                                    PENDIENTE DUEÑO
                                                 </span>
                                             </td>
+                                            
+                                            {/* 3. Fecha (Movido) */}
                                             <td style={styles.td}>
-                                                {pedido.detalles ? pedido.detalles.length : 0} items
+                                                {new Date(pedido.Pedido_fecha).toLocaleDateString()}
                                             </td>
+
+                                            {/* 4. Detalle (Nuevo) */}
+                                            <td style={styles.td}>
+                                                <button
+                                                    style={styles.btnVer} // Reutiliza el estilo del botón
+                                                    onClick={() => setPedidoSeleccionado(pedido)}
+                                                >
+                                                    <Package size={14} />
+                                                    VER DETALLES {/* ✅ Texto cambiado */}
+                                                </button>
+                                            </td>
+
+                                            {/* 5. Acciones (Llama a la función ya modificada) */}
                                             <td style={styles.td}>
                                                 {renderAcciones(pedido)}
                                             </td>
@@ -659,19 +496,21 @@ const AprobacionPedidos = () => {
                         <div style={styles.infoGrid}>
                             <div style={styles.infoItem}>
                                 <div style={styles.infoLabel}>Cliente</div>
-                                <div style={styles.infoValue}>{pedidoSeleccionado.cliente_nombre}</div>
+                                {/* ✅ CORREGIDO */}
+                                <div style={styles.infoValue}>{pedidoSeleccionado.Usuario_nombre || "N/A"}</div>
                             </div>
                             <div style={styles.infoItem}>
                                 <div style={styles.infoLabel}>Fecha del Pedido</div>
                                 <div style={styles.infoValue}>
-                                    {new Date(pedidoSeleccionado.fecha_pedido).toLocaleString()}
+                                    {/* ✅ CORREGIDO */}
+                                    {new Date(pedidoSeleccionado.Pedido_fecha).toLocaleString()}
                                 </div>
                             </div>
                             <div style={styles.infoItem}>
                                 <div style={styles.infoLabel}>Estado</div>
                                 <div style={styles.infoValue}>
-                                    <span style={obtenerEstiloEstado(pedidoSeleccionado)}>
-                                        {obtenerEstadoDisplay(pedidoSeleccionado)}
+                                    <span style={{...styles.estadoBadge, ...styles.estadoPendiente}}>
+                                        PENDIENTE DUEÑO
                                     </span>
                                 </div>
                             </div>

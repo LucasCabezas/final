@@ -57,14 +57,6 @@ class Pedido(models.Model):
             self.requiere_estampado()
         )
 
-class PedidosXPrendas(models.Model):
-    pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE)
-    prenda = models.ForeignKey(Prenda, on_delete=models.CASCADE)
-    Pedido_prenda_cantidad = models.IntegerField()
-    Pedido_prenda_precio_total = models.FloatField()
-
-    class Meta:
-        unique_together = ('pedido', 'prenda')
 
 class DetallePedido(models.Model):
     """Detalle completo de cada item en un pedido con cálculo automático de costos"""
@@ -104,43 +96,10 @@ class DetallePedido(models.Model):
         return total if total > 0 else 5000  # Valor por defecto si no hay insumos
     
     def calcular_costo_mano_obra_costura(self):
-        """Calcula el costo de mano de obra del taller de costura"""
-        from talleres.models import PrendasXTalleres, Taller
-        
-        try:
-            # Buscar el taller de costura
-            taller_costura = Taller.objects.filter(Taller_nombre__icontains='costura').first()
-            if taller_costura:
-                prenda_taller = PrendasXTalleres.objects.get(
-                    prenda=self.prenda,
-                    taller=taller_costura
-                )
-                return prenda_taller.Prenda_taller_mano_obra
-        except PrendasXTalleres.DoesNotExist:
-            pass
-        
-        return 2000  # Valor por defecto
+        return 0
     
     def calcular_costo_estampado(self):
-        """Calcula el costo de estampado si la prenda es estampada"""
-        if self.tipo == 'ESTAMPADA':
-            from talleres.models import PrendasXTalleres, Taller
-            
-            try:
-                # Buscar el taller de estampado
-                taller_estampado = Taller.objects.filter(Taller_nombre__icontains='estampado').first()
-                if taller_estampado:
-                    prenda_taller = PrendasXTalleres.objects.get(
-                        prenda=self.prenda,
-                        taller=taller_estampado
-                    )
-                    return prenda_taller.Prenda_taller_mano_obra
-            except PrendasXTalleres.DoesNotExist:
-                pass
-            
-            return 1500  # Valor por defecto para estampado
-        
-        return 0  # Si es lisa, no hay costo de estampado
+        return 0 
     
     def calcular_precio_unitario(self):
         """Calcula el precio unitario sumando todos los costos"""

@@ -100,6 +100,7 @@ function Componente({ onToggle }) {
     const handleInsumos = () => navigate("/insumos");
     const handlePedidosCosturero = () => navigate("/pedidos-costurero");
     const handlePedidosEstampador = () => navigate("/pedidos-estampador");
+    const handlePedidosVendedor = () => navigate("/pedidos-vendedor");
 
     // --- Lógica de Modales y Toggle (SIN CAMBIOS) ---
     const handleToggle = () => {
@@ -134,8 +135,9 @@ function Componente({ onToggle }) {
         // Submenús específicos
         INSUMOS: ['Dueño', 'Costurero', 'Estampador'],
         PRENDAS: ['Dueño', 'Costurero', 'Estampador'],
-        REALIZAR_PEDIDO: ['Dueño', 'Vendedor'],
+        REALIZAR_PEDIDO: ['Dueño'],
         APROBACION_PEDIDOS: ['Dueño'],
+        PEDIDOS_VENDEDOR: ['Vendedor'],
         
         // Elementos universales
         PERFIL: true,
@@ -239,6 +241,12 @@ function Componente({ onToggle }) {
                                     {canSee('REALIZAR_PEDIDO') && (
                                         <li style={styles.submenuItem} onClick={handleRealizarPedido} onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255, 215, 15, 1)")} onMouseLeave={(e) => (e.currentTarget.style.color = "#ccc")}>
                                             Realizar pedido
+                                        </li>
+                                    )}
+                                    {/* Submenú: Mis Pedidos (Vendedor) */}
+                                    {canSee('PEDIDOS_VENDEDOR') && (
+                                        <li style={styles.submenuItem} onClick={handlePedidosVendedor} onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255, 215, 15, 1)")} onMouseLeave={(e) => (e.currentTarget.style.color = "#ccc")}>
+                                            Realizar Pedido
                                         </li>
                                     )}
                                     {/* Submenú: Aprobación de pedidos (Dueño, Costurero, Estampador) */}

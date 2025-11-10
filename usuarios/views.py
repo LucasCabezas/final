@@ -2,6 +2,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -20,7 +21,7 @@ import logging
 
 from .serializers import PasswordResetRequestSerializer, PasswordResetConfirmSerializer
 from .utils import generate_password_reset_token, verify_password_reset_token
-
+from .models import PerfilUsuario
 logger = logging.getLogger(__name__)
 
 # 🔥 NUEVO: Serializer JWT personalizado
@@ -313,33 +314,38 @@ class RolesPorUsuarioView(APIView):
 # ===== FOTO DE PERFIL =====
 class UsuarioFotoView(APIView):
     permission_classes = [IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser)
     
     def post(self, request, pk):
         try:
             user = User.objects.get(pk=pk)
             
-            if 'foto_perfil' not in request.FILES:
-                return Response({"error": "No se envió ninguna imagen"}, status=400)
+            if 'foto_perfil' not in request.data:
+                return Response({"error": "No se envió ninguna imagen (foto_perfil)"}, status=400)
+
+            foto = request.data['foto_perfil']
             
-            foto = request.FILES['foto_perfil']
-            
+            # ✅ SOLUCIÓN: Obtiene el perfil, o lo crea si no existe
+            perfil, created = PerfilUsuario.objects.get_or_create(user=user)
+
             # Eliminar foto anterior si existe
-            if hasattr(user, 'perfil') and user.perfil.foto_perfil:
-                if default_storage.exists(user.perfil.foto_perfil.name):
-                    default_storage.delete(user.perfil.foto_perfil.name)
+            if perfil.foto_perfil:
+                if default_storage.exists(perfil.foto_perfil.name):
+                    default_storage.delete(perfil.foto_perfil.name)
             
             # Guardar nueva foto
-            user.perfil.foto_perfil = foto
-            user.perfil.save()
+            perfil.foto_perfil = foto
+            perfil.save()
             
             return Response({
                 "message": "Foto de perfil actualizada exitosamente",
-                "foto_perfil": user.perfil.foto_perfil.url
+                "foto_perfil": perfil.foto_perfil.url
             })
             
         except User.DoesNotExist:
             return Response({"error": "Usuario no encontrado"}, status=404)
         except Exception as e:
+            print(f"Error al subir foto: {str(e)}") # (Para depurar)
             return Response({"error": f"Error al actualizar foto: {str(e)}"}, status=500)
     
     def delete(self, request, pk):

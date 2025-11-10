@@ -31,7 +31,6 @@ INSTALLED_APPS = [
     'clasificaciones',
     'inventario',
     'pedidos',
-    'talleres',
     'usuarios',
 ]
 

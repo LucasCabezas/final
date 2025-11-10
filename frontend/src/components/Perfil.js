@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import axios from "axios";
 import { FaUpload, FaCheck, FaTimes } from "react-icons/fa";
 import Componente from "./componente";
 import { useAuth } from "../context/AuthContext";
@@ -41,16 +42,16 @@ function Perfil() {
         try {
           const apiUrl = `http://localhost:8000/api/usuarios/usuarios/${user.id}/`;
           console.log(`🔍 Intentando cargar desde: ${apiUrl}`);
-          const response = await fetch(apiUrl);
+          const response = await axios.get(apiUrl); // ✅ AÑADE axios.get(apiUrl)
           
           console.log("📡 Respuesta del servidor:", response.status, response.statusText);
           
-          if (response.ok) {
-            const userData = await response.json();
-            console.log("✅ Datos del usuario cargados desde API:", userData);
-            
-            setFormData({
-              nombre: userData.nombre || user.nombre || "",
+          if (response.status === 200) { 
+            const userData = response.data; 
+              console.log("✅ Datos del usuario cargados desde API:", userData);
+
+              setFormData({
+                nombre: userData.nombre || user.nombre || "",
               apellido: userData.apellido || user.apellido || "",
               correo: userData.correo || user.correo || "",
               contrasenaActual: "",
@@ -246,31 +247,14 @@ function Perfil() {
       console.log(`📤 Enviando datos a: http://localhost:8000/api/usuarios/usuarios/${user.id}/`);
       console.log("📦 Datos a enviar:", updateData);
       
-      const response = await fetch(`http://localhost:8000/api/usuarios/usuarios/${user.id}/`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(updateData),
-      });
+      const response = await axios.put( // ✅ USA AXIOS.PUT
+        `http://localhost:8000/api/usuarios/usuarios/${user.id}/`,
+        updateData // ✅ AXIOS MANEJA EL JSON
+      );
 
       console.log("📡 Respuesta:", response.status, response.statusText);
 
-      if (!response.ok) {
-        const contentType = response.headers.get("content-type");
-        console.log("📋 Content-Type:", contentType);
-        
-        if (contentType && contentType.includes("application/json")) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || errorData.message || "Error al actualizar el perfil");
-        } else {
-          const errorText = await response.text();
-          console.error("❌ Respuesta del servidor (HTML):", errorText.substring(0, 300));
-          throw new Error(`El servidor devolvió un error (${response.status}). Verifica que el endpoint existe.`);
-        }
-      }
-
-      const updatedUserData = await response.json();
+      const updatedUserData = response.data;
       console.log("✅ Perfil actualizado:", updatedUserData);
 
       // Si hay una nueva foto, subirla
@@ -279,16 +263,12 @@ function Perfil() {
         const formDataPhoto = new FormData();
         formDataPhoto.append("foto_perfil", photoFile);
 
-        const photoResponse = await fetch(`http://localhost:8000/api/usuarios/usuarios/${user.id}/foto/`, {
-          method: "POST",
-          body: formDataPhoto,
-        });
+        const photoResponse = await axios.post( // ✅ USA AXIOS.POST
+          `http://localhost:8000/api/usuarios/usuarios/${user.id}/foto/`,
+          formDataPhoto
+        );
 
-        if (!photoResponse.ok) {
-          throw new Error("Error al subir la foto de perfil");
-        }
-
-        const photoData = await photoResponse.json();
+        const photoData = photoResponse.data;
         console.log("✅ Foto subida correctamente:", photoData);
         
         // Actualizar la foto en el estado y en los datos actualizados

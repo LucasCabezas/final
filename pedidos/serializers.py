@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Pedido, PedidosXPrendas, DetallePedido
+from .models import Pedido, DetallePedido
 
 class DetallePedidoSerializer(serializers.ModelSerializer):
     prenda_nombre = serializers.CharField(source='prenda.Prenda_nombre', read_only=True)
@@ -24,7 +24,3 @@ class PedidoSerializer(serializers.ModelSerializer):
         model = Pedido
         fields = ['Pedido_ID', 'Usuario', 'usuario', 'Pedido_fecha', 'Pedido_estado', 'detalles']
 
-class PedidosXPrendasSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PedidosXPrendas
-        fields = '__all__'

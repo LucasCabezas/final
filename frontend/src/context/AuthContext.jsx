@@ -1,6 +1,6 @@
 // src/context/AuthContext.jsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
-
+import axios from 'axios';
 const AuthContext = createContext();
 
 export const useAuth = () => {
@@ -19,7 +19,6 @@ export const AuthProvider = ({ children }) => {
 
   // 🔥 CONFIGURAR AXIOS INTERCEPTORS
   const setupAxiosInterceptors = () => {
-    const axios = require('axios');
     
     // Request interceptor - agregar token a todas las requests
     axios.interceptors.request.use(
