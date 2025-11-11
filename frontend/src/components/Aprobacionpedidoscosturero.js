@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Componente from './componente.jsx';
 import fondoImg from "./assets/fondo.png";
-import { CheckCircle, Package, PlayCircle, StopCircle, Send, AlertCircle, Clock, Scissors, Search, X } from 'lucide-react'; // 🔥 Importar iconos
+import { CheckCircle, Package, PlayCircle, StopCircle, Send, AlertCircle, Clock, Scissors, Search, X } from 'lucide-react';
 
 const API_PEDIDOS_URL = "http://localhost:8000/api/pedidos/";
 
@@ -15,17 +15,14 @@ const AprobacionPedidosCosturero = () => {
     const [alert, setAlert] = useState(null);
     const [navbarWidth, setNavbarWidth] = useState(250);
 
-    // 🔥 INICIO: ESTADOS PARA LOS FILTROS
     const [filtroId, setFiltroId] = useState('');
-    const [filtroEstado, setFiltroEstado] = useState('TODOS');
+    const [filtroEstado, setFiltroEstado] = useState('PENDIENTE_COSTURERO');
     const [filtroFecha, setFiltroFecha] = useState('');
-    // 🔥 FIN: ESTADOS PARA LOS FILTROS
 
     const handleNavbarToggle = (collapsed) => {
         setNavbarWidth(collapsed ? 70 : 250);
     };
 
-    // Cargar pedidos del costurero
     const cargarPedidos = async () => {
         try {
             setLoading(true);
@@ -86,15 +83,14 @@ const AprobacionPedidosCosturero = () => {
         setSelectedPedido(null);
     };
 
-    // 🔥 INICIO: FUNCIÓN PARA LIMPIAR FILTROS
     const limpiarFiltros = () => {
         setFiltroId('');
         setFiltroEstado('TODOS');
         setFiltroFecha('');
     };
-    // 🔥 FIN: FUNCIÓN PARA LIMPIAR FILTROS
 
     const styles = {
+        // ... (Todos tus estilos desde la línea 81 a la 330 se mantienen 100% igual)
         container: {
             display: "flex", 
             minHeight: "100vh", 
@@ -132,7 +128,6 @@ const AprobacionPedidosCosturero = () => {
             color: '#d1d5db',
             marginBottom: '32px'
         },
-        // 🔥 INICIO: ESTILOS PARA FILTROS (COPIADOS DE TUS OTROS ARCHIVOS)
         searchContainer: {
             backgroundColor: "rgba(30, 30, 30, 0.9)",
             borderRadius: "12px",
@@ -174,7 +169,6 @@ const AprobacionPedidosCosturero = () => {
             alignItems: "center",
             gap: "8px"
         },
-        // 🔥 FIN: ESTILOS PARA FILTROS
         tableContainer: {
             backgroundColor: 'rgba(30, 30, 30, 0.9)',
             borderRadius: '12px',
@@ -321,7 +315,6 @@ const AprobacionPedidosCosturero = () => {
             padding: '80px',
             color: '#9ca3af'
         },
-        // Modal styles (sin cambios)
         modal: {
             position: 'fixed',
             top: 0,
@@ -388,7 +381,6 @@ const AprobacionPedidosCosturero = () => {
     };
 
     if (loading) {
-        // ... (código de loading sin cambios)
         return (
             <div style={styles.container}>
                 <Componente onToggle={handleNavbarToggle} />
@@ -404,25 +396,18 @@ const AprobacionPedidosCosturero = () => {
         );
     }
 
-    // 🔥 INICIO: LÓGICA DE FILTRADO
-    // Aplica los filtros al array 'pedidos' antes de mandarlo al map
     const pedidosFiltrados = pedidos.filter(pedido => {
-        // Filtro por ID
         if (filtroId && !String(pedido.Pedido_ID).includes(filtroId)) {
             return false;
         }
-        // Filtro por Estado
         if (filtroEstado !== 'TODOS' && pedido.Pedido_estado !== filtroEstado) {
             return false;
         }
-        // Filtro por Fecha
         if (filtroFecha && !pedido.Pedido_fecha.startsWith(filtroFecha)) {
-            // Usamos startsWith para comparar '2025-11-09' con '2025-11-09T...'
             return false;
         }
         return true;
     });
-    // 🔥 FIN: LÓGICA DE FILTRADO
 
     return (
         <div style={styles.container}>
@@ -431,13 +416,12 @@ const AprobacionPedidosCosturero = () => {
                 <div style={styles.contentWrapper}>
                     <h1 style={styles.title}>
                         <Scissors size={36} />
-                        Gestión de Costura
+                        Gestión de pedidos del taller de Costura
                     </h1>
                     <p style={styles.subtitle}>
                         Administra tus pedidos de costura: acepta, procesa y completa trabajos
                     </p>
 
-                    {/* 🔥 INICIO: BARRA DE FILTROS */}
                     <div style={styles.searchContainer}>
                         <input
                             type="text"
@@ -465,9 +449,7 @@ const AprobacionPedidosCosturero = () => {
                             <X size={18} /> Limpiar
                         </button>
                     </div>
-                    {/* 🔥 FIN: BARRA DE FILTROS */}
 
-                    {/* 🔥 Modificado para usar 'pedidosFiltrados' */}
                     {pedidosFiltrados.length === 0 ? (
                         <div style={styles.tableContainer}>
                             <div style={styles.emptyState}>
@@ -493,73 +475,85 @@ const AprobacionPedidosCosturero = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {/* 🔥 Modificado para usar 'pedidosFiltrados' */}
-                                    {pedidosFiltrados.map((pedido) => (
-                                        <tr key={pedido.Pedido_ID}>
-                                            {/* ... (el resto del <tbody> es idéntico y ya estaba correcto) ... */}
-                                            <td style={styles.td}>#{pedido.Pedido_ID}</td>
-                                            <td style={styles.td}>
-                                                {pedido.Pedido_estado === "PENDIENTE_COSTURERO" ? (
-                                                    <span style={{ ...styles.estadoBadge, ...styles.estadoPendiente }}>
-                                                        PENDIENTE COSTURA
-                                                    </span>
-                                                ) : (
-                                                    <span style={{ ...styles.estadoBadge, ...styles.estadoEnProceso }}>
-                                                        EN PROCESO
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td style={styles.td}>{formatearFecha(pedido.Pedido_fecha)}</td>
-                                            <td style={styles.td}>
-                                                <button
-                                                    style={styles.btnVer}
-                                                    onClick={() => abrirDetalles(pedido)}
-                                                    onMouseEnter={(e) => e.target.style.backgroundColor = '#2563eb'}
-                                                    onMouseLeave={(e) => e.target.style.backgroundColor = '#3b82f6'}
-                                                >
-                                                    <Package size={14} />
-                                                    VER DETALLES
-                                                </button>
-                                            </td>
-                                            <td style={styles.td}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                    {pedido.Pedido_estado === "PENDIENTE_COSTURERO" && (
-                                                        <button
-                                                            style={styles.btnAceptar}
-                                                            onClick={() => realizarAccion(pedido.Pedido_ID, "aceptar-costurero")}
-                                                            onMouseEnter={(e) => e.target.style.backgroundColor = '#059669'}
-                                                            onMouseLeave={(e) => e.target.style.backgroundColor = '#10b981'}
-                                                        >
-                                                            <CheckCircle size={14} />
-                                                            Aceptar
-                                                        </button>
+                                    {pedidosFiltrados.map((pedido) => {
+                                        // 🔥 CAMBIO AQUÍ: Verificamos si el pedido tiene items para estampar
+                                        const tieneEstampadas = pedido.detalles?.some(d => d.tipo === 'ESTAMPADA') || false;
+                                        
+                                        return (
+                                            <tr key={pedido.Pedido_ID}>
+                                                <td style={styles.td}>#{pedido.Pedido_ID}</td>
+                                                <td style={styles.td}>
+                                                    {pedido.Pedido_estado === "PENDIENTE_COSTURERO" ? (
+                                                        <span style={{ ...styles.estadoBadge, ...styles.estadoPendiente }}>
+                                                            PENDIENTE
+                                                        </span>
+                                                    ) : (
+                                                        <span style={{ ...styles.estadoBadge, ...styles.estadoEnProceso }}>
+                                                            EN PROCESO
+                                                        </span>
                                                     )}
-                                                    {pedido.Pedido_estado === "EN_PROCESO_COSTURERO" && (
-                                                        <>
+                                                </td>
+                                                <td style={styles.td}>{formatearFecha(pedido.Pedido_fecha)}</td>
+                                                <td style={styles.td}>
+                                                    <button
+                                                        style={styles.btnVer}
+                                                        onClick={() => abrirDetalles(pedido)}
+                                                        onMouseEnter={(e) => e.target.style.backgroundColor = '#2563eb'}
+                                                        onMouseLeave={(e) => e.target.style.backgroundColor = '#3b82f6'}
+                                                    >
+                                                        <Package size={14} />
+                                                        VER DETALLES
+                                                    </button>
+                                                </td>
+                                                <td style={styles.td}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        {pedido.Pedido_estado === "PENDIENTE_COSTURERO" && (
                                                             <button
-                                                                style={styles.btnTerminar}
-                                                                onClick={() => realizarAccion(pedido.Pedido_ID, "terminar-costurero")}
-                                                                onMouseEnter={(e) => e.target.style.backgroundColor = '#16a34a'}
-                                                                onMouseLeave={(e) => e.target.style.backgroundColor = '#22c55e'}
+                                                                style={styles.btnAceptar}
+                                                                onClick={() => realizarAccion(pedido.Pedido_ID, "aceptar-costurero")}
+                                                                onMouseEnter={(e) => e.target.style.backgroundColor = '#059669'}
+                                                                onMouseLeave={(e) => e.target.style.backgroundColor = '#10b981'}
                                                             >
-                                                                <StopCircle size={14} />
-                                                                Terminar
+                                                                <CheckCircle size={14} />
+                                                                Aceptar
                                                             </button>
-                                                            <button
-                                                                style={styles.btnEnviarEstampado}
-                                                                onClick={() => realizarAccion(pedido.Pedido_ID, "trasladar-estampado")}
-                                                                onMouseEnter={(e) => e.target.style.backgroundColor = '#d97706'}
-                                                                onMouseLeave={(e) => e.target.style.backgroundColor = '#f59e0b'}
-                                                            >
-                                                                <Send size={14} />
-                                                                Enviar a Estampado
-                                                            </button>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                                        )}
+                                                        
+                                                        {/* 🔥 CAMBIO AQUÍ: Lógica condicional de botones */}
+                                                        {pedido.Pedido_estado === "EN_PROCESO_COSTURERO" && (
+                                                            <>
+                                                                {/* Si tiene estampadas, SÓLO mostrar "Enviar a Estampado" */}
+                                                                {tieneEstampadas && (
+                                                                    <button
+                                                                        style={styles.btnEnviarEstampado}
+                                                                        onClick={() => realizarAccion(pedido.Pedido_ID, "trasladar-estampado")}
+                                                                        onMouseEnter={(e) => e.target.style.backgroundColor = '#d97706'}
+                                                                        onMouseLeave={(e) => e.target.style.backgroundColor = '#f59e0b'}
+                                                                    >
+                                                                        <Send size={14} />
+                                                                        Enviar a Estampado
+                                                                    </button>
+                                                                )}
+                                                                
+                                                                {/* Si NO tiene estampadas, SÓLO mostrar "Terminar" */}
+                                                                {!tieneEstampadas && (
+                                                                    <button
+                                                                        style={styles.btnTerminar}
+                                                                        onClick={() => realizarAccion(pedido.Pedido_ID, "terminar-costurero")}
+                                                                        onMouseEnter={(e) => e.target.style.backgroundColor = '#16a34a'}
+                                                                        onMouseLeave={(e) => e.target.style.backgroundColor = '#22c55e'}
+                                                                    >
+                                                                        <StopCircle size={14} />
+                                                                        Terminar
+                                                                    </button>
+                                                                )}
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
@@ -567,9 +561,8 @@ const AprobacionPedidosCosturero = () => {
                 </div>
             </div>
 
-            {/* ... (Modal de detalles y Alertas, sin cambios) ... */}
-            
-            {/* Alertas */}
+            {/* ... (Todo tu modal de detalles y alertas se mantiene 100% igual) ... */}
+
             {alert && (
                 <div style={styles.alertContainer}>
                     <div style={styles.alert(alert.tipo)}>
@@ -579,11 +572,9 @@ const AprobacionPedidosCosturero = () => {
                 </div>
             )}
 
-            {/* Modal de detalles */}
             {selectedPedido && (
                 <div style={styles.modal} onClick={cerrarDetalles}>
                     <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-                        {/* ... (contenido del modal sin cambios) ... */}
                         <div style={styles.modalHeader}>
                             <h3 style={styles.modalTitle}>
                                 <Scissors size={24} />
@@ -596,7 +587,6 @@ const AprobacionPedidosCosturero = () => {
                                 ×
                             </button>
                         </div>
-
                         <div style={styles.modalBody}>
                             <div style={styles.infoBox}>
                               <div style={styles.infoLabel}>Usuario que realizó el pedido</div>

@@ -17,7 +17,7 @@ const AprobacionPedidosEstampador = () => {
 
     // 🔥 INICIO: ESTADOS PARA LOS FILTROS
     const [filtroId, setFiltroId] = useState('');
-    const [filtroEstado, setFiltroEstado] = useState('TODOS');
+    const [filtroEstado, setFiltroEstado] = useState('PENDIENTE_ESTAMPADO');
     const [filtroFecha, setFiltroFecha] = useState('');
     // 🔥 FIN: ESTADOS PARA LOS FILTROS
 
@@ -29,10 +29,13 @@ const AprobacionPedidosEstampador = () => {
     const cargarPedidos = async () => {
         try {
             setLoading(true);
-            const response = await axios.get(API_PEDIDOS_URL);
+            
+            // Añadimos un parámetro 't' (de "time") para romper la caché
+            const urlConCacheBuster = `${API_PEDIDOS_URL}?t=${new Date().getTime()}`;
+            
+            const response = await axios.get(urlConCacheBuster); // Usamos la nueva URL
             const data = response.data;
             
-            // 🔥 ARREGLO: Ahora carga PENDIENTES y EN PROCESO
             const pedidosParaEstampado = data.filter(
                 p => p.Pedido_estado === 'PENDIENTE_ESTAMPADO' || p.Pedido_estado === 'EN_PROCESO_ESTAMPADO'
             );
@@ -88,13 +91,11 @@ const AprobacionPedidosEstampador = () => {
         setSelectedPedido(null);
     };
 
-    // 🔥 INICIO: FUNCIÓN PARA LIMPIAR FILTROS
     const limpiarFiltros = () => {
         setFiltroId('');
         setFiltroEstado('TODOS');
         setFiltroFecha('');
     };
-    // 🔥 FIN: FUNCIÓN PARA LIMPIAR FILTROS
 
     // Filtrar solo las prendas estampadas para mostrar
     const obtenerPrendasEstampadas = (detalles) => {
@@ -408,23 +409,18 @@ const AprobacionPedidosEstampador = () => {
         );
     }
 
-    // 🔥 INICIO: LÓGICA DE FILTRADO
     const pedidosFiltrados = pedidos.filter(pedido => {
-        // Filtro por ID
         if (filtroId && !String(pedido.Pedido_ID).includes(filtroId)) {
             return false;
         }
-        // Filtro por Estado
         if (filtroEstado !== 'TODOS' && pedido.Pedido_estado !== filtroEstado) {
             return false;
         }
-        // Filtro por Fecha
         if (filtroFecha && !pedido.Pedido_fecha.startsWith(filtroFecha)) {
             return false;
         }
         return true;
     });
-    // 🔥 FIN: LÓGICA DE FILTRADO
 
     return (
         <div style={styles.container}>
@@ -433,13 +429,12 @@ const AprobacionPedidosEstampador = () => {
                 <div style={styles.contentWrapper}>
                     <h1 style={styles.title}>
                         <Palette size={36} />
-                        Gestión de Estampado
+                        Gestión de pedidos del taller de Estampado
                     </h1>
                     <p style={styles.subtitle}>
-                        Administra tus pedidos de estampado: acepta, procesa y completa trabajos artísticos
+                        Administra tus pedidos de estampado: acepta, procesa y completa trabajos
                     </p>
 
-                    {/* 🔥 INICIO: BARRA DE FILTROS */}
                     <div style={styles.searchContainer}>
                         <input
                             type="text"
@@ -461,15 +456,13 @@ const AprobacionPedidosEstampador = () => {
                             type="date"
                             value={filtroFecha}
                             onChange={(e) => setFiltroFecha(e.target.value)}
-                            style={styles.searchInput}
+                            style={{...styles.searchInput, colorScheme: 'dark'}}
                         />
                         <button style={styles.btnLimpiar} onClick={limpiarFiltros}>
                             <X size={18} /> Limpiar
                         </button>
                     </div>
-                    {/* 🔥 FIN: BARRA DE FILTROS */}
 
-                    {/* 🔥 Modificado para usar 'pedidosFiltrados' */}
                     {pedidosFiltrados.length === 0 ? (
                         <div style={styles.tableContainer}>
                             <div style={styles.emptyState}>
@@ -495,19 +488,21 @@ const AprobacionPedidosEstampador = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {/* 🔥 Modificado para usar 'pedidosFiltrados' */}
                                     {pedidosFiltrados.map((pedido) => (
                                         <tr key={pedido.Pedido_ID}>
                                             <td style={styles.td}>#{pedido.Pedido_ID}</td>
                                             <td style={styles.td}>
-                                                {/* 🔥 ARREGLO: Lógica de estado actualizada */}
                                                 <span style={{
                                                     ...styles.estadoBadge,
                                                     ...(pedido.Pedido_estado === "PENDIENTE_ESTAMPADO" ? styles.estadoPendiente :
                                                         pedido.Pedido_estado === "EN_PROCESO_ESTAMPADO" ? styles.estadoEnProceso :
                                                         styles.estadoCompletado)
                                                 }}>
-                                                    {pedido.Pedido_estado.replace('_ESTAMPADO', '')}
+                                                    {/* 🔥 CAMBIO: Lógica para mostrar "En Proceso" y "Pendiente" */}
+                                                    {pedido.Pedido_estado
+                                                        .replace('PENDIENTE_ESTAMPADO', 'Pendiente')
+                                                        .replace('EN_PROCESO_ESTAMPADO', 'En Proceso')
+                                                    }
                                                 </span>
                                             </td>
                                             <td style={styles.td}>{formatearFecha(pedido.Pedido_fecha)}</td>
@@ -524,7 +519,6 @@ const AprobacionPedidosEstampador = () => {
                                             </td>
                                             <td style={styles.td}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                    {/* 🔥 ARREGLO: Lógica de botones actualizada */}
                                                     {pedido.Pedido_estado === "PENDIENTE_ESTAMPADO" && (
                                                         <button
                                                             style={styles.btnAceptar}
@@ -558,13 +552,11 @@ const AprobacionPedidosEstampador = () => {
                 </div>
             </div>
 
-            {/* ... (Modal de detalles y Alertas, sin cambios) ... */}
-
             {/* Alertas */}
             {alert && (
                 <div style={styles.alertContainer}>
                     <div style={styles.alert(alert.tipo)}>
-                        <AlertCircle size={20} />
+                        {alert.tipo === "success" ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
                         {alert.mensaje}
                     </div>
                 </div>
@@ -574,7 +566,6 @@ const AprobacionPedidosEstampador = () => {
             {selectedPedido && (
                 <div style={styles.modal} onClick={cerrarDetalles}>
                     <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-                        {/* ... (contenido del modal sin cambios) ... */}
                         <div style={styles.modalHeader}>
                             <h3 style={styles.modalTitle}>
                                 <Palette size={24} />
@@ -602,7 +593,11 @@ const AprobacionPedidosEstampador = () => {
                                                 selectedPedido.Pedido_estado === "EN_PROCESO_ESTAMPADO" ? styles.estadoEnProceso :
                                                 styles.estadoCompletado)
                                         }}>
-                                            {selectedPedido.Pedido_estado.replace('_ESTAMPADO', '')}
+                                            {/* 🔥 CAMBIO: Lógica para mostrar "En Proceso" y "Pendiente" */}
+                                            {selectedPedido.Pedido_estado
+                                                .replace('PENDIENTE_ESTAMPADO', 'Pendiente')
+                                                .replace('EN_PROCESO_ESTAMPADO', 'En Proceso')
+                                            }
                                         </span>
                                     </div>
                                     <div>
@@ -624,7 +619,6 @@ const AprobacionPedidosEstampador = () => {
                                 {selectedPedido.detalles && selectedPedido.detalles.length > 0 ? (
                                     selectedPedido.detalles.map((detalle, index) => (
                                         <div key={index} style={{ 
-                                            backgroundColor: "rgba(0,0,0,0.4)", 
                                             padding: "16px", 
                                             borderRadius: "12px", 
                                             marginBottom: "12px", 

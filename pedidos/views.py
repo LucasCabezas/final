@@ -87,6 +87,8 @@ class PedidoList(APIView):
     API: Listar o crear pedidos desde el frontend React.
     """
 
+    # En pedidos/views.py, dentro de la clase PedidoList(APIView):
+
     def get(self, request):
         try:
             # 🔹 Leer parámetro opcional de filtro por estado
@@ -141,7 +143,11 @@ class PedidoList(APIView):
                         "prenda_color": getattr(d.prenda.Prenda_color, "Color_nombre", ""),
                         "prenda_imagen": d.prenda.Prenda_imagen.url if d.prenda.Prenda_imagen else None,
                         "cantidad": d.cantidad,
-                        "tipo": d.get_tipo_display() if hasattr(d, "get_tipo_display") else d.tipo,
+                        
+                        # 🔥🔥 ESTA ES LA LÍNEA CORREGIDA 🔥🔥
+                        # Enviamos el valor raw ('ESTAMPADA') en lugar del display ('Estampada')
+                        "tipo": d.tipo,
+                        
                         "talle": str(getattr(d.talle, "Talle_codigo", "-")),
                         "precio_unitario": round(d.precio_unitario or 0, 2) if usuario_tipo != "costurero" and usuario_tipo != "estampador" else None,
                         "precio_total": subtotal if usuario_tipo != "costurero" and usuario_tipo != "estampador" else None,
