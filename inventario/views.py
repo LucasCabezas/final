@@ -1,14 +1,17 @@
+# inventario/views.py
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.decorators import api_view
 from django.db import transaction
-from django.db.models import Sum, F
+from django.db.models import Sum, F, Q
 from django.shortcuts import get_object_or_404
 import json
 
 from .models import Insumo, Prenda, InsumosXPrendas, AlertaStock, UnidadMedida, TipoInsumo
+from clasificaciones.models import Talle, TallesXPrendas, Marca, Modelo, Color
+
 from .serializers import (
     InsumoSerializer, 
     PrendaSerializer, 
@@ -18,11 +21,13 @@ from .serializers import (
 )
 from pedidos.models import DetallePedido
 
+# ===========================================================
+# 🔹 VERIFICAR STOCK PARA PEDIDOS
+# ===========================================================
 @api_view(["POST"])
 def verificar_stock(request):
     """
-    🔍 Verifica si hay stock suficiente de insumos antes de crear un pedido.
-    Espera un JSON con: { "prendas": [{ "id_prenda": 1, "cantidad": 3 }, ...] }
+    Verifica si hay stock suficiente de insumos antes de crear un pedido.
     """
     try:
         prendas = request.data.get("prendas", [])
@@ -48,7 +53,6 @@ def verificar_stock(request):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # 🔹 Recorremos los insumos asociados
             for rel in InsumosXPrendas.objects.filter(prenda=prenda):
                 insumo = rel.insumo
                 cantidad_necesaria = float(rel.Insumo_prenda_cantidad_utilizada) * float(cantidad)
@@ -60,7 +64,7 @@ def verificar_stock(request):
                         "disponible": stock_disponible,
                         "requerido": cantidad_necesaria,
                         "faltante": round(cantidad_necesaria - stock_disponible, 2),
-                        "unidad": getattr(insumo.unidad_medida, "nombre", ""    )
+                        "unidad": getattr(insumo.unidad_medida, "nombre", "")
                     })
 
         if insumos_insuficientes:
@@ -72,13 +76,16 @@ def verificar_stock(request):
         return Response({"mensaje": "✅ Stock suficiente para todas las prendas."}, status=status.HTTP_200_OK)
 
     except Exception as e:
-        import traceback; traceback.print_exc()
+        import traceback
+        traceback.print_exc()
         return Response(
             {"error": str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
 # ===========================================================
-# 🔹 LISTAR / CREAR INSUMOS
+# 🔹 INSUMOS - LISTAR / CREAR
 # ===========================================================
 class InsumoList(APIView):
     """Listar y crear insumos"""
@@ -102,7 +109,57 @@ class InsumoList(APIView):
 
 
 # ===========================================================
-# 🔹 LISTAR UNIDADES Y TIPOS
+# 🔹 INSUMOS - DETALLE / EDITAR / ELIMINAR
+# ===========================================================
+class InsumoDetail(APIView):
+    def get_object(self, pk):
+        try:
+            return Insumo.objects.select_related('unidad_medida', 'tipo_insumo').get(pk=pk)
+        except Insumo.DoesNotExist:
+            return None
+
+    def get(self, request, pk):
+        insumo = self.get_object(pk)
+        if not insumo:
+            return Response({'error': 'Insumo no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(InsumoSerializer(insumo).data)
+
+    @transaction.atomic
+    def put(self, request, pk):
+        insumo = self.get_object(pk)
+        if not insumo:
+            return Response({'error': 'Insumo no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+
+        unidad_anterior = insumo.unidad_medida_id
+        serializer = InsumoSerializer(insumo, data=request.data)
+        if serializer.is_valid():
+            insumo_actualizado = serializer.save()
+
+            if unidad_anterior != insumo_actualizado.unidad_medida_id:
+                InsumosXPrendas.objects.filter(insumo=insumo_actualizado).update(
+                    Insumo_prenda_unidad_medida=insumo_actualizado.unidad_medida.nombre
+                )
+
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        insumo = self.get_object(pk)
+        if not insumo:
+            return Response({'error': 'Insumo no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+
+        if InsumosXPrendas.objects.filter(insumo=insumo).exists():
+            return Response(
+                {'error': 'No se puede eliminar el insumo porque está siendo usado en prendas'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        insumo.delete()
+        return Response({'mensaje': 'Insumo eliminado correctamente'}, status=status.HTTP_200_OK)
+
+
+# ===========================================================
+# 🔹 UNIDADES Y TIPOS DE INSUMO
 # ===========================================================
 class UnidadMedidaList(APIView):
     """Listar unidades de medida"""
@@ -152,48 +209,6 @@ def verificar_uso_insumo(request, pk):
 
 
 # ===========================================================
-# 🔹 DETALLE / EDITAR / ELIMINAR INSUMO
-# ===========================================================
-class InsumoDetail(APIView):
-    def get_object(self, pk):
-        try:
-            return Insumo.objects.select_related('unidad_medida', 'tipo_insumo').get(pk=pk)
-        except Insumo.DoesNotExist:
-            return None
-
-    def get(self, request, pk):
-        insumo = self.get_object(pk)
-        if not insumo:
-            return Response({'error': 'Insumo no encontrado'}, status=status.HTTP_404_NOT_FOUND)
-        return Response(InsumoSerializer(insumo).data)
-
-    @transaction.atomic
-    def put(self, request, pk):
-        insumo = self.get_object(pk)
-        if not insumo:
-            return Response({'error': 'Insumo no encontrado'}, status=status.HTTP_404_NOT_FOUND)
-
-        unidad_anterior = insumo.unidad_medida_id
-        serializer = InsumoSerializer(insumo, data=request.data)
-        if serializer.is_valid():
-            insumo_actualizado = serializer.save()
-
-            if unidad_anterior != insumo_actualizado.unidad_medida_id:
-                InsumosXPrendas.objects.filter(insumo=insumo_actualizado).update(
-                    Insumo_prenda_unidad_medida=insumo_actualizado.unidad_medida.nombre
-                )
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def delete(self, request, pk):
-        insumo = self.get_object(pk)
-        if not insumo:
-            return Response({'error': 'Insumo no encontrado'}, status=status.HTTP_404_NOT_FOUND)
-        insumo.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-# ===========================================================
 # 🔹 ALERTAS DE STOCK
 # ===========================================================
 class AlertaStockList(APIView):
@@ -209,7 +224,6 @@ class AlertaStockList(APIView):
 @api_view(['GET'])
 def obtener_insumos_bajo_stock(request):
     try:
-        from django.db.models import F
         insumos_bajo_stock = Insumo.objects.filter(Insumo_cantidad__lte=F('Insumo_cantidad_minima'))
         serializer = InsumoSerializer(insumos_bajo_stock, many=True)
         return Response(serializer.data)
@@ -218,32 +232,29 @@ def obtener_insumos_bajo_stock(request):
 
 
 # ===========================================================
-# 🔹 CREAR / LISTAR PRENDAS
+# 🔹 HELPER: PROCESAR CLASIFICACIONES
 # ===========================================================
 def procesar_clasificaciones(data):
     """
     Asegura que Marca, Modelo y Color se asocien correctamente por ID
-    si el valor recibido es numérico, o se creen solo si es texto nuevo.
     """
-    from clasificaciones.models import Marca, Modelo, Color
-
-    # --- MARCA ---
+    # MARCA
     if 'Prenda_marca' in data and data['Prenda_marca']:
         valor = str(data['Prenda_marca']).strip()
-        if valor.isdigit():  # ✅ Es un ID existente
+        if valor.isdigit():
             try:
                 marca = Marca.objects.get(pk=int(valor))
                 data['Prenda_marca'] = marca.Marca_ID
             except Marca.DoesNotExist:
                 raise ValueError(f"La marca con ID {valor} no existe")
-        else:  # ✅ Es texto nuevo
+        else:
             marca, _ = Marca.objects.get_or_create(
                 Marca_nombre__iexact=valor,
                 defaults={'Marca_nombre': valor}
             )
             data['Prenda_marca'] = marca.Marca_ID
 
-    # --- MODELO ---
+    # MODELO
     if 'Prenda_modelo' in data and data['Prenda_modelo']:
         valor = str(data['Prenda_modelo']).strip()
         if valor.isdigit():
@@ -259,7 +270,7 @@ def procesar_clasificaciones(data):
             )
             data['Prenda_modelo'] = modelo.Modelo_ID
 
-    # --- COLOR ---
+    # COLOR
     if 'Prenda_color' in data and data['Prenda_color']:
         valor = str(data['Prenda_color']).strip()
         if valor.isdigit():
@@ -278,176 +289,315 @@ def procesar_clasificaciones(data):
     return data
 
 
+# ===========================================================
+# 🔹 PRENDAS - LISTAR / CREAR CON BÚSQUEDA Y FILTROS
+# ===========================================================
 class PrendaList(APIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request):
+        """Listar todas las prendas con sus relaciones"""
         try:
-            prendas = Prenda.objects.all()
+            prendas = Prenda.objects.select_related(
+                'Prenda_marca',
+                'Prenda_modelo',
+                'Prenda_color'
+            ).prefetch_related('insumos_prendas__insumo').all()
+            
             serializer = PrendaSerializer(prendas, many=True, context={'request': request})
-            return Response(serializer.data)
+            return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as e:
             import traceback
-            print("🔥 ERROR AL CARGAR PRENDAS 🔥")
-            traceback.print_exc()  # imprime el error real
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            traceback.print_exc()
+            return Response(
+                {'error': f'Error al obtener prendas: {str(e)}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     @transaction.atomic
     def post(self, request):
-        data = request.data.copy()
-        insumos_data = []
-        talles_data = []
-
-        # Decodificar insumos
-        if data.get('insumos_prendas'):
-            raw = data.get('insumos_prendas')
-            try:
-                insumos_data = json.loads(raw) if isinstance(raw, str) else raw
-            except Exception:
-                return Response({'error': 'Error al decodificar insumos_prendas'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Decodificar talles
-        if data.get('talles'):
-            raw = data.get('talles')
-            try:
-                talles_data = json.loads(raw) if isinstance(raw, str) else raw
-            except Exception:
-                return Response({'error': 'Error al decodificar talles'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Procesar clasificaciones (crea si no existen)
+        """Crear nueva prenda con insumos y talles"""
         try:
+            print("📥 Datos recibidos:", request.data)
+            
+            data = request.data.copy()
+            
+            # Extraer insumos y talles del request
+            insumos_data = data.pop('insumos_prendas', None)
+            talles_data = data.pop('talles', None)
+            
+            print("🔍 Insumos antes de parsear:", insumos_data, type(insumos_data))
+            print("🔍 Talles antes de parsear:", talles_data, type(talles_data))
+            
+            # ✅ PARSEAR JSON si vienen como string
+            if isinstance(insumos_data, str):
+                try:
+                    insumos_data = json.loads(insumos_data) if insumos_data.strip() else []
+                except json.JSONDecodeError as e:
+                    return Response(
+                        {'error': f'Error al parsear insumos_prendas: {str(e)}'}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            
+            if isinstance(talles_data, str):
+                try:
+                    talles_data = json.loads(talles_data) if talles_data.strip() else []
+                except json.JSONDecodeError as e:
+                    return Response(
+                        {'error': f'Error al parsear talles: {str(e)}'}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            
+            print("✅ Insumos después de parsear:", insumos_data, type(insumos_data))
+            print("✅ Talles después de parsear:", talles_data, type(talles_data))
+            
+            # Validar que haya insumos y talles
+            if not insumos_data or len(insumos_data) == 0:
+                return Response(
+                    {'error': 'Debe proporcionar al menos un insumo'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            if not talles_data or len(talles_data) == 0:
+                return Response(
+                    {'error': 'Debe proporcionar al menos un talle'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Procesar clasificaciones (marca, modelo, color)
             data = procesar_clasificaciones(data)
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Crear prenda base
-        serializer = PrendaSerializer(data=data, context={'request': request})
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        prenda = serializer.save()
+            # Crear prenda base
+            serializer = PrendaSerializer(data=data, context={'request': request})
+            if not serializer.is_valid():
+                print("❌ Errores de validación:", serializer.errors)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+            prenda = serializer.save()
+            print("✅ Prenda creada:", prenda.Prenda_ID)
 
-        # Crear relaciones InsumosXPrendas
-        for item in insumos_data:
-            try:
+            # Crear relaciones con insumos
+            costo_insumos_total = 0
+            for item in insumos_data:
+                print("🔹 Procesando insumo:", item, type(item))
+                
+                # ✅ Validar que item sea un diccionario
+                if not isinstance(item, dict):
+                    prenda.delete()
+                    return Response(
+                        {'error': f'Formato inválido para insumo: {item}'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
                 insumo_id = int(item.get('insumo'))
                 cantidad = float(item.get('cantidad'))
-                insumo = Insumo.objects.get(pk=insumo_id)
+                
+                try:
+                    insumo = Insumo.objects.get(pk=insumo_id)
+                except Insumo.DoesNotExist:
+                    prenda.delete()  # Rollback manual
+                    return Response(
+                        {'error': f'Insumo con ID {insumo_id} no encontrado'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                costo_total_insumo = cantidad * insumo.Insumo_precio_unitario
 
                 InsumosXPrendas.objects.create(
                     insumo=insumo,
                     prenda=prenda,
                     Insumo_prenda_cantidad_utilizada=cantidad,
                     Insumo_prenda_unidad_medida=insumo.unidad_medida.nombre if insumo.unidad_medida else "",
-                    Insumo_prenda_costo_total=cantidad * insumo.Insumo_precio_unitario
+                    Insumo_prenda_costo_total=costo_total_insumo
                 )
-            except Exception as e:
-                print(f"Error creando insumo: {e}")
-                continue
+                
+                costo_insumos_total += costo_total_insumo
+                print(f"✅ Insumo {insumo.Insumo_nombre} agregado")
 
-        # Calcular costo total de producción
-        costo_insumos = (
-            InsumosXPrendas.objects
-            .filter(prenda=prenda)
-            .aggregate(total=Sum(F('Insumo_prenda_costo_total')))['total'] or 0
-        )
-        precio_base = float(prenda.Prenda_precio_unitario or 0)
-        costo_total = float(costo_insumos) + precio_base
-        # El precio unitario será el costo total de producción
-        prenda.Prenda_costo_total_produccion = costo_total
-        prenda.Prenda_precio_unitario = costo_total
-        prenda.save()
-
-        # Crear Talles
-        from clasificaciones.models import Talle, TallesXPrendas
-        for codigo in talles_data:
-            try:
+            # Crear relaciones con talles
+            for codigo in talles_data:
+                print(f"🔹 Procesando talle: {codigo}")
                 talle, _ = Talle.objects.get_or_create(Talle_codigo=codigo)
                 TallesXPrendas.objects.create(talle=talle, prenda=prenda, stock=0)
-            except Exception as e:
-                print(f"Error creando talle: {e}")
-                continue
+                print(f"✅ Talle {codigo} agregado")
 
-        return Response(PrendaSerializer(prenda, context={'request': request}).data, status=status.HTTP_201_CREATED)
+            # Calcular costo total de producción
+            precio_confeccion = float(data.get('Prenda_precio_unitario', 0))
+            costo_total = costo_insumos_total + precio_confeccion
+
+            prenda.Prenda_costo_total_produccion = costo_total
+            prenda.Prenda_precio_unitario = precio_confeccion
+            prenda.save()
+            
+            print("✅ Prenda guardada con costo total:", costo_total)
+
+            return Response(
+                PrendaSerializer(prenda, context={'request': request}).data, 
+                status=status.HTTP_201_CREATED
+            )
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response(
+                {'error': f'Error al crear prenda: {str(e)}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 # ===========================================================
-# 🔹 DETALLE / EDITAR / ELIMINAR PRENDA
+# 🔹 PRENDAS - DETALLE / EDITAR / ELIMINAR
 # ===========================================================
 class PrendaDetail(APIView):
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
     def get(self, request, pk):
-        prenda = get_object_or_404(Prenda, pk=pk)
-        serializer = PrendaSerializer(prenda, context={'request': request})
-        return Response(serializer.data)
+        """Obtener detalle de una prenda"""
+        try:
+            prenda = get_object_or_404(Prenda, pk=pk)
+            serializer = PrendaSerializer(prenda, context={'request': request})
+            return Response(serializer.data)
+        except Exception as e:
+            return Response(
+                {'error': f'Error al obtener prenda: {str(e)}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     @transaction.atomic
     def put(self, request, pk):
-        prenda = get_object_or_404(Prenda, pk=pk)
-        data = request.data.copy()
+        """Actualizar prenda existente"""
+        try:
+            print("📝 Actualizando prenda:", pk)
+            print("📥 Datos recibidos:", request.data)
+            
+            prenda = get_object_or_404(Prenda, pk=pk)
+            
+            data = request.data.copy()
+            
+            # Extraer insumos y talles
+            insumos_data = data.pop('insumos_prendas', None)
+            talles_data = data.pop('talles', None)
+            
+            # ✅ PARSEAR JSON si vienen como string
+            if isinstance(insumos_data, str):
+                try:
+                    insumos_data = json.loads(insumos_data) if insumos_data.strip() else None
+                except json.JSONDecodeError as e:
+                    return Response(
+                        {'error': f'Error al parsear insumos_prendas: {str(e)}'}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            
+            if isinstance(talles_data, str):
+                try:
+                    talles_data = json.loads(talles_data) if talles_data.strip() else None
+                except json.JSONDecodeError as e:
+                    return Response(
+                        {'error': f'Error al parsear talles: {str(e)}'}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
 
-        # Decodificar insumos y talles si vienen en JSON
-        insumos_data = []
-        talles_data = []
-
-        if data.get("insumos_prendas"):
-            raw = data.get("insumos_prendas")
+            # Procesar clasificaciones
             try:
-                insumos_data = json.loads(raw) if isinstance(raw, str) else raw
-            except Exception:
-                return Response(
-                    {"error": "Error al decodificar insumos_prendas"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+                data = procesar_clasificaciones(data)
+            except Exception as e:
+                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        if data.get("talles"):
-            raw = data.get("talles")
-            try:
-                talles_data = json.loads(raw) if isinstance(raw, str) else raw
-            except Exception:
-                return Response(
-                    {"error": "Error al decodificar talles"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+            # Actualizar datos base
+            serializer = PrendaSerializer(prenda, data=data, partial=True, context={'request': request})
+            if not serializer.is_valid():
+                print("❌ Errores de validación:", serializer.errors)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+            prenda = serializer.save()
 
-        # Actualizar datos base
-        serializer = PrendaSerializer(prenda, data=data, partial=True, context={'request': request})
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        prenda = serializer.save()
+            # Actualizar insumos si se enviaron
+            if insumos_data is not None:
+                prenda.insumos_prendas.all().delete()
+                costo_insumos_total = 0
+                
+                for item in insumos_data:
+                    # ✅ Validar que item sea un diccionario
+                    if not isinstance(item, dict):
+                        return Response(
+                            {'error': f'Formato inválido para insumo: {item}'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                    
+                    insumo_id = int(item.get('insumo'))
+                    cantidad = float(item.get('cantidad'))
+                    
+                    try:
+                        insumo = Insumo.objects.get(pk=insumo_id)
+                    except Insumo.DoesNotExist:
+                        return Response(
+                            {'error': f'Insumo con ID {insumo_id} no encontrado'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                    
+                    costo_total_insumo = cantidad * insumo.Insumo_precio_unitario
 
-        # Recalcular costo total de producción y actualizar precio unitario
-        costo_insumos = (
-            InsumosXPrendas.objects.filter(prenda=prenda)
-            .aggregate(total=Sum(F("Insumo_prenda_costo_total")))["total"]
-            or 0
-        )
-        # ✅ CORRECCIÓN: Usar el precio de confección que envió el usuario
-        precio_confeccion = float(data.get('Prenda_precio_unitario', prenda.Prenda_precio_unitario) or 0)
-        costo_total = float(costo_insumos) + precio_confeccion
+                    InsumosXPrendas.objects.create(
+                        insumo=insumo,
+                        prenda=prenda,
+                        Insumo_prenda_cantidad_utilizada=cantidad,
+                        Insumo_prenda_unidad_medida=insumo.unidad_medida.nombre if insumo.unidad_medida else "",
+                        Insumo_prenda_costo_total=costo_total_insumo
+                    )
+                    
+                    costo_insumos_total += costo_total_insumo
 
-        prenda.Prenda_costo_total_produccion = costo_total
-        prenda.Prenda_precio_unitario = precio_confeccion
-        prenda.save()
+            # Actualizar talles si se enviaron
+            if talles_data is not None:
+                TallesXPrendas.objects.filter(prenda=prenda).delete()
+                for codigo in talles_data:
+                    talle, _ = Talle.objects.get_or_create(Talle_codigo=codigo)
+                    TallesXPrendas.objects.create(talle=talle, prenda=prenda, stock=0)
 
-        return Response(PrendaSerializer(prenda, context={'request': request}).data)
+            # Recalcular costo total si se actualizaron insumos
+            if insumos_data is not None:
+                precio_confeccion = float(data.get('Prenda_precio_unitario', prenda.Prenda_precio_unitario))
+                costo_total = costo_insumos_total + precio_confeccion
+                prenda.Prenda_costo_total_produccion = costo_total
+                prenda.Prenda_precio_unitario = precio_confeccion
+                prenda.save()
 
-    def delete(self, request, pk):
-        prenda = get_object_or_404(Prenda, pk=pk)
-        usada = DetallePedido.objects.filter(prenda=prenda).exists()
+            print("✅ Prenda actualizada correctamente")
+            return Response(PrendaSerializer(prenda, context={'request': request}).data)
 
-        if usada:
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
             return Response(
-                {
-                    "error": f"No se puede eliminar la prenda '{prenda.Prenda_nombre}' porque ya fue utilizada en pedidos.",
-                    "tipo": "prenda_en_uso",
-                },
-                status=status.HTTP_400_BAD_REQUEST,
+                {'error': f'Error al actualizar prenda: {str(e)}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-        prenda.delete()
-        return Response(
-            {"mensaje": f"Prenda '{prenda.Prenda_nombre}' eliminada correctamente."},
-            status=status.HTTP_200_OK,
-        )
+    def delete(self, request, pk):
+        """Eliminar prenda (solo si no está en pedidos)"""
+        try:
+            prenda = get_object_or_404(Prenda, pk=pk)
+            
+            # Verificar si está siendo usada en pedidos
+            if DetallePedido.objects.filter(prenda=prenda).exists():
+                return Response(
+                    {
+                        "error": f"No se puede eliminar la prenda '{prenda.Prenda_nombre}' porque ya fue utilizada en pedidos.",
+                        "tipo": "prenda_en_uso",
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            prenda.delete()
+            return Response(
+                {"mensaje": f"Prenda '{prenda.Prenda_nombre}' eliminada correctamente."},
+                status=status.HTTP_200_OK,
+            )
+        except Exception as e:
+            return Response(
+                {'error': f'Error al eliminar prenda: {str(e)}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 
 # ===========================================================
 # 🔹 CONFIRMAR PEDIDO Y ACTUALIZAR STOCK

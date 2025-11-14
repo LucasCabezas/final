@@ -33,11 +33,10 @@ class TallesXPrendasSerializer(serializers.ModelSerializer):
 # ========================================
 class ColorSerializer(serializers.ModelSerializer):
     """Serializador para el modelo Color"""
-    cantidad_prendas = serializers.IntegerField(source='prendas.count', read_only=True)
     
     class Meta:
         model = Color
-        fields = ['Color_ID', 'Color_nombre', 'cantidad_prendas']
+        fields = ['Color_ID', 'Color_nombre']
 
 
 # ========================================
@@ -45,11 +44,10 @@ class ColorSerializer(serializers.ModelSerializer):
 # ========================================
 class ModeloSerializer(serializers.ModelSerializer):
     """Serializador para el modelo Modelo"""
-    cantidad_prendas = serializers.IntegerField(source='prendas.count', read_only=True)
     
     class Meta:
         model = Modelo
-        fields = ['Modelo_ID', 'Modelo_nombre', 'cantidad_prendas']
+        fields = ['Modelo_ID', 'Modelo_nombre']
 
 
 # ========================================
@@ -57,8 +55,7 @@ class ModeloSerializer(serializers.ModelSerializer):
 # ========================================
 class MarcaSerializer(serializers.ModelSerializer):
     """Serializador para el modelo Marca"""
-    cantidad_prendas = serializers.IntegerField(source='prendas.count', read_only=True)
     
     class Meta:
         model = Marca
-        fields = ['Marca_ID', 'Marca_nombre', 'cantidad_prendas']
+        fields = ['Marca_ID', 'Marca_nombre']

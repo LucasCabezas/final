@@ -50,7 +50,8 @@ class AlertaStockSerializer(serializers.ModelSerializer):
 # === RELACIÓN INSUMOS X PRENDA ===
 class InsumosXPrendasSerializer(serializers.ModelSerializer):
     insumo_nombre = serializers.CharField(source='insumo.Insumo_nombre', read_only=True)
-    insumo_unidad = serializers.CharField(source='insumo.Insumo_unidad_medida', read_only=True)
+    # ✅ CORREGIDO: Acceder correctamente a la unidad de medida
+    insumo_unidad = serializers.CharField(source='insumo.unidad_medida.nombre', read_only=True)
     insumo_precio_unitario = serializers.FloatField(source='insumo.Insumo_precio_unitario', read_only=True)
     insumo_stock = serializers.FloatField(source='insumo.Insumo_cantidad', read_only=True)
 
@@ -82,7 +83,7 @@ class PrendaSerializer(serializers.ModelSerializer):
     Prenda_color_nombre = serializers.SerializerMethodField()
 
     # Imagen
-    Prenda_imagen = serializers.ImageField(required=False)
+    Prenda_imagen = serializers.ImageField(required=False, allow_null=True)
     Prenda_imagen_url = serializers.SerializerMethodField()
 
     # Relaciones
@@ -113,25 +114,41 @@ class PrendaSerializer(serializers.ModelSerializer):
 
     # === MÉTODOS ===
     def get_Prenda_marca_nombre(self, obj):
-        return getattr(obj.Prenda_marca, "Marca_nombre", None)
+        try:
+            return obj.Prenda_marca.Marca_nombre if obj.Prenda_marca else None
+        except:
+            return None
 
     def get_Prenda_modelo_nombre(self, obj):
-        return getattr(obj.Prenda_modelo, "Modelo_nombre", None)
+        try:
+            return obj.Prenda_modelo.Modelo_nombre if obj.Prenda_modelo else None
+        except:
+            return None
 
     def get_Prenda_color_nombre(self, obj):
-        return getattr(obj.Prenda_color, "Color_nombre", None)
+        try:
+            return obj.Prenda_color.Color_nombre if obj.Prenda_color else None
+        except:
+            return None
 
     def get_talles(self, obj):
         """Devuelve los códigos de los talles disponibles"""
-        from clasificaciones.models import TallesXPrendas
-        talles = TallesXPrendas.objects.filter(prenda=obj).select_related('talle')
-        return [t.talle.Talle_codigo for t in talles]
+        try:
+            from clasificaciones.models import TallesXPrendas
+            talles = TallesXPrendas.objects.filter(prenda=obj).select_related('talle')
+            return [t.talle.Talle_codigo for t in talles]
+        except Exception as e:
+            print(f"Error obteniendo talles: {e}")
+            return []
 
     def get_Prenda_imagen_url(self, obj):
         """Devuelve la URL completa de la imagen si existe"""
-        if obj.Prenda_imagen:
-            request = self.context.get('request')
-            if request is not None:
-                return request.build_absolute_uri(obj.Prenda_imagen.url)
-            return obj.Prenda_imagen.url
+        try:
+            if obj.Prenda_imagen:
+                request = self.context.get('request')
+                if request is not None:
+                    return request.build_absolute_uri(obj.Prenda_imagen.url)
+                return obj.Prenda_imagen.url
+        except:
+            pass
         return None

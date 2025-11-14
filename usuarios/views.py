@@ -125,16 +125,16 @@ class ValidarCorreoView(APIView):
 
 # ===== CRUD USUARIOS =====
 class UsuarioList(APIView):
-    permission_classes = [IsAuthenticated]  # 🔥 CAMBIO: Requiere autenticación
+    permission_classes = [IsAuthenticated]
     
     def get(self, request):
+        # ... (Tu función GET se mantiene 100% igual)
         users = User.objects.all().select_related('perfil').prefetch_related('groups')
         data = []
         
         for u in users:
             roles = [g.name for g in u.groups.all()]
             
-            # ✅ Obtener la URL de la foto de perfil si existe
             foto_perfil_url = None
             if hasattr(u, 'perfil') and u.perfil.foto_perfil:
                 foto_perfil_url = u.perfil.foto_perfil.url
@@ -143,20 +143,34 @@ class UsuarioList(APIView):
                 "id": u.id,
                 "nombre": u.first_name,
                 "apellido": u.last_name,
-                "correo": u.email,  # 🔥 CAMBIO: usar 'correo' consistente
-                "email": u.email,   # Mantener para compatibilidad
+                "correo": u.email,
+                "email": u.email,
                 "dni": u.perfil.dni if hasattr(u, 'perfil') else None,
                 "rol": roles[0] if roles else None,
                 "rol_id": u.groups.first().id if u.groups.exists() else None,
-                "foto_perfil": foto_perfil_url  # 🔥 NUEVO
+                "foto_perfil": foto_perfil_url
             })
         
         return Response(data)
 
     def post(self, request):
         try:
-            # Validar que el DNI no exista
             dni = request.data.get('dni')
+            email = request.data.get('email')
+            
+            # 🔥 CAMBIO: Asignar email a username si username no se envía
+            # Esto soluciona el error 500 que tenías.
+            username = request.data.get('username', email) 
+            
+            if not email:
+                 return Response(
+                    {"error": "El email es obligatorio"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # (Si el email es obligatorio, el username ya no será None)
+
+            # Validar que el DNI no exista
             if dni:
                 from .models import PerfilUsuario
                 if PerfilUsuario.objects.filter(dni=dni).exists():
@@ -166,23 +180,21 @@ class UsuarioList(APIView):
                     )
             
             # Validar que el email no exista
-            email = request.data.get('email')
-            if email and User.objects.filter(email=email).exists():
+            if User.objects.filter(email=email).exists():
                 return Response(
                     {"error": "Ya existe un usuario con este email"}, 
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
             # Validar que el username no exista
-            username = request.data.get('username')
-            if username and User.objects.filter(username=username).exists():
+            if User.objects.filter(username=username).exists():
                 return Response(
-                    {"error": "Ya existe un usuario con este nombre de usuario"}, 
+                    {"error": "Ya existe un usuario con este nombre de usuario (o email)"}, 
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
             with transaction.atomic():
-                # Crear usuario
+                # Crear usuario (ahora 'username' tiene un valor válido)
                 user = User.objects.create_user(
                     username=username,
                     email=email,
@@ -192,9 +204,11 @@ class UsuarioList(APIView):
                 )
                 
                 # Asignar DNI al perfil
-                if hasattr(user, 'perfil') and dni:
-                    user.perfil.dni = dni
-                    user.perfil.save()
+                # (Aseguramos que el perfil exista antes de guardar)
+                perfil, created = PerfilUsuario.objects.get_or_create(user=user)
+                if dni:
+                    perfil.dni = dni
+                    perfil.save()
                 
                 # Asignar rol
                 rol_id = request.data.get('rol_id')
@@ -203,7 +217,7 @@ class UsuarioList(APIView):
                         grupo = Group.objects.get(id=rol_id)
                         user.groups.add(grupo)
                     except Group.DoesNotExist:
-                        pass
+                        pass # Ignorar si el rol no existe
 
             return Response({
                 "message": "Usuario creado exitosamente",
@@ -211,6 +225,8 @@ class UsuarioList(APIView):
             }, status=status.HTTP_201_CREATED)
 
         except Exception as e:
+            # Imprimir el error en la consola de Django para más detalles
+            logger.error(f"Error al crear usuario: {str(e)}") 
             return Response({
                 "error": f"Error al crear usuario: {str(e)}"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

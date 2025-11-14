@@ -1,13 +1,42 @@
-from django.urls import path, include # Importa la función path para definir rutas
-from .views import TalleList, TalleDetail, ColorList, ColorDetail, ModeloList, ModeloDetail, MarcaList, MarcaDetail # Importa las vistas desde el archivo views.py
+# clasificaciones/urls.py
+from django.urls import path
+from .views import (
+    MarcaList, MarcaDetail,
+    ModeloList, ModeloDetail,
+    ColorList, ColorDetail,
+    TalleList, TalleDetail
+)
 
-urlpatterns = [ # Define la lista de rutas URL para la aplicación
-    path('talle/', TalleList.as_view(), name='talle-list'), # Ruta para listar y crear talles
-    path('talle/<int:pk>/', TalleDetail.as_view(), name='talle-detail'), # Ruta para obtener, actualizar o eliminar un talle específico
-    path('color/', ColorList.as_view(), name='color-list'), # Ruta para listar y crear colores
-    path('color/<int:pk>/', ColorDetail.as_view(), name='color-detail'), # Ruta para obtener, actualizar o eliminar un color específico
-    path('modelo/', ModeloList.as_view(), name='modelo-list'), # Ruta para listar y crear modelos
-    path('modelo/<int:pk>/', ModeloDetail.as_view(), name='modelo-detail'), # Ruta para obtener, actualizar o eliminar un modelo específico
-    path('marca/', MarcaList.as_view(), name='marca-list'), # Ruta para listar y crear marcas
-    path('marca/<int:pk>/', MarcaDetail.as_view(), name='marca-detail'), # Ruta para obtener, actualizar o eliminar una marca específica
+urlpatterns = [
+    # ---------- TALLES (con 's') ----------
+    path('talles/', TalleList.as_view(), name='talle-list'),
+    path('talles/<int:pk>/', TalleDetail.as_view(), name='talle-detail'),
+    
+    # ---------- TALLES (sin 's' para compatibilidad) ----------
+    path('talle/', TalleList.as_view(), name='talle-list-legacy'),
+    path('talle/<int:pk>/', TalleDetail.as_view(), name='talle-detail-legacy'),
+    
+    # ---------- COLORES (con 's') ----------
+    path('colores/', ColorList.as_view(), name='color-list'),
+    path('colores/<int:pk>/', ColorDetail.as_view(), name='color-detail'),
+    
+    # ---------- COLORES (sin 's' para compatibilidad) ----------
+    path('color/', ColorList.as_view(), name='color-list-legacy'),
+    path('color/<int:pk>/', ColorDetail.as_view(), name='color-detail-legacy'),
+    
+    # ---------- MODELOS (con 's') ----------
+    path('modelos/', ModeloList.as_view(), name='modelo-list'),
+    path('modelos/<int:pk>/', ModeloDetail.as_view(), name='modelo-detail'),
+    
+    # ---------- MODELOS (sin 's' para compatibilidad) ----------
+    path('modelo/', ModeloList.as_view(), name='modelo-list-legacy'),
+    path('modelo/<int:pk>/', ModeloDetail.as_view(), name='modelo-detail-legacy'),
+    
+    # ---------- MARCAS (con 's') ----------
+    path('marcas/', MarcaList.as_view(), name='marca-list'),
+    path('marcas/<int:pk>/', MarcaDetail.as_view(), name='marca-detail'),
+    
+    # ---------- MARCAS (sin 's' para compatibilidad) ----------
+    path('marca/', MarcaList.as_view(), name='marca-list-legacy'),
+    path('marca/<int:pk>/', MarcaDetail.as_view(), name='marca-detail-legacy'),
 ]

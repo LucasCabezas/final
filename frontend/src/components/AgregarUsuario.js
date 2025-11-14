@@ -352,6 +352,26 @@ const styles = {
     fontWeight: '600',
     transition: 'background-color 0.2s',
     fontSize: '14px'
+  },
+  passwordRequirements: {
+    marginTop: '12px',
+    padding: '12px',
+    backgroundColor: 'rgba(0,0,0,0.2)', // Tono oscuro para el modal
+    borderRadius: '8px',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+  },
+  requirementItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontSize: '13px',
+    marginTop: '6px',
+  },
+  requirementMet: {
+    color: '#22c55e', // Verde (éxito)
+  },
+  requirementNotMet: {
+    color: '#9ca3af', // Gris (pendiente)
   }
 };
 
@@ -428,31 +448,52 @@ function GestionUsuarios() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
   const [confirmData, setConfirmData] = useState(null);
+  const [passwordRequirements, setPasswordRequirements] = useState({
+    minLength: false,
+    hasUpperCase: false,
+    hasLowerCase: false,
+    hasNumber: false,
+  });
 
   useEffect(() => {
-    cargarUsuarios();
-    cargarRoles();
-  }, []);
+    // 🔥 CAMBIO: Solo se ejecuta si 'authenticatedFetch' está listo
+    if (authenticatedFetch) { 
+      cargarUsuarios();
+      cargarRoles();
+    }
+  }, [authenticatedFetch]);
 
   const cargarUsuarios = async () => {
     try {
+      // No necesitas añadir headers aquí, 'authenticatedFetch' lo hace por ti
       const response = await authenticatedFetch('http://localhost:8000/api/usuarios/usuarios/');
       const data = await response.json();
       setUsuarios(data);
     } catch (error) {
       console.error('Error cargando usuarios:', error);
-      showAlert('Error al cargar los usuarios', 'error');
+      // Si el token es inválido o expiró, authenticatedFetch debería manejarlo (ej. logout)
+      // Mostramos un error genérico por si acaso
+      if (error.message.includes('401')) {
+          showAlert('Tu sesión expiró. Por favor, vuelve a ingresar.', 'error');
+      } else {
+          showAlert('Error al cargar los usuarios', 'error');
+      }
     }
   };
 
   const cargarRoles = async () => {
     try {
+      // No necesitas añadir headers aquí, 'authenticatedFetch' lo hace por ti
       const response = await authenticatedFetch('http://localhost:8000/api/usuarios/roles/');
       const data = await response.json();
       setRoles(data);
     } catch (error) {
       console.error('Error cargando roles:', error);
-      showAlert('Error al cargar los roles', 'error');
+        if (error.message.includes('401')) {
+          showAlert('Tu sesión expiró. Por favor, vuelve a ingresar.', 'error');
+      } else {
+        showAlert('Error al cargar los roles', 'error');
+      }
     }
   };
 
@@ -510,6 +551,22 @@ function GestionUsuarios() {
       password: '',
       rol_id: ''
     });
+
+  setPasswordRequirements({
+      minLength: false,
+      hasUpperCase: false,
+      hasLowerCase: false,
+      hasNumber: false,
+    });
+  };
+
+  const validatePasswordRequirements = (password) => {
+    setPasswordRequirements({
+      minLength: password.length >= 6,
+      hasUpperCase: /[A-Z]/.test(password),
+      hasLowerCase: /[a-z]/.test(password),
+      hasNumber: /\d/.test(password),
+    });
   };
 
   const handleInputChange = (e) => {
@@ -527,6 +584,11 @@ function GestionUsuarios() {
       if (!regex.test(value) || value.length > 8) {
         return;
       }
+    }
+    
+    // 🔥 CAMBIO: Llamar a la validación si es el input de contraseña
+    if (name === 'password') {
+      validatePasswordRequirements(value);
     }
     
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -566,8 +628,8 @@ function GestionUsuarios() {
       return;
     }
 
-    if (formData.password.length < 6) {
-      showAlert('La contraseña debe tener al menos 6 caracteres', 'error');
+    if (!passwordRequirements.minLength || !passwordRequirements.hasUpperCase || !passwordRequirements.hasLowerCase || !passwordRequirements.hasNumber) {
+      showAlert('La contraseña no cumple con todos los requisitos', 'error');
       return;
     }
 
@@ -733,6 +795,7 @@ function GestionUsuarios() {
           marginLeft: isNavbarCollapsed ? '70px' : '250px'
         }}>
           <div style={styles.contentWrapper}>
+            {/* ... (Todo el JSX del header y la tabla se mantiene 100% igual) ... */}
             <div style={styles.header}>
               <h1 style={styles.title}>Gestión de Usuarios</h1>
               <div style={styles.headerActions}>
@@ -849,6 +912,7 @@ function GestionUsuarios() {
               </table>
             </div>
 
+            {/* MODAL DE AGREGAR/EDITAR USUARIO */}
             {showModal && (
               <div style={styles.modalOverlay} onClick={handleCloseModal}>
                 <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -879,6 +943,7 @@ function GestionUsuarios() {
                             className="form-input"
                             placeholder="Nombre del usuario"
                             required
+                            autoComplete='off'
                           />
                         </div>
 
@@ -893,6 +958,7 @@ function GestionUsuarios() {
                             className="form-input"
                             placeholder="Apellido del usuario"
                             required
+                            autoComplete='off'
                           />
                         </div>
 
@@ -908,6 +974,7 @@ function GestionUsuarios() {
                             placeholder="12345678"
                             maxLength="8"
                             required
+                            autoComplete='off'
                           />
                         </div>
 
@@ -922,9 +989,11 @@ function GestionUsuarios() {
                             className="form-input"
                             placeholder="usuario@ejemplo.com"
                             required
+                            autoComplete='off'
                           />
                         </div>
 
+                        {/* 🔥 CORRECCIÓN: El div de requisitos va DENTRO del formGroup de la contraseña */}
                         <div style={styles.formGroup}>
                           <label style={styles.label}>Contraseña *</label>
                           <input
@@ -936,11 +1005,47 @@ function GestionUsuarios() {
                             className="form-input"
                             placeholder="Contraseña"
                             required
+                            autoComplete='new-password'
                           />
-                        </div>
+                          
+                          {/* Este bloque solo aparece si se empieza a escribir la contraseña */}
+                          {formData.password && (
+                            <div style={styles.passwordRequirements}>
+                              <div style={{
+                                ...styles.requirementItem,
+                                ...(passwordRequirements.minLength ? styles.requirementMet : styles.requirementNotMet),
+                              }}>
+                                {passwordRequirements.minLength ? <CheckCircle size={14} /> : <X size={14} />}
+                                <span>Mínimo 6 caracteres</span>
+                              </div>
+                              <div style={{
+                                ...styles.requirementItem,
+                                ...(passwordRequirements.hasUpperCase ? styles.requirementMet : styles.requirementNotMet),
+                              }}>
+                                {passwordRequirements.hasUpperCase ? <CheckCircle size={14} /> : <X size={14} />}
+                                <span>Al menos una letra mayúscula</span>
+                              </div>
+                              <div style={{
+                                ...styles.requirementItem,
+                                ...(passwordRequirements.hasLowerCase ? styles.requirementMet : styles.requirementNotMet),
+                              }}>
+                                {passwordRequirements.hasLowerCase ? <CheckCircle size={14} /> : <X size={14} />}
+                                <span>Al menos una letra minúscula</span>
+                              </div>
+                              <div style={{
+                                ...styles.requirementItem,
+                                ...(passwordRequirements.hasNumber ? styles.requirementMet : styles.requirementNotMet),
+                              }}>
+                                {passwordRequirements.hasNumber ? <CheckCircle size={14} /> : <X size={14} />}
+                                <span>Al menos un número</span>
+                              </div>
+                            </div>
+                          )}
+                        </div> 
                       </>
                     ) : null}
 
+                    {/* ESTE 'div' de formGroup estaba mal cerrado en tu archivo */}
                     <div style={styles.formGroup}>
                       <label style={styles.label}>Rol *</label>
                       <select
@@ -978,7 +1083,7 @@ function GestionUsuarios() {
                     </button>
                   </div>
                 </div>
-              </div>
+              </div> // <-- 🔥 CORRECCIÓN: Faltaba este '</div>'
             )}
 
             {showConfirmModal && (() => {
@@ -1029,7 +1134,7 @@ function GestionUsuarios() {
         </div>
       </div>
     </>
-  );
+    );
 }
 
 export default GestionUsuarios;

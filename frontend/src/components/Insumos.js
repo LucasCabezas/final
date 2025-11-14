@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Search, Plus, Edit2, Trash2, X, CheckCircle, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Search, Plus, Edit2, Trash2, X, CheckCircle, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import Componente from './componente.jsx';
 import { useAuth } from '../context/AuthContext';
 import fondoImg from './assets/fondo.png';
@@ -61,6 +61,18 @@ const styles = {
     width: '256px',
     transition: 'border-color 0.2s',
     fontSize: '14px'
+  },
+  select: {
+    padding: '8px 12px',
+    backgroundColor: '#fff',
+    color: '#000',
+    borderRadius: '8px',
+    border: '1px solid #d1d5db',
+    outline: 'none',
+    fontSize: '14px',
+    cursor: 'pointer',
+    height: '42px', // Para alinear con el searchInput
+    boxSizing: 'border-box'
   },
   clearButton: {
     position: 'absolute',
@@ -473,6 +485,41 @@ const styles = {
     fontSize: '13px',
     margin: '0',
     paddingLeft: '20px'
+  },
+  paginationContainer: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    padding: '16px', // Añadido padding
+    color: '#9ca3af',
+    backgroundColor: 'rgba(30, 30, 30, 0.9)', // Fondo de la tabla
+    borderTop: '1px solid #fff1',
+    borderBottomLeftRadius: '8px',
+    borderBottomRightRadius: '8px',
+    marginTop: '-1px', // Para unirse con la tabla
+  },
+  paginationButton: {
+    background: '#374151',
+    border: 'none',
+    color: '#fff',
+    padding: '8px',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    margin: '0 4px',
+    transition: 'background-color 0.2s',
+  },
+  paginationDisabled: {
+    background: '#1f2937',
+    color: '#6b7280',
+    cursor: 'not-allowed',
+  },
+  paginationInfo: {
+    fontSize: '14px',
+    margin: '0 16px',
+    fontWeight: '500'
   }
 };
 
@@ -539,20 +586,24 @@ function Insumos() {
   // Control de permisos por rol
   const { user } = useAuth();
   const userRole = user?.rol;
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterMode, setFilterMode] = useState('null');
   // Función para verificar permisos de edición
   const canEdit = () => {
     return userRole === 'Dueño';
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     cargarInsumos();
     cargarAlertas();
     cargarUnidades();
     cargarTipos();
     const interval = setInterval(cargarAlertas, 300000);
     return () => clearInterval(interval);
-  }, []);
+  }, [userRole]);
 
   const cargarUnidades = async () => {
     try {
@@ -626,7 +677,6 @@ function Insumos() {
     }
   };
 
-  const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingInsumo, setEditingInsumo] = useState(null);
   const [formData, setFormData] = useState({
@@ -651,15 +701,41 @@ function Insumos() {
     }, 3000);
   };
 
-  const filteredInsumos = searchTerm.trim() === '' ? [] : insumos.filter(insumo => {
-    const search = searchTerm.toLowerCase();
-    return (
-      insumo.Insumo_nombre?.toLowerCase().includes(search) ||
-      insumo.Insumo_cantidad?.toString().includes(search) ||
-      insumo.Insumo_unidad_medida?.toLowerCase().includes(search) ||
-      insumo.Insumo_precio_unitario?.toString().includes(search)
-    );
-  });
+  const filteredInsumos = useMemo(() => {
+    const search = searchTerm.toLowerCase().trim();
+    if (search !== '') {
+      return insumos.filter(insumo => {
+        return (
+          insumo.Insumo_nombre?.toLowerCase().includes(search) ||
+          insumo.Insumo_cantidad?.toString().includes(search) ||
+          insumo.Insumo_unidad_medida?.toLowerCase().includes(search) ||
+          insumo.Insumo_precio_unitario?.toString().includes(search)
+        );
+      });
+    }
+    if (filterMode === 'all') {
+      return insumos;
+    }
+    return []; 
+  }, [searchTerm, insumos, filterMode]);
+
+  const totalPages = Math.ceil(filteredInsumos.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentInsumos = filteredInsumos.slice(indexOfFirstItem, indexOfLastItem);
+
+  const handleNextPage = () => {
+    setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+  };
+
+  const handlePrevPage = () => {
+    setCurrentPage((prev) => Math.max(prev - 1, 1));
+  };
+  
+  // 🔥 CAMBIO: Resetear paginación si la búsqueda cambia
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   const handleOpenModal = (insumo = null) => {
   if (insumo) {
@@ -1020,6 +1096,17 @@ function Insumos() {
             <div style={styles.header}>
               <h1 style={styles.title}>Insumos</h1>
               <div style={styles.headerActions}>
+                
+                {/* 🔥 CAMBIO: Añadido el filtro desplegable */}
+                <select 
+                  value={filterMode} 
+                  onChange={(e) => setFilterMode(e.target.value)} 
+                  style={styles.select}
+                >
+                  <option value="null">-</option>
+                  <option value="all">Todos</option>
+                </select>
+
                 <div style={styles.searchContainer}>
                   <Search style={styles.searchIcon} />
                   <input
@@ -1044,7 +1131,7 @@ function Insumos() {
                 </div>
                 {searchTerm && (
                   <div style={styles.searchCounter}>
-                    {filteredInsumos.length} de {insumos.length}
+                    {filteredInsumos.length}
                   </div>
                 )}
                 {canEdit() && (
@@ -1073,20 +1160,22 @@ function Insumos() {
                   </tr>
                 </thead>
                 <tbody>
+                  {/* 🔥 CAMBIO: Lógica de 'tbody' actualizada */}
                   {searchTerm.trim() === '' ? (
                     <tr>
                       <td colSpan={canEdit() ? "6" : "3"} style={styles.emptyState}>
                         Comienza a escribir en el buscador para ver los insumos
                       </td>
                     </tr>
-                  ) : filteredInsumos.length === 0 ? (
+                  ) : currentInsumos.length === 0 ? ( // Usa 'currentInsumos' para el chequeo
                     <tr>
                       <td colSpan={canEdit() ? "6" : "3"} style={styles.emptyState}>
                         No se encontraron insumos que coincidan con "{searchTerm}"
                       </td>
                     </tr>
                   ) : (
-                    filteredInsumos.map((insumo) => (
+                    // Itera sobre 'currentInsumos' (los de la página actual)
+                    currentInsumos.map((insumo) => (
                       <tr key={insumo.Insumo_ID} style={styles.tr} className="hover-row">
                         <td style={styles.td}>{insumo.Insumo_nombre}</td>
                         <td style={styles.td}>{insumo.Insumo_cantidad}</td>
@@ -1096,30 +1185,23 @@ function Insumos() {
                         {canEdit() && (
                           <td style={styles.tdCenter}>
                             <div style={styles.actionsContainer}>
-                            {canEdit() ? (
-                              <>
-                                <button
-                                  onClick={() => handleOpenModal(insumo)}
-                                  style={styles.iconButton}
-                                  className="hover-icon"
-                                >
-                                  <Edit2 style={{ width: '20px', height: '20px', color: '#60a5fa' }} />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteClick(insumo)}
-                                  style={styles.iconButton}
-                                  className="hover-icon"
-                                >
-                                  <Trash2 style={{ width: '20px', height: '20px', color: '#f87171' }} />
-                                </button>
-                              </>
-                            ) : (
-                              <span style={{ color: '#9ca3af', fontSize: '12px' }}>
-                                Solo lectura
-                              </span>
-                            )}
-                          </div>
-                        </td>)}
+                              <button
+                                onClick={() => handleOpenModal(insumo)}
+                                style={styles.iconButton}
+                                className="hover-icon"
+                              >
+                                <Edit2 style={{ width: '20px', height: '20px', color: '#60a5fa' }} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteClick(insumo)}
+                                style={styles.iconButton}
+                                className="hover-icon"
+                              >
+                                <Trash2 style={{ width: '20px', height: '20px', color: '#f87171' }} />
+                              </button>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     ))
                   )}
@@ -1127,21 +1209,52 @@ function Insumos() {
               </table>
             </div>
 
-           {showModal && (
-  <div style={styles.modalOverlay} onClick={handleCloseModal}>
-    <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-      <div style={styles.modalHeader}>
-        <h2 style={styles.modalTitle}>
-          {editingInsumo ? 'Editar Insumo' : 'Agregar Insumo'}
-        </h2>
-        <button
-          onClick={handleCloseModal}
-          style={styles.closeButton}
-          className="hover-icon"
-        >
-          <X style={{ width: '24px', height: '24px', color: '#9ca3af' }} />
-        </button>
-      </div>
+            {/* 🔥 CAMBIO: Añadido contenedor de paginación */}
+            {searchTerm.trim() !== '' && filteredInsumos.length > itemsPerPage && (
+              <div style={styles.paginationContainer}>
+                <span style={styles.paginationInfo}>
+                  Página {currentPage} de {totalPages}
+                </span>
+                <button
+                  onClick={handlePrevPage}
+                  disabled={currentPage === 1}
+                  style={{
+                    ...styles.paginationButton,
+                    ...(currentPage === 1 && styles.paginationDisabled)
+                  }}
+                  className="hover-icon"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <button
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                  style={{
+                    ...styles.paginationButton,
+                    ...(currentPage === totalPages && styles.paginationDisabled)
+                  }}
+                  className="hover-icon"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+            )}
+
+          {showModal && (
+            <div style={styles.modalOverlay} onClick={handleCloseModal}>
+              <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+                <div style={styles.modalHeader}>
+                  <h2 style={styles.modalTitle}>
+                    {editingInsumo ? 'Editar Insumo' : 'Agregar Insumo'}
+                  </h2>
+                  <button
+                    onClick={handleCloseModal}
+                    style={styles.closeButton}
+                    className="hover-icon"
+                  >
+                    <X style={{ width: '24px', height: '24px', color: '#9ca3af' }} />
+                  </button>
+                </div>
 
       {/* ================= FORMULARIO ================= */}
       <div>
