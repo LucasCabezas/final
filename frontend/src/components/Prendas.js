@@ -35,8 +35,7 @@ const styles = {
   headerActions: {
     display: 'flex',
     alignItems: 'center',
-    gap: '16px',
-    marginBottom: '24px'
+    gap: '16px'
   },
   searchContainer: {
     position: 'relative',
@@ -63,7 +62,7 @@ const styles = {
     borderRadius: '8px',
     border: '1px solid #d1d5db',
     outline: 'none',
-    width: '300px',
+    width: '256px',
     transition: 'border-color 0.2s',
     fontSize: '14px'
   },
@@ -707,13 +706,6 @@ const Prendas = () => {
 
   // BUSCAR PRENDAS
   const buscarPrendas = async () => {
-    if (filtroTipo === '-') {
-      setPrendas([]);
-      setPrendasMostradas([]);
-      setPaginaActual(0);
-      return;
-    }
-
     setLoading(true);
 
     try {
@@ -730,8 +722,8 @@ const Prendas = () => {
 
       let prendasFiltradas = response.data;
 
-      // Aplicar filtro de búsqueda en tiempo real si hay texto
-      if (filtroBusqueda.trim() !== '') {
+      // Si el filtro está en "-" y hay búsqueda, buscar en todos los campos
+      if (filtroTipo === '-' && filtroBusqueda.trim() !== '') {
         const busqueda = filtroBusqueda.toLowerCase();
         prendasFiltradas = prendasFiltradas.filter(prenda => {
           const nombre = (prenda.Prenda_nombre || '').toLowerCase();
@@ -744,6 +736,27 @@ const Prendas = () => {
                  modelo.includes(busqueda) ||
                  color.includes(busqueda);
         });
+      }
+      // Si el filtro está en "TODOS", mostrar todas o filtrar por búsqueda
+      else if (filtroTipo === 'TODOS') {
+        if (filtroBusqueda.trim() !== '') {
+          const busqueda = filtroBusqueda.toLowerCase();
+          prendasFiltradas = prendasFiltradas.filter(prenda => {
+            const nombre = (prenda.Prenda_nombre || '').toLowerCase();
+            const marca = (prenda.Prenda_marca_nombre || '').toLowerCase();
+            const modelo = (prenda.Prenda_modelo_nombre || '').toLowerCase();
+            const color = (prenda.Prenda_color_nombre || '').toLowerCase();
+
+            return nombre.includes(busqueda) ||
+                   marca.includes(busqueda) ||
+                   modelo.includes(busqueda) ||
+                   color.includes(busqueda);
+          });
+        }
+      }
+      // Si el filtro está en "-" sin búsqueda, no mostrar nada
+      else if (filtroTipo === '-') {
+        prendasFiltradas = [];
       }
 
       setPrendas(prendasFiltradas);
@@ -850,6 +863,15 @@ const Prendas = () => {
   // MANEJO DE FORMULARIO
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    
+    // Validación para el campo nombre: solo letras mayúsculas, minúsculas y espacios
+    if (name === 'Prenda_nombre') {
+      const soloLetrasYEspacios = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/;
+      if (!soloLetrasYEspacios.test(value)) {
+        return; // No actualiza si contiene caracteres no válidos
+      }
+    }
+    
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -1082,55 +1104,50 @@ const Prendas = () => {
           {/* HEADER */}
           <div style={styles.header}>
             <h1 style={styles.title}>Gestión de Prendas</h1>
-            <button
-              style={styles.addButton}
-              onClick={abrirModalCrear}
-              onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
-              onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
-            >
-              <Plus style={{ width: '20px', height: '20px' }} />
-              Nueva Prenda
-            </button>
-          </div>
-
-          {/* FILTROS */}
-          <div style={styles.headerActions}>
-            <select
-              value={filtroTipo}
-              onChange={(e) => setFiltroTipo(e.target.value)}
-              style={styles.select}
-            >
-              <option value="-">-</option>
-              <option value="TODOS">TODOS</option>
-            </select>
-
-            <div style={styles.searchContainer}>
-              <Search style={styles.searchIcon} />
-              <input
-                type="text"
-                placeholder="Buscar por nombre, marca, modelo o color..."
-                value={filtroBusqueda}
-                onChange={(e) => setFiltroBusqueda(e.target.value)}
-                style={styles.searchInput}
-                disabled={filtroTipo === '-'}
-              />
-              {filtroBusqueda && (
-                <button
-                  style={styles.clearButton}
-                  onClick={limpiarBusqueda}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = '#666')}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = '#999')}
-                >
-                  <X style={{ width: '16px', height: '16px' }} />
-                </button>
-              )}
-            </div>
-
-            {prendasMostradas.length > 0 && (
-              <div style={styles.searchCounter}>
-                {prendasMostradas.length} de {prendas.length} prendas
+            <div style={styles.headerActions}>
+              <div style={styles.searchContainer}>
+                <Search style={styles.searchIcon} />
+                <input
+                  type="text"
+                  placeholder="Buscar por nombre, marca, modelo o color..."
+                  value={filtroBusqueda}
+                  onChange={(e) => setFiltroBusqueda(e.target.value)}
+                  style={styles.searchInput}
+                />
+                {filtroBusqueda && (
+                  <button
+                    style={styles.clearButton}
+                    onClick={limpiarBusqueda}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = '#666')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = '#999')}
+                  >
+                    <X style={{ width: '16px', height: '16px' }} />
+                  </button>
+                )}
               </div>
-            )}
+              <select
+                value={filtroTipo}
+                onChange={(e) => setFiltroTipo(e.target.value)}
+                style={styles.select}
+              >
+                <option value="-">-</option>
+                <option value="TODOS">TODOS</option>
+              </select>
+              {prendasMostradas.length > 0 && (
+                <div style={styles.searchCounter}>
+                  {prendasMostradas.length} de {prendas.length} prendas
+                </div>
+              )}
+              <button
+                style={styles.addButton}
+                onClick={abrirModalCrear}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+              >
+                <Plus style={{ width: '20px', height: '20px' }} />
+                Nueva Prenda
+              </button>
+            </div>
           </div>
 
           {/* MENSAJES */}
@@ -1449,6 +1466,7 @@ const Prendas = () => {
                           placeholder="Cantidad"
                           value={insumo.cantidad}
                           onChange={(e) => handleInsumoChange(index, 'cantidad', e.target.value)}
+                          onFocus={(e) => e.target.value === '0' && (e.target.value = '')}
                           style={styles.input}
                           min="0"
                           step="0.01"
@@ -1681,13 +1699,6 @@ const Prendas = () => {
                       <span style={styles.detalleItemLabel}>Color:</span>
                       <span style={styles.detalleItemValue}>
                         {prendaDetalles.Prenda_color_nombre || 'N/A'}
-                      </span>
-                    </div>
-
-                    <div style={styles.detalleItem}>
-                      <span style={styles.detalleItemLabel}>Costo de Mano de Obra:</span>
-                      <span style={styles.detalleItemValue}>
-                        ${prendaDetalles.Prenda_precio_unitario?.toFixed(2) || '0.00'}
                       </span>
                     </div>
 

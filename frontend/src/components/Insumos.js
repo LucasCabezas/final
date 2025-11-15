@@ -1111,7 +1111,7 @@ function Insumos() {
                   <Search style={styles.searchIcon} />
                   <input
                     type="text"
-                    placeholder="Buscar insumo..."
+                    placeholder="Buscar por nombre, cantidad, unidad o precio..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     style={styles.searchInput}
