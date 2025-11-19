@@ -62,7 +62,7 @@ const styles = {
     borderRadius: '8px',
     border: '1px solid #d1d5db',
     outline: 'none',
-    width: '256px',
+    width: '280px',
     transition: 'border-color 0.2s',
     fontSize: '14px'
   },
@@ -1109,7 +1109,7 @@ const Prendas = () => {
                 <Search style={styles.searchIcon} />
                 <input
                   type="text"
-                  placeholder="Buscar por nombre, marca, modelo o color..."
+                  placeholder="Buscar por nombre, marca, modelo o color"
                   value={filtroBusqueda}
                   onChange={(e) => setFiltroBusqueda(e.target.value)}
                   style={styles.searchInput}

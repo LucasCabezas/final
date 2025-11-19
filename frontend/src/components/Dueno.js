@@ -7,18 +7,16 @@ import { Package, Calendar, BarChart2 } from "lucide-react";
 function Dueno({ usuarioId }) {
   const [usuario, setUsuario] = useState(null);
   
-  // Estados de Insumos (sin cambios)
+  // Estados de Insumos
   const [insumos, setInsumos] = useState([]);
   const [totalValor, setTotalValor] = useState(0);
-  const [bajoStock, setBajoStock] = useState(0);
   
   // Estados para Pedidos
   const [pedidos, setPedidos] = useState([]);
-  const [filtroFecha, setFiltroFecha] = useState(new Date().toISOString().split('T')[0]);
+  const [fechaDesde, setFechaDesde] = useState(new Date().toISOString().split('T')[0]);
+  const [fechaHasta, setFechaHasta] = useState(new Date().toISOString().split('T')[0]);
   const [datosGraficoPedidos, setDatosGraficoPedidos] = useState([]);
-  
-  // 🔥 NUEVO: Estado para el total de pedidos del día
-  const [totalPedidosDelDia, setTotalPedidosDelDia] = useState(0);
+  const [totalPedidosRango, setTotalPedidosRango] = useState(0);
 
   const [isNavbarCollapsed, setIsNavbarCollapsed] = useState(false);
 
@@ -47,7 +45,6 @@ function Dueno({ usuarioId }) {
   }, [usuarioId]);
 
   const cargarInsumos = async () => {
-    // ... (Tu función cargarInsumos se mantiene 100% igual)
     try {
       const response = await fetch("http://localhost:8000/api/inventario/insumos/");
       if (!response.ok) return;
@@ -60,15 +57,12 @@ function Dueno({ usuarioId }) {
         return sum + subtotal;
       }, 0);
       setTotalValor(total);
-      const bajos = data.filter((item) => item.Insumo_cantidad < item.Insumo_cantidad_minima).length;
-      setBajoStock(bajos);
     } catch (error) {
       console.error("❌ Error cargando insumos:", error);
     }
   };
   
   const cargarPedidos = async () => {
-    // ... (Tu función cargarPedidos se mantiene 100% igual)
     try {
         const response = await fetch("http://localhost:8000/api/pedidos/?usuario_tipo=dueno");
         if (!response.ok) return;
@@ -79,26 +73,28 @@ function Dueno({ usuarioId }) {
     }
   };
 
-  // 🔥 MODIFICADO: Este efecto ahora también calcula el TOTAL de pedidos del día
+  // Efecto para filtrar pedidos por rango de fechas
   useEffect(() => {
     if (pedidos.length === 0) return;
 
-    // 1. Filtrar pedidos por la fecha seleccionada
-    const pedidosFiltrados = filtroFecha
-      ? pedidos.filter(p => p.Pedido_fecha && p.Pedido_fecha.startsWith(filtroFecha))
-      : pedidos;
+    // Filtrar pedidos entre fechaDesde y fechaHasta
+    const pedidosFiltrados = pedidos.filter(p => {
+      if (!p.Pedido_fecha) return false;
+      const fechaPedido = p.Pedido_fecha.split('T')[0];
+      return fechaPedido >= fechaDesde && fechaPedido <= fechaHasta;
+    });
 
-    // 🔥 NUEVO: Guardar el total de pedidos filtrados
-    setTotalPedidosDelDia(pedidosFiltrados.length);
+    // Guardar el total de pedidos filtrados
+    setTotalPedidosRango(pedidosFiltrados.length);
 
-    // 2. Agrupar por estado
+    // Agrupar por estado
     const conteoPorEstado = pedidosFiltrados.reduce((acc, pedido) => {
         const estado = pedido.Pedido_estado_real || 'INDEFINIDO';
         acc[estado] = (acc[estado] || 0) + 1;
         return acc;
     }, {});
 
-    // 3. Formatear para el gráfico de torta
+    // Formatear para el gráfico de torta
     const datosFormateados = Object.keys(conteoPorEstado).map(estado => ({
       name: estado.replace(/_/g, ' '),
       value: conteoPorEstado[estado],
@@ -107,17 +103,15 @@ function Dueno({ usuarioId }) {
 
     setDatosGraficoPedidos(datosFormateados);
 
-  }, [pedidos, filtroFecha]);
+  }, [pedidos, fechaDesde, fechaHasta]);
 
-
-  // Datos para el gráfico de Insumos (sin cambios)
+  // Datos para el gráfico de Insumos
   const datosGraficoInsumos = insumos.map((item) => ({
     name: item.Insumo_nombre,
     value: item.Insumo_cantidad,
   }));
 
   const styles = {
-    // ... (Todos tus estilos se mantienen 100% igual)
     container: {
       display: "flex",
       minHeight: "100vh",
@@ -155,7 +149,7 @@ function Dueno({ usuarioId }) {
     },
     resumenGrid: {
       display: "grid",
-      gridTemplateColumns: "1fr 1fr 2fr",
+      gridTemplateColumns: "1fr 2fr",
       gap: "20px",
       marginBottom: "40px",
     },
@@ -206,6 +200,19 @@ function Dueno({ usuarioId }) {
       marginBottom: "10px",
       color: "#d1d5db",
     },
+    dateInputContainer: {
+      display: "flex",
+      gap: "20px",
+      marginBottom: "20px",
+      flexWrap: "wrap",
+    },
+    dateInputGroup: {
+      display: "flex",
+      flexDirection: "column",
+      gap: "8px",
+      flex: "1",
+      minWidth: "200px",
+    },
   };
 
   return (
@@ -223,9 +230,8 @@ function Dueno({ usuarioId }) {
             </h2>
           </div>
 
-          {/* Resumen General de Insumos (Tu sección original, sin cambios) */}
+          {/* Resumen General de Insumos */}
           <section style={{ marginBottom: "40px" }}>
-            {/* ... (Todo tu JSX de Resumen de Insumos se mantiene 100% igual) ... */}
             <h3 style={{ ...styles.title, fontSize: "20px", marginBottom: "8px" }}>
               <Package size={20} style={{ marginRight: "8px", verticalAlign: "bottom" }} />
               Resumen General de Inventario de Insumos
@@ -236,10 +242,6 @@ function Dueno({ usuarioId }) {
                 <p style={styles.cardValue}>
                   ${totalValor.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
-              </div>
-              <div style={styles.resumenCard}>
-                <h4 style={styles.cardLabel}>Artículos en Bajo Stock</h4>
-                <p style={styles.cardValue}>{bajoStock}</p>
               </div>
               <div style={styles.resumenCard}>
                 <h4 style={styles.cardLabel}>Distribución de Cantidad por Insumo</h4>
@@ -290,52 +292,74 @@ function Dueno({ usuarioId }) {
             </div>
           </section>
 
-          {/* 🔥 NUEVO: Sección de Resumen de Pedidos */}
+          {/* Sección de Resumen de Pedidos con Rango de Fechas */}
           <section style={{ marginBottom: "40px" }}>
             <h3 style={{ ...styles.title, fontSize: "20px", marginBottom: "8px" }}>
               <BarChart2 size={20} style={{ marginRight: "8px", verticalAlign: "bottom" }} />
-              Resumen de Pedidos por Día
+              Resumen de Pedidos por Rango de Fechas
             </h3>
             <p style={styles.subtitle}>
-              Estado de los pedidos generados en la fecha seleccionada.
+              Estado de los pedidos generados en el rango de fechas seleccionado.
             </p>
 
-            {/* Usamos un layout de 1 columna, reutilizando el estilo de card */}
             <div style={styles.resumenCard}>
               <div style={{...styles.cardLabel, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Calendar size={16} />
-                <span>Filtrar por Fecha</span>
+                <span>Seleccionar Rango de Fechas</span>
               </div>
               
-              {/* El Filtro de Fecha */}
-              <input
-                type="date"
-                value={filtroFecha}
-                onChange={(e) => setFiltroFecha(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  backgroundColor: 'rgba(0,0,0,0.3)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  color: '#fff',
-                  borderRadius: '8px',
-                  marginBottom: '20px',
-                  colorScheme: 'dark' // Asegura que el calendario se vea bien
-                }}
-              />
+              {/* Filtros de Fecha Desde/Hasta */}
+              <div style={styles.dateInputContainer}>
+                <div style={styles.dateInputGroup}>
+                  <label style={{color: '#9ca3af', fontSize: '12px'}}>Desde:</label>
+                  <input
+                    type="date"
+                    value={fechaDesde}
+                    onChange={(e) => setFechaDesde(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      backgroundColor: 'rgba(0,0,0,0.3)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      color: '#fff',
+                      borderRadius: '8px',
+                      colorScheme: 'dark'
+                    }}
+                  />
+                </div>
+                <div style={styles.dateInputGroup}>
+                  <label style={{color: '#9ca3af', fontSize: '12px'}}>Hasta:</label>
+                  <input
+                    type="date"
+                    value={fechaHasta}
+                    onChange={(e) => setFechaHasta(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      backgroundColor: 'rgba(0,0,0,0.3)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      color: '#fff',
+                      borderRadius: '8px',
+                      colorScheme: 'dark'
+                    }}
+                  />
+                </div>
+              </div>
               
-              {/* 🔥 NUEVO: Tarjeta de Total de Pedidos del Día */}
+              {/* Tarjeta de Total de Pedidos en el Rango */}
               <div style={{...styles.resumenCard, backgroundColor: 'rgba(0,0,0,0.3)', marginBottom: '20px', textAlign: 'center'}}>
                 <h4 style={styles.cardLabel}>
-                  TOTAL DE PEDIDOS ({new Date(filtroFecha + 'T00:00:00-03:00').toLocaleDateString('es-AR', {day: '2-digit', month: '2-digit', year: 'numeric'})})
+                  TOTAL DE PEDIDOS EN EL RANGO
                 </h4>
                 <p style={styles.cardValue}>
-                  {totalPedidosDelDia}
+                  {totalPedidosRango}
+                </p>
+                <p style={{color: '#9ca3af', fontSize: '12px', marginTop: '8px'}}>
+                  Del {new Date(fechaDesde + 'T00:00:00-03:00').toLocaleDateString('es-AR')} al {new Date(fechaHasta + 'T00:00:00-03:00').toLocaleDateString('es-AR')}
                 </p>
               </div>
 
-              
-              {/* El Gráfico de Torta */}
+              {/* Gráfico de Torta */}
               {datosGraficoPedidos.length > 0 ? (
                 <div style={styles.graficoContainer}>
                   <ResponsiveContainer width="100%" height={250}>
@@ -349,7 +373,6 @@ function Dueno({ usuarioId }) {
                         paddingAngle={2}
                         dataKey="value"
                       >
-                        {/* Usamos el 'fill' que definimos en los datos */}
                         {datosGraficoPedidos.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.fill} />
                         ))}
@@ -374,36 +397,16 @@ function Dueno({ usuarioId }) {
                 </div>
               ) : (
                 <p style={{ color: "#9ca3af", textAlign: "center", padding: "40px 0" }}>
-                  {pedidos.length === 0 ? "Cargando pedidos..." : `No se encontraron pedidos para esta fecha.`}
+                  {pedidos.length === 0 ? "Cargando pedidos..." : `No se encontraron pedidos en este rango de fechas.`}
                 </p>
               )}
             </div>
           </section>
 
-          {/* Alertas Recientes (Tu sección original, sin cambios) */}
+          {/* Alertas Recientes */}
           <section style={styles.alertasSection}>
-            {/* ... (Todo tu JSX de Alertas Recientes se mantiene 100% igual) ... */}
             <h3 style={styles.alertasTitle}>Alertas Recientes</h3>
             <ul style={styles.alertasList}>
-              {bajoStock > 0 ? (
-                <li
-                  style={{
-                    ...styles.alertaItem,
-                    borderLeftColor: "#e74c3c",
-                  }}
-                >
-                  ⚠️ {bajoStock} artículos con bajo stock
-                </li>
-              ) : (
-                <li
-                  style={{
-                    ...styles.alertaItem,
-                    borderLeftColor: "#2ecc71",
-                  }}
-                >
-                  ✅ Todos los insumos tienen stock adecuado
-                </li>
-              )}
               <li
                 style={{
                   ...styles.alertaItem,

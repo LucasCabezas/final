@@ -2,6 +2,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework import serializers
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -20,7 +21,15 @@ import os
 import logging
 
 from .serializers import PasswordResetRequestSerializer, PasswordResetConfirmSerializer
-from .utils import generate_password_reset_token, verify_password_reset_token
+from .utils import (
+    get_failed_attempts, 
+    increment_failed_attempts, 
+    reset_failed_attempts, 
+    is_user_locked,
+    format_lockout_time,
+    generate_password_reset_token, 
+    verify_password_reset_token
+)
 from .models import PerfilUsuario
 logger = logging.getLogger(__name__)
 
@@ -37,31 +46,72 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         return token
 
     def validate(self, attrs):
-        data = super().validate(attrs)
+        username = attrs.get('username', '').lower()
         
-        # Agregar datos del usuario a la respuesta
-        user = self.user
-        roles = [group.name for group in user.groups.all()]
-        rol_nombre = roles[0] if roles else None
+        # 🔥 VERIFICAR SI EL USUARIO ESTÁ BLOQUEADO
+        is_locked, remaining_time = is_user_locked(username)
         
-        # Obtener la URL de la foto de perfil si existe
-        foto_perfil_url = None
-        if hasattr(user, 'perfil') and user.perfil.foto_perfil:
-            foto_perfil_url = user.perfil.foto_perfil.url
+        if is_locked:
+            remaining_formatted = format_lockout_time(remaining_time)
+            raise serializers.ValidationError({
+                'non_field_errors': f'Cuenta bloqueada. Intenta nuevamente en {remaining_formatted}',
+                'locked': True,
+                'remaining_time': int(remaining_time.total_seconds())
+            })
+        
+        try:
+            # Intentar autenticación
+            data = super().validate(attrs)
+            
+            # 🔥 LOGIN EXITOSO - RESETEAR INTENTOS
+            reset_failed_attempts(username)
+            
+            # Agregar datos del usuario a la respuesta
+            user = self.user
+            roles = [group.name for group in user.groups.all()]
+            rol_nombre = roles[0] if roles else None
+            
+            # Obtener la URL de la foto de perfil si existe
+            foto_perfil_url = None
+            if hasattr(user, 'perfil') and user.perfil.foto_perfil:
+                foto_perfil_url = user.perfil.foto_perfil.url
 
-        data.update({
-            'user': {
-                'id': user.id,
-                'username': user.username,
-                'nombre': user.first_name,
-                'apellido': user.last_name,
-                'correo': user.email,
-                'rol': rol_nombre,
-                'foto_perfil': foto_perfil_url
-            }
-        })
-        
-        return data
+            data.update({
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'nombre': user.first_name,
+                    'apellido': user.last_name,
+                    'correo': user.email,
+                    'rol': rol_nombre,
+                    'foto_perfil': foto_perfil_url
+                }
+            })
+            
+            return data
+            
+        except Exception as e:
+            # 🔥 LOGIN FALLIDO - INCREMENTAR INTENTOS
+            attempts = increment_failed_attempts(username)
+            
+            # Calcular mensaje según intentos
+            if attempts >= 6:
+                message = 'Credenciales incorrectas. Cuenta bloqueada por 1 hora.'
+            elif attempts == 5:
+                message = 'Credenciales incorrectas. Próximo intento fallido bloqueará la cuenta por 1 hora.'
+            elif attempts == 4:
+                message = 'Credenciales incorrectas. Cuenta bloqueada por 30 minutos.'
+            elif attempts == 3:
+                message = 'Credenciales incorrectas. Cuenta bloqueada por 15 minutos.'
+            else:
+                remaining = 3 - attempts
+                message = f'Credenciales incorrectas. {remaining} intento{"s" if remaining > 1 else ""} restante{"s" if remaining > 1 else ""}.'
+            
+            raise serializers.ValidationError({
+                'non_field_errors': message,
+                'attempts': attempts,
+                'max_attempts': 3
+            })
 
 # 🔥 NUEVO: Vista JWT personalizada
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -163,7 +213,7 @@ class UsuarioList(APIView):
             username = request.data.get('username', email) 
             
             if not email:
-                 return Response(
+                return Response(
                     {"error": "El email es obligatorio"}, 
                     status=status.HTTP_400_BAD_REQUEST
                 )

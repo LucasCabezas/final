@@ -1,7 +1,7 @@
 // src/components/Login.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiEye, FiEyeOff } from "react-icons/fi";
+import { FiEye, FiEyeOff, FiAlertTriangle, FiShield, FiClock } from "react-icons/fi";
 import { useAuth } from "../context/AuthContext";
 import logo from "./assets/logo.png";
 import fondoImg from "./assets/fondo.png";
@@ -14,6 +14,7 @@ const styles = {
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
+    background: 'linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%)',
     backgroundSize: 'cover',
     backgroundPosition: 'center',
     backgroundRepeat: 'no-repeat',
@@ -36,45 +37,61 @@ const styles = {
     flexDirection: 'column',
     alignItems: 'center',
     width: '100%',
-    maxWidth: '450px'
+    maxWidth: '420px'
   },
   logo: {
-    width: '180px',
+    width: '200px',
     height: 'auto',
-    marginBottom: '32px',
-    filter: 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3))'
+    marginBottom: '40px',
+    filter: 'drop-shadow(0 8px 16px rgba(255, 215, 15, 0.3))',
+    transition: 'transform 0.3s ease'
   },
   loginBox: {
-    backgroundColor: 'rgba(30, 30, 30, 0.95)',
-    borderRadius: '16px',
-    padding: '40px',
+    backgroundColor: 'rgba(20, 20, 20, 0.95)',
+    borderRadius: '20px',
+    padding: '48px 40px',
     width: '100%',
-    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-    border: '1px solid rgba(255, 255, 255, 0.1)'
+    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.8), 0 0 1px rgba(255, 215, 15, 0.2)',
+    border: '1px solid rgba(255, 215, 15, 0.1)',
+    backdropFilter: 'blur(10px)'
   },
   title: {
     fontSize: '28px',
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: '#ffffff',
     textAlign: 'center',
     marginBottom: '32px',
-    letterSpacing: '0.5px'
+    letterSpacing: '0.5px',
+    background: 'linear-gradient(135deg, #FFD70F 0%, #FFA500 100%)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent'
   },
   form: {
     display: 'flex',
     flexDirection: 'column',
     gap: '20px'
   },
+  inputGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px'
+  },
+  label: {
+    fontSize: '14px',
+    fontWeight: '500',
+    color: '#b0b0b0',
+    marginLeft: '4px'
+  },
   input: {
     width: '100%',
-    padding: '14px 16px',
-    backgroundColor: '#fff',
-    color: '#000',
-    border: '2px solid #4b5563',
-    borderRadius: '8px',
+    padding: '16px 18px',
+    backgroundColor: 'rgba(30, 30, 30, 0.8)',
+    color: '#e8e8e8',
+    border: '2px solid rgba(60, 60, 60, 0.5)',
+    borderRadius: '12px',
     fontSize: '15px',
     outline: 'none',
-    transition: 'all 0.2s',
+    transition: 'all 0.3s ease',
     boxSizing: 'border-box',
     fontFamily: 'inherit'
   },
@@ -84,101 +101,165 @@ const styles = {
   },
   eyeIcon: {
     position: 'absolute',
-    right: '16px',
+    right: '18px',
     top: '50%',
     transform: 'translateY(-50%)',
     cursor: 'pointer',
-    color: '#666',
+    color: '#888888',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    transition: 'color 0.2s'
+    transition: 'all 0.3s ease',
+    padding: '4px'
   },
   submitButton: {
     width: '100%',
-    padding: '14px',
-    backgroundColor: 'rgba(255, 215, 15, 1)',
-    color: '#000',
+    padding: '16px',
+    backgroundColor: '#FFD70F',
+    color: '#101010',
     border: 'none',
-    borderRadius: '8px',
+    borderRadius: '12px',
     fontSize: '16px',
-    fontWeight: '600',
+    fontWeight: '700',
     cursor: 'pointer',
-    transition: 'all 0.2s',
+    transition: 'all 0.3s ease',
     marginTop: '8px',
-    fontFamily: 'inherit'
+    fontFamily: 'inherit',
+    letterSpacing: '0.5px',
+    boxShadow: '0 4px 15px rgba(255, 215, 15, 0.3)'
   },
   submitButtonDisabled: {
-    opacity: 0.6,
-    cursor: 'not-allowed'
+    opacity: 0.5,
+    cursor: 'not-allowed',
+    backgroundColor: '#555555',
+    color: '#999999',
+    boxShadow: 'none'
   },
   recuperarButton: {
     width: '100%',
     padding: '12px',
     backgroundColor: 'transparent',
-    color: '#93c5fd',
+    color: '#9ca3af',
     border: 'none',
-    borderRadius: '8px',
+    borderRadius: '10px',
     fontSize: '14px',
     fontWeight: '500',
     cursor: 'pointer',
-    transition: 'all 0.2s',
+    transition: 'all 0.3s ease',
     marginTop: '12px',
-    textDecoration: 'underline',
     fontFamily: 'inherit'
   },
   mensaje: {
-    marginTop: '20px',
-    padding: '12px 16px',
-    borderRadius: '8px',
+    marginTop: '24px',
+    padding: '16px 20px',
+    borderRadius: '12px',
     fontSize: '14px',
     fontWeight: '500',
     textAlign: 'center',
-    animation: 'slideIn 0.3s ease-out'
+    animation: 'slideIn 0.4s ease-out',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '12px',
+    lineHeight: '1.5'
   },
   mensajeSuccess: {
-    backgroundColor: '#10b981',
-    color: '#ffffff'
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    color: '#10b981',
+    border: '1px solid rgba(16, 185, 129, 0.3)',
+    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)'
   },
   mensajeError: {
-    backgroundColor: '#ef4444',
-    color: '#ffffff'
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    color: '#ef4444',
+    border: '1px solid rgba(239, 68, 68, 0.3)',
+    boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)'
   },
   mensajeWarning: {
-    backgroundColor: '#f59e0b',
-    color: '#ffffff'
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    color: '#f59e0b',
+    border: '1px solid rgba(245, 158, 11, 0.3)',
+    boxShadow: '0 4px 12px rgba(245, 158, 11, 0.2)'
+  },
+  mensajeBlocked: {
+    backgroundColor: 'rgba(220, 38, 38, 0.15)',
+    color: '#dc2626',
+    border: '1px solid rgba(220, 38, 38, 0.4)',
+    fontWeight: '600',
+    boxShadow: '0 4px 12px rgba(220, 38, 38, 0.3)'
+  },
+  attemptsBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    color: '#f59e0b',
+    padding: '8px 14px',
+    borderRadius: '8px',
+    fontSize: '13px',
+    fontWeight: '600',
+    marginTop: '12px',
+    border: '1px solid rgba(245, 158, 11, 0.3)'
+  },
+  lockoutTimer: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    marginTop: '16px',
+    padding: '12px 16px',
+    backgroundColor: 'rgba(220, 38, 38, 0.1)',
+    borderRadius: '10px',
+    border: '1px solid rgba(220, 38, 38, 0.3)'
+  },
+  timerText: {
+    fontSize: '18px',
+    fontWeight: '700',
+    color: '#dc2626',
+    fontFamily: 'monospace'
   }
 };
 
 const styleSheet = `
   .login-input:focus {
-    border-color: rgba(255, 215, 15, 1);
-    box-shadow: 0 0 0 3px rgba(255, 215, 15, 0.1);
+    border-color: #FFD70F;
+    box-shadow: 0 0 0 4px rgba(255, 215, 15, 0.15);
+    background-color: rgba(35, 35, 35, 0.9);
+  }
+
+  .login-input:hover:not(:disabled) {
+    border-color: rgba(255, 215, 15, 0.4);
   }
 
   .login-submit-button:hover:not(:disabled) {
-    opacity: 0.9;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(255, 215, 15, 0.3);
+    background-color: #FFA500;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(255, 215, 15, 0.4);
   }
 
   .login-submit-button:active:not(:disabled) {
     transform: translateY(0);
+    box-shadow: 0 4px 15px rgba(255, 215, 15, 0.3);
   }
 
   .login-recuperar-button:hover {
-    color: #60a5fa;
-    background-color: rgba(147, 197, 253, 0.1);
+    color: #FFD70F;
+    background-color: rgba(255, 215, 15, 0.1);
   }
 
   .login-eye-icon:hover {
-    color: rgba(255, 215, 15, 1);
+    color: #FFD70F;
+    transform: translateY(-50%) scale(1.1);
+  }
+
+  .login-logo:hover {
+    transform: scale(1.05);
   }
 
   @keyframes slideIn {
     from {
       opacity: 0;
-      transform: translateY(-10px);
+      transform: translateY(-15px);
     }
     to {
       opacity: 1;
@@ -186,16 +267,29 @@ const styleSheet = `
     }
   }
 
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+
+  .login-timer-pulse {
+    animation: pulse 2s ease-in-out infinite;
+  }
+
   @media (max-width: 480px) {
     .login-box-responsive {
-      padding: 28px 24px;
+      padding: 32px 28px;
     }
   }
 `;
 
 function Login() {
   const navigate = useNavigate();
-  const { login } = useAuth();  // 🔥 Usar función JWT
+  const { login } = useAuth();
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -204,23 +298,60 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [mostrarRecuperar, setMostrarRecuperar] = useState(false);
+  const [remainingTime, setRemainingTime] = useState(0);
+  const [attempts, setAttempts] = useState(0);
+
+  // 🔥 TIMER PARA CUENTA REGRESIVA DE BLOQUEO
+  useEffect(() => {
+    if (remainingTime <= 0) return;
+
+    const timer = setInterval(() => {
+      setRemainingTime((prev) => {
+        if (prev <= 1) {
+          setMensaje("");
+          setTipoMensaje("");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [remainingTime]);
+
+  const formatTime = (seconds) => {
+    if (seconds >= 3600) {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const secs = seconds % 60;
+      return `${hours}h ${minutes}m ${secs}s`;
+    } else if (seconds >= 60) {
+      const minutes = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${minutes}m ${secs}s`;
+    }
+    return `${seconds}s`;
+  };
 
   const validarCampos = () => {
-    const errores = {};
-    if (!username.trim()) errores.username = "⚠️ Usuario vacío";
-    if (!password.trim()) errores.password = "⚠️ Contraseña vacía";
-    else if (password.length < 4)
-      errores.password = "⚠️ La contraseña debe tener al menos 4 caracteres";
-
-    if (Object.keys(errores).length > 0) {
-      setMensaje(Object.values(errores).join(" | "));
+    if (!username.trim()) {
+      setMensaje("⚠️ Por favor ingresa tu usuario");
+      setTipoMensaje("warning");
+      return false;
+    }
+    if (!password.trim()) {
+      setMensaje("⚠️ Por favor ingresa tu contraseña");
+      setTipoMensaje("warning");
+      return false;
+    }
+    if (password.length < 4) {
+      setMensaje("⚠️ La contraseña debe tener al menos 4 caracteres");
       setTipoMensaje("warning");
       return false;
     }
     return true;
   };
 
-  // 🔥 NUEVA FUNCIÓN DE LOGIN CON JWT
   const handleLogin = async (e) => {
     e.preventDefault();
     if (!validarCampos()) return;
@@ -229,21 +360,20 @@ function Login() {
       setLoading(true);
       setMensaje("");
 
-      console.log("🔐 Iniciando login JWT para usuario:", username);
+      console.log("🔐 Intentando login...");
 
-      // 🔥 Usar función login del AuthContext que maneja JWT
       const success = await login({
         username: username,
         password: password
       });
 
       if (success) {
-        setMensaje("✅ ¡Login exitoso! Redirigiendo...");
+        setMensaje("✅ ¡Inicio de sesión exitoso!");
         setTipoMensaje("success");
+        setAttempts(0);
+        setRemainingTime(0);
 
-        // Determinar ruta según el rol (el AuthContext ya tiene esta info)
         setTimeout(() => {
-          // El AuthContext maneja la redirección o podemos hacerlo aquí
           const rutas = {
             'Dueño': '/dueno',
             'Vendedor': '/vendedor',
@@ -251,7 +381,6 @@ function Login() {
             'Estampador': '/estampador'
           };
 
-          // Obtener rol del localStorage actualizado
           const userData = JSON.parse(localStorage.getItem('usuario_data') || '{}');
           const rutaDestino = rutas[userData.rol];
 
@@ -266,9 +395,44 @@ function Login() {
       }
 
     } catch (error) {
-      console.error("❌ Error en login:", error);
-      setMensaje("⚠️ Error de conexión con el servidor");
-      setTipoMensaje("warning");
+      console.error("❌ Error completo en login:", error);
+      console.error("❌ Error response:", error.response);
+      console.error("❌ Error response data:", error.response?.data);
+      
+      // 🔥 MANEJO DE ERRORES DE BLOQUEO
+      if (error.response?.data) {
+        const errorData = error.response.data;
+        console.log("📦 Datos del error:", errorData);
+        
+        const { non_field_errors, locked, remaining_time, attempts: failedAttempts } = errorData;
+        
+        if (locked && remaining_time) {
+          console.log("🔒 Usuario bloqueado. Tiempo restante:", remaining_time);
+          setRemainingTime(remaining_time);
+          setMensaje(non_field_errors || "🔒 Cuenta bloqueada temporalmente");
+          setTipoMensaje("blocked");
+        } else if (failedAttempts) {
+          console.log("⚠️ Intentos fallidos:", failedAttempts);
+          setAttempts(failedAttempts);
+          setMensaje(non_field_errors || "❌ Credenciales incorrectas");
+          setTipoMensaje("error");
+        } else if (non_field_errors) {
+          console.log("⚠️ Error de campos:", non_field_errors);
+          setMensaje(Array.isArray(non_field_errors) ? non_field_errors[0] : non_field_errors);
+          setTipoMensaje("error");
+        } else {
+          setMensaje("❌ Error al iniciar sesión");
+          setTipoMensaje("error");
+        }
+      } else if (error.message) {
+        console.log("⚠️ Error message:", error.message);
+        setMensaje(error.message);
+        setTipoMensaje("warning");
+      } else {
+        setMensaje("⚠️ Error de conexión con el servidor");
+        setTipoMensaje("warning");
+      }
+      
       setLoading(false);
     }
   };
@@ -276,6 +440,8 @@ function Login() {
   if (mostrarRecuperar) {
     return <Recuperar volverAlLogin={() => setMostrarRecuperar(false)} />;
   }
+
+  const isBlocked = remainingTime > 0;
 
   return (
     <>
@@ -290,55 +456,82 @@ function Login() {
         <div style={styles.overlay}></div>
         
         <div style={styles.contentWrapper}>
-          <img src={logo} alt="Logo King Importados" style={styles.logo} />
+          <img 
+            src={logo} 
+            alt="Logo King Importados" 
+            style={styles.logo}
+            className="login-logo"
+          />
           
           <div style={styles.loginBox} className="login-box-responsive">
             <h1 style={styles.title}>Inicio de Sesión</h1>
 
             <form onSubmit={handleLogin} style={styles.form}>
-              <input
-                type="text"
-                placeholder="Usuario"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                aria-label="Usuario"
-                style={styles.input}
-                className="login-input"
-                required
-                disabled={loading}
-              />
-
-              <div style={styles.inputContainer}>
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>Usuario</label>
                 <input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Contraseña"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  aria-label="Contraseña"
-                  style={{...styles.input, paddingRight: '48px'}}
+                  type="text"
+                  placeholder="Ingresa tu usuario"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  style={styles.input}
                   className="login-input"
                   required
-                  disabled={loading}
+                  disabled={loading || isBlocked}
+                  autoComplete="username"
                 />
-                <span
-                  style={styles.eyeIcon}
-                  className="login-eye-icon"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
-                </span>
               </div>
+
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>Contraseña</label>
+                <div style={styles.inputContainer}>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Ingresa tu contraseña"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    style={{...styles.input, paddingRight: '52px'}}
+                    className="login-input"
+                    required
+                    disabled={loading || isBlocked}
+                    autoComplete="current-password"
+                  />
+                  <span
+                    style={styles.eyeIcon}
+                    className="login-eye-icon"
+                    onClick={() => !isBlocked && setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
+                  </span>
+                </div>
+              </div>
+
+              {/* 🔥 BADGE DE INTENTOS */}
+              {attempts > 0 && attempts < 3 && !isBlocked && (
+                <div style={styles.attemptsBadge}>
+                  <FiAlertTriangle size={16} />
+                  <span>{3 - attempts} intento{3 - attempts !== 1 ? 's' : ''} restante{3 - attempts !== 1 ? 's' : ''}</span>
+                </div>
+              )}
+
+              {/* 🔥 TIMER DE BLOQUEO */}
+              {isBlocked && (
+                <div style={styles.lockoutTimer}>
+                  <FiClock size={20} style={{ color: '#dc2626' }} className="login-timer-pulse" />
+                  <span style={styles.timerText}>{formatTime(remainingTime)}</span>
+                </div>
+              )}
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || isBlocked}
                 style={{
                   ...styles.submitButton,
-                  ...(loading && styles.submitButtonDisabled)
+                  ...((loading || isBlocked) && styles.submitButtonDisabled)
                 }}
                 className="login-submit-button"
               >
-                {loading ? "🔄 Ingresando..." : "Ingresar"}
+                {loading ? "🔄 Ingresando..." : isBlocked ? "🔒 Bloqueado" : "Ingresar"}
               </button>
             </form>
 
@@ -346,9 +539,9 @@ function Login() {
               style={styles.recuperarButton}
               className="login-recuperar-button"
               onClick={() => setMostrarRecuperar(true)}
-              disabled={loading}
+              disabled={loading || isBlocked}
             >
-              Recuperar Contraseña
+              ¿Olvidaste tu contraseña?
             </button>
 
             {mensaje && (
@@ -357,10 +550,13 @@ function Login() {
                   ...styles.mensaje,
                   ...(tipoMensaje === 'success' && styles.mensajeSuccess),
                   ...(tipoMensaje === 'error' && styles.mensajeError),
-                  ...(tipoMensaje === 'warning' && styles.mensajeWarning)
+                  ...(tipoMensaje === 'warning' && styles.mensajeWarning),
+                  ...(tipoMensaje === 'blocked' && styles.mensajeBlocked)
                 }}
               >
-                {mensaje}
+                {tipoMensaje === 'blocked' && <FiShield size={20} />}
+                {tipoMensaje === 'error' && <FiAlertTriangle size={20} />}
+                <span>{mensaje}</span>
               </div>
             )}
           </div>

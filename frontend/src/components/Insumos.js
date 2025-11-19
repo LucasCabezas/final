@@ -58,7 +58,7 @@ const styles = {
     borderRadius: '8px',
     border: '1px solid #d1d5db',
     outline: 'none',
-    width: '256px',
+    width: '285px',
     transition: 'border-color 0.2s',
     fontSize: '14px'
   },
@@ -71,7 +71,7 @@ const styles = {
     outline: 'none',
     fontSize: '14px',
     cursor: 'pointer',
-    height: '42px', // Para alinear con el searchInput
+    height: '42px',
     boxSizing: 'border-box'
   },
   clearButton: {
@@ -490,13 +490,13 @@ const styles = {
     display: 'flex',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    padding: '16px', // Añadido padding
+    padding: '16px',
     color: '#9ca3af',
-    backgroundColor: 'rgba(30, 30, 30, 0.9)', // Fondo de la tabla
+    backgroundColor: 'rgba(30, 30, 30, 0.9)',
     borderTop: '1px solid #fff1',
     borderBottomLeftRadius: '8px',
     borderBottomRightRadius: '8px',
-    marginTop: '-1px', // Para unirse con la tabla
+    marginTop: '-1px',
   },
   paginationButton: {
     background: '#374151',
@@ -520,6 +520,30 @@ const styles = {
     fontSize: '14px',
     margin: '0 16px',
     fontWeight: '500'
+  },
+  mensajeInfo: {
+    textAlign: 'center',
+    padding: '48px',
+    backgroundColor: 'rgba(30, 30, 30, 0.9)',
+    borderRadius: '8px',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    marginBottom: '24px',
+    color: '#2196F3',
+    fontSize: '16px'
+  },
+  mensajeVacio: {
+    textAlign: 'center',
+    padding: '48px',
+    backgroundColor: 'rgba(30, 30, 30, 0.9)',
+    borderRadius: '8px',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    marginBottom: '24px'
+  },
+  mensajeVacioTexto: {
+    fontSize: '18px',
+    color: '#999999',
+    marginBottom: '16px',
+    margin: 0
   }
 };
 
@@ -583,15 +607,14 @@ function Insumos() {
   const [unidades, setUnidades] = useState([]);
   const [tipos, setTipos] = useState([]);
 
-  // Control de permisos por rol
   const { user } = useAuth();
   const userRole = user?.rol;
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterMode, setFilterMode] = useState('null');
-  // Función para verificar permisos de edición
+  const [searchTerm, setSearchTerm] = useState(''); 
+  const [filterMode, setFilterMode] = useState('-'); 
+
   const canEdit = () => {
     return userRole === 'Dueño';
   };
@@ -630,35 +653,13 @@ function Insumos() {
       const response = await fetch('http://localhost:8000/api/inventario/insumos/');
       const data = await response.json();
       
-      // Filtrado por rol de usuario
       let insumosFiltrados = data;
       
       if (userRole === 'Costurero') {
-        // FILTRAR SOLO INSUMOS DE COSTURA
-        console.log("🔍 DEBUG Costurero - Datos completos:", data);
-        console.log("🔍 DEBUG Costurero - Primer insumo:", data[0]);
-        console.log("🔍 DEBUG Costurero - tipo_insumo del primer elemento:", data[0]?.tipo_insumo);
-        
-        insumosFiltrados = data.filter(item => {
-          console.log(`🔍 DEBUG Costurero - Insumo: ${item.Insumo_nombre}, tipo:`, item.tipo_insumo);
-          return item.tipo_insumo === 1; 
-        });
-        
-        console.log(`🧵 Costurero - Insumos filtrados: ${insumosFiltrados.length}/${data.length}`);
+        insumosFiltrados = data.filter(item => item.tipo_insumo === 1);
       } else if (userRole === 'Estampador') {
-        // FILTRAR SOLO INSUMOS DE ESTAMPADO
-        console.log("🔍 DEBUG Estampador - Datos completos:", data);
-        console.log("🔍 DEBUG Estampador - Primer insumo:", data[0]);
-        console.log("🔍 DEBUG Estampador - tipo_insumo del primer elemento:", data[0]?.tipo_insumo);
-        
-        insumosFiltrados = data.filter(item => {
-          console.log(`🔍 DEBUG Estampador - Insumo: ${item.Insumo_nombre}, tipo:`, item.tipo_insumo);
-          return item.tipo_insumo === 2;
-        });
-        
-        console.log(`🎨 Estampador - Insumos filtrados: ${insumosFiltrados.length}/${data.length}`);
+        insumosFiltrados = data.filter(item => item.tipo_insumo === 2);
       }
-      // Si es Dueño, ve todos los insumos (sin filtrar)
       
       setInsumos(insumosFiltrados);
     } catch (error) {
@@ -703,21 +704,33 @@ function Insumos() {
 
   const filteredInsumos = useMemo(() => {
     const search = searchTerm.toLowerCase().trim();
-    if (search !== '') {
-      return insumos.filter(insumo => {
-        return (
-          insumo.Insumo_nombre?.toLowerCase().includes(search) ||
-          insumo.Insumo_cantidad?.toString().includes(search) ||
-          insumo.Insumo_unidad_medida?.toLowerCase().includes(search) ||
-          insumo.Insumo_precio_unitario?.toString().includes(search)
-        );
-      });
+
+    if (filterMode === '-' && search === '') {
+      return [];
     }
-    if (filterMode === 'all') {
-      return insumos;
+
+    let listToFilter = insumos;
+
+    if (search !== '' || filterMode === 'TODOS') {
+      if (search !== '') {
+        listToFilter = listToFilter.filter(insumo => {
+          const nombre = (insumo.Insumo_nombre || '').toLowerCase();
+          const unidad = (insumo.Insumo_unidad_medida || insumo.unidad_medida_nombre || '').toLowerCase(); 
+          const cantidad = (insumo.Insumo_cantidad || '').toString();
+          const precio = (insumo.Insumo_precio_unitario || '').toString();
+
+          return (
+            nombre.includes(search) ||
+            cantidad.includes(search) ||
+            unidad.includes(search) ||
+            precio.includes(search)
+          );
+        });
+      }
     }
-    return []; 
-  }, [searchTerm, insumos, filterMode]);
+
+    return listToFilter;
+  }, [searchTerm, insumos, filterMode]); 
 
   const totalPages = Math.ceil(filteredInsumos.length / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -732,43 +745,39 @@ function Insumos() {
     setCurrentPage((prev) => Math.max(prev - 1, 1));
   };
   
-  // 🔥 CAMBIO: Resetear paginación si la búsqueda cambia
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, filterMode]);
 
   const handleOpenModal = (insumo = null) => {
-  if (insumo) {
-    // 🧩 Cuando se edita un insumo existente
-    setEditingInsumo(insumo);
+    if (insumo) {
+      setEditingInsumo(insumo);
 
-    setFormData({
-      nombre: insumo.Insumo_nombre,
-      cantidad: insumo.Insumo_cantidad,
-      unidad: insumo.unidad_medida || insumo.unidad_medida_id || '', // ID de la unidad
-      tipo: insumo.tipo_insumo || insumo.tipo_insumo_id || '',        // ID del tipo
-      precioUnitario: insumo.Insumo_precio_unitario,
-      cantidadMinima: insumo.Insumo_cantidad_minima || ''             // Nueva propiedad
-    });
+      setFormData({
+        nombre: insumo.Insumo_nombre,
+        cantidad: insumo.Insumo_cantidad,
+        unidad: insumo.unidad_medida || insumo.unidad_medida_id || '',
+        tipo: insumo.tipo_insumo || insumo.tipo_insumo_id || '',
+        precioUnitario: insumo.Insumo_precio_unitario,
+        cantidadMinima: insumo.Insumo_cantidad_minima || ''
+      });
 
-    setIsAddMode(false);
-  } else {
-    // 🧩 Cuando se agrega un nuevo insumo
-    setEditingInsumo(null);
-    setFormData({
-      nombre: '',
-      cantidad: '',
-      unidad: '',
-      tipo: '',
-      precioUnitario: '',
-      cantidadMinima: ''
-    });
-    setIsAddMode(false);
-  }
+      setIsAddMode(false);
+    } else {
+      setEditingInsumo(null);
+      setFormData({
+        nombre: '',
+        cantidad: '',
+        unidad: '',
+        tipo: '',
+        precioUnitario: '',
+        cantidadMinima: ''
+      });
+      setIsAddMode(false);
+    }
 
-  setShowModal(true);
-};
-
+    setShowModal(true);
+  };
 
   const handleCloseModal = () => {
     setShowModal(false);
@@ -783,10 +792,8 @@ function Insumos() {
       return;
     }
     
-    // 🔥 VALIDACIÓN: Verificar nombres duplicados
     const nombreNormalizado = formData.nombre.trim().toLowerCase();
     const nombreExistente = insumos.find(insumo => {
-      // Si estamos editando, excluir el insumo actual de la comparación
       if (editingInsumo && insumo.Insumo_ID === editingInsumo.Insumo_ID) {
         return false;
       }
@@ -798,13 +805,11 @@ function Insumos() {
       return;
     }
     
-    // 🔥 NUEVO: Verificar si hay cambios en nombre o unidad cuando se edita
     if (editingInsumo) {
       const cambioNombre = formData.nombre !== editingInsumo.Insumo_nombre;
       const cambioUnidad = formData.unidad !== editingInsumo.Insumo_unidad_medida;
       
       if (cambioNombre || cambioUnidad) {
-        // Verificar si el insumo está en uso
         try {
           const response = await fetch(`http://localhost:8000/api/inventario/insumos/${editingInsumo.Insumo_ID}/verificar-uso/`);
           const data = await response.json();
@@ -831,7 +836,6 @@ function Insumos() {
         }
       }
       
-      // Si no hay cambios críticos o no está en uso, continuar normal
       setConfirmAction('edit');
       setConfirmData(formData);
       setShowConfirmModal(true);
@@ -857,10 +861,10 @@ function Insumos() {
       const payload = {
         Insumo_nombre: confirmData.nombre || formData.nombre,
         Insumo_cantidad: cantidad,
-        unidad_medida: confirmData.unidad || formData.unidad,   // ID
-        tipo_insumo: confirmData.tipo || formData.tipo,         // ID
+        unidad_medida: confirmData.unidad || formData.unidad,
+        tipo_insumo: confirmData.tipo || formData.tipo,
         Insumo_precio_unitario: precioUnitario,
-        Insumo_precio_total: precioTotal,                       // 💥 NUEVO campo
+        Insumo_precio_total: precioTotal,
         Insumo_cantidad_minima: Number(confirmData.cantidadMinima || formData.cantidadMinima) || 0
       };
 
@@ -978,21 +982,20 @@ function Insumos() {
   };
 
   const handleInputChange = (e) => {
-  const { name, value } = e.target;
+    const { name, value } = e.target;
 
-  if (name === 'nombre') {
-    const regex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/;
-    if (!regex.test(value)) {
-      return; // evita caracteres no válidos en nombre
+    if (name === 'nombre') {
+      const regex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/;
+      if (!regex.test(value)) {
+        return;
+      }
     }
-  }
 
-  setFormData((prev) => ({
-    ...prev,
-    [name]: value
-  }));
-};
-
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value
+    }));
+  };
 
   const getConfirmModalContent = () => {
     if (confirmAction === 'add') {
@@ -1016,7 +1019,6 @@ function Insumos() {
         onConfirm: handleConfirmSubmit
       };
     } else if (confirmAction === 'edit_with_impact') {
-      // 🔥 NUEVO: Modal especial para cambios que afectan prendas
       const cambiosTexto = [];
       if (confirmData.cambios.nombre) {
         cambiosTexto.push(`nombre a "${confirmData.cambios.nombreNuevo}"`);
@@ -1094,29 +1096,17 @@ function Insumos() {
             )}
 
             <div style={styles.header}>
-              <h1 style={styles.title}>Insumos</h1>
+              <h1 style={styles.title}>Gestión de Insumos</h1>
               <div style={styles.headerActions}>
-                
-                {/* 🔥 CAMBIO: Añadido el filtro desplegable */}
-                <select 
-                  value={filterMode} 
-                  onChange={(e) => setFilterMode(e.target.value)} 
-                  style={styles.select}
-                >
-                  <option value="null">-</option>
-                  <option value="all">Todos</option>
-                </select>
-
                 <div style={styles.searchContainer}>
                   <Search style={styles.searchIcon} />
                   <input
                     type="text"
-                    placeholder="Buscar por nombre, cantidad, unidad o precio..."
+                    placeholder="Buscar por nombre, cantidad, unidad o precio" 
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     style={styles.searchInput}
                     className="search-input"
-                    autoFocus
                   />
                   {searchTerm && (
                     <button
@@ -1129,11 +1119,22 @@ function Insumos() {
                     </button>
                   )}
                 </div>
-                {searchTerm && (
+                
+                <select 
+                  value={filterMode} 
+                  onChange={(e) => setFilterMode(e.target.value)} 
+                  style={styles.select}
+                >
+                  <option value="-">-</option>
+                  <option value="TODOS">TODOS</option>
+                </select>
+
+                {filteredInsumos.length > 0 && (
                   <div style={styles.searchCounter}>
-                    {filteredInsumos.length}
+                    {filteredInsumos.length} de {insumos.length} insumos
                   </div>
                 )}
+                
                 {canEdit() && (
                   <button
                     onClick={() => handleOpenModal()}
@@ -1147,35 +1148,37 @@ function Insumos() {
               </div>
             </div>
 
-            <div style={styles.tableContainer}>
-              <table style={styles.table}>
-                <thead style={styles.thead}>
-                  <tr>
-                    <th style={styles.th}>Insumo</th>
-                    <th style={styles.th}>Cantidad</th>
-                    <th style={styles.th}>Unidad de medida</th>
-                    {canEdit() && <th style={styles.th}>Precio Unitario</th>}
-                    {canEdit() && <th style={styles.th}>Precio total</th>}
-                    {canEdit() && <th style={styles.thCenter}>Acciones</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {/* 🔥 CAMBIO: Lógica de 'tbody' actualizada */}
-                  {searchTerm.trim() === '' ? (
+            {filteredInsumos.length === 0 && filterMode === '-' && searchTerm.trim() === '' && (
+              <div style={styles.mensajeInfo}>
+                Selecciona "TODOS" en el filtro para ver todos los insumos
+              </div>
+            )}
+
+            {filteredInsumos.length === 0 && (filterMode === 'TODOS' || searchTerm.trim() !== '') && (
+              <div style={styles.mensajeVacio}>
+                <p style={styles.mensajeVacioTexto}>
+                  {searchTerm.trim() !== '' 
+                    ? `No se encontraron insumos que coincidan con "${searchTerm}"` 
+                    : 'No hay insumos disponibles'}
+                </p>
+              </div>
+            )}
+
+            {filteredInsumos.length > 0 && (
+              <div style={styles.tableContainer}>
+                <table style={styles.table}>
+                  <thead style={styles.thead}>
                     <tr>
-                      <td colSpan={canEdit() ? "6" : "3"} style={styles.emptyState}>
-                        Comienza a escribir en el buscador para ver los insumos
-                      </td>
+                      <th style={styles.th}>Insumo</th>
+                      <th style={styles.th}>Cantidad</th>
+                      <th style={styles.th}>Unidad de medida</th>
+                      {canEdit() && <th style={styles.th}>Precio Unitario</th>}
+                      {canEdit() && <th style={styles.th}>Precio total</th>}
+                      {canEdit() && <th style={styles.thCenter}>Acciones</th>}
                     </tr>
-                  ) : currentInsumos.length === 0 ? ( // Usa 'currentInsumos' para el chequeo
-                    <tr>
-                      <td colSpan={canEdit() ? "6" : "3"} style={styles.emptyState}>
-                        No se encontraron insumos que coincidan con "{searchTerm}"
-                      </td>
-                    </tr>
-                  ) : (
-                    // Itera sobre 'currentInsumos' (los de la página actual)
-                    currentInsumos.map((insumo) => (
+                  </thead>
+                  <tbody>
+                    {currentInsumos.map((insumo) => (
                       <tr key={insumo.Insumo_ID} style={styles.tr} className="hover-row">
                         <td style={styles.td}>{insumo.Insumo_nombre}</td>
                         <td style={styles.td}>{insumo.Insumo_cantidad}</td>
@@ -1203,14 +1206,13 @@ function Insumos() {
                           </td>
                         )}
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
-            {/* 🔥 CAMBIO: Añadido contenedor de paginación */}
-            {searchTerm.trim() !== '' && filteredInsumos.length > itemsPerPage && (
+            {filteredInsumos.length > itemsPerPage && (
               <div style={styles.paginationContainer}>
                 <span style={styles.paginationInfo}>
                   Página {currentPage} de {totalPages}
@@ -1240,196 +1242,186 @@ function Insumos() {
               </div>
             )}
 
-          {showModal && (
-            <div style={styles.modalOverlay} onClick={handleCloseModal}>
-              <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-                <div style={styles.modalHeader}>
-                  <h2 style={styles.modalTitle}>
-                    {editingInsumo ? 'Editar Insumo' : 'Agregar Insumo'}
-                  </h2>
-                  <button
-                    onClick={handleCloseModal}
-                    style={styles.closeButton}
-                    className="hover-icon"
-                  >
-                    <X style={{ width: '24px', height: '24px', color: '#9ca3af' }} />
-                  </button>
+            {showModal && (
+              <div style={styles.modalOverlay} onClick={handleCloseModal}>
+                <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+                  <div style={styles.modalHeader}>
+                    <h2 style={styles.modalTitle}>
+                      {editingInsumo ? 'Editar Insumo' : 'Agregar Insumo'}
+                    </h2>
+                    <button
+                      onClick={handleCloseModal}
+                      style={styles.closeButton}
+                      className="hover-icon"
+                    >
+                      <X style={{ width: '24px', height: '24px', color: '#9ca3af' }} />
+                    </button>
+                  </div>
+
+                  <div>
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Nombre del Insumo</label>
+                      <input
+                        type="text"
+                        name="nombre"
+                        value={formData.nombre}
+                        onChange={handleInputChange}
+                        style={styles.input}
+                        className="form-input"
+                        placeholder="Ej: Algodón Premium"
+                      />
+                    </div>
+
+                    {editingInsumo && (
+                      <div style={styles.toggleContainer}>
+                        <label style={styles.toggleLabel}>Agregar más cantidad</label>
+                        <button
+                          onClick={() => {
+                            setIsAddMode(!isAddMode);
+                            setFormData(prev => ({ ...prev, cantidad: '' }));
+                          }}
+                          style={{
+                            ...styles.toggleSwitch,
+                            ...(isAddMode && styles.toggleSwitchActive)
+                          }}
+                        >
+                          <div
+                            style={{
+                              ...styles.toggleIndicator,
+                              ...(isAddMode && styles.toggleIndicatorActive)
+                            }}
+                          />
+                        </button>
+                      </div>
+                    )}
+
+                    {editingInsumo && isAddMode && (
+                      <div style={styles.quantityInfo}>
+                        <p style={styles.quantityInfoText}>
+                          Cantidad actual: <strong>{editingInsumo.Insumo_cantidad}</strong>
+                        </p>
+                      </div>
+                    )}
+
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>
+                        {isAddMode && editingInsumo
+                          ? 'Cantidad a agregar'
+                          : 'Cantidad disponible'}
+                      </label>
+                      <input
+                        type="number"
+                        name="cantidad"
+                        value={formData.cantidad}
+                        onChange={handleInputChange}
+                        min="0"
+                        step="0.01"
+                        style={styles.input}
+                        className="form-input"
+                        placeholder="0"
+                      />
+                    </div>
+
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Unidad de Medida</label>
+                      <select
+                        name="unidad"
+                        value={formData.unidad}
+                        onChange={handleInputChange}
+                        style={styles.input}
+                      >
+                        <option value="">Seleccione unidad...</option>
+                        {unidades.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Tipo de Insumo</label>
+                      <select
+                        name="tipo"
+                        value={formData.tipo}
+                        onChange={handleInputChange}
+                        style={styles.input}
+                      >
+                        <option value="">Seleccione tipo...</option>
+                        {tipos.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Precio Unitario</label>
+                      <input
+                        type="number"
+                        name="precioUnitario"
+                        value={formData.precioUnitario}
+                        onChange={handleInputChange}
+                        min="0"
+                        step="0.01"
+                        style={styles.input}
+                        className="form-input"
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    {formData.precioUnitario && formData.cantidad && (
+                      <div style={{
+                        marginTop: '8px',
+                        padding: '8px 12px',
+                        backgroundColor: 'rgba(255,255,255,0.08)',
+                        borderRadius: '8px',
+                        color: '#fff',
+                        fontSize: '14px'
+                      }}>
+                        Precio total estimado: <strong>${(formData.precioUnitario * formData.cantidad).toFixed(2)}</strong>
+                      </div>
+                    )}
+
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Cantidad Mínima</label>
+                      <input
+                        type="number"
+                        name="cantidadMinima"
+                        value={formData.cantidadMinima || ''}
+                        onChange={handleInputChange}
+                        min="0"
+                        step="0.01"
+                        style={styles.input}
+                        className="form-input"
+                        placeholder="Ej: 10"
+                      />
+                      <p style={{ color: '#9ca3af', fontSize: '13px', marginTop: '4px' }}>
+                        Se generará una alerta cuando el stock sea menor o igual a esta cantidad.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={styles.modalActions}>
+                    <button
+                      onClick={handleCloseModal}
+                      style={styles.cancelButton}
+                      className="hover-cancel"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleSubmit}
+                      style={styles.submitButton}
+                      className="hover-button"
+                    >
+                      {editingInsumo ? 'Guardar Cambios' : 'Agregar'}
+                    </button>
+                  </div>
                 </div>
-
-      {/* ================= FORMULARIO ================= */}
-      <div>
-        {/* 🔹 NOMBRE */}
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Nombre del Insumo</label>
-          <input
-            type="text"
-            name="nombre"
-            value={formData.nombre}
-            onChange={handleInputChange}
-            style={styles.input}
-            className="form-input"
-            placeholder="Ej: Algodón Premium"
-          />
-        </div>
-
-        {/* 🔹 MODO AGREGAR CANTIDAD */}
-        {editingInsumo && (
-          <div style={styles.toggleContainer}>
-            <label style={styles.toggleLabel}>Agregar más cantidad</label>
-            <button
-              onClick={() => {
-                setIsAddMode(!isAddMode);
-                setFormData(prev => ({ ...prev, cantidad: '' }));
-              }}
-              style={{
-                ...styles.toggleSwitch,
-                ...(isAddMode && styles.toggleSwitchActive)
-              }}
-            >
-              <div
-                style={{
-                  ...styles.toggleIndicator,
-                  ...(isAddMode && styles.toggleIndicatorActive)
-                }}
-              />
-            </button>
-          </div>
-        )}
-
-        {editingInsumo && isAddMode && (
-          <div style={styles.quantityInfo}>
-            <p style={styles.quantityInfoText}>
-              Cantidad actual: <strong>{editingInsumo.Insumo_cantidad}</strong>
-            </p>
-          </div>
-        )}
-
-        {/* 🔹 CANTIDAD */}
-        <div style={styles.formGroup}>
-          <label style={styles.label}>
-            {isAddMode && editingInsumo
-              ? 'Cantidad a agregar'
-              : 'Cantidad disponible'}
-          </label>
-          <input
-            type="number"
-            name="cantidad"
-            value={formData.cantidad}
-            onChange={handleInputChange}
-            min="0"
-            step="0.01"
-            style={styles.input}
-            className="form-input"
-            placeholder="0"
-          />
-        </div>
-
-        {/* 🔹 UNIDAD DE MEDIDA (select dinámico) */}
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Unidad de Medida</label>
-          <select
-              name="unidad"
-              value={formData.unidad}
-              onChange={handleInputChange}
-              style={styles.input}
-            >
-              <option value="">Seleccione unidad...</option>
-              {unidades.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.nombre}
-                </option>
-              ))}
-            </select>
-
-        </div>
-
-        {/* 🔹 TIPO DE INSUMO (select dinámico) */}
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Tipo de Insumo</label>
-          <select
-            name="tipo"
-            value={formData.tipo}
-            onChange={handleInputChange}
-            style={styles.input}
-          >
-            <option value="">Seleccione tipo...</option>
-            {tipos.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.nombre}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* 🔹 PRECIO UNITARIO */}
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Precio Unitario</label>
-          <input
-            type="number"
-            name="precioUnitario"
-            value={formData.precioUnitario}
-            onChange={handleInputChange}
-            min="0"
-            step="0.01"
-            style={styles.input}
-            className="form-input"
-            placeholder="0.00"
-          />
-        </div>
-            {/* 🔹 PREVISUALIZAR PRECIO TOTAL */}
-        {formData.precioUnitario && formData.cantidad && (
-          <div style={{
-            marginTop: '8px',
-            padding: '8px 12px',
-            backgroundColor: 'rgba(255,255,255,0.08)',
-            borderRadius: '8px',
-            color: '#fff',
-            fontSize: '14px'
-          }}>
-            Precio total estimado: <strong>${(formData.precioUnitario * formData.cantidad).toFixed(2)}</strong>
-          </div>
-        )}
-        {/* 🔹 CANTIDAD MÍNIMA (nuevo campo) */}
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Cantidad Mínima</label>
-          <input
-            type="number"
-            name="cantidadMinima"
-            value={formData.cantidadMinima || ''}
-            onChange={handleInputChange}
-            min="0"
-            step="0.01"
-            style={styles.input}
-            className="form-input"
-            placeholder="Ej: 10"
-          />
-          <p style={{ color: '#9ca3af', fontSize: '13px', marginTop: '4px' }}>
-            Se generará una alerta cuando el stock sea menor o igual a esta cantidad.
-          </p>
-        </div>
-      </div>
-
-      {/* ================= BOTONES ================= */}
-      <div style={styles.modalActions}>
-        <button
-          onClick={handleCloseModal}
-          style={styles.cancelButton}
-          className="hover-cancel"
-        >
-          Cancelar
-        </button>
-        <button
-          onClick={handleSubmit}
-          style={styles.submitButton}
-          className="hover-button"
-        >
-          {editingInsumo ? 'Guardar Cambios' : 'Agregar'}
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
+              </div>
+            )}
 
             {showConfirmModal && (() => {
               const content = getConfirmModalContent();

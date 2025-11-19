@@ -180,13 +180,9 @@ export const AuthProvider = ({ children }) => {
     try {
       const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
       
-      // Opción 1: Usar endpoint JWT nuevo
-      let response;
-      let data;
-      
       if (credentials.username && credentials.password) {
         // Login con credenciales
-        response = await fetch(`${API_URL}/api/usuarios/auth/login/`, {
+        const response = await fetch(`${API_URL}/api/usuarios/auth/login/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -197,24 +193,44 @@ export const AuthProvider = ({ children }) => {
           })
         });
         
-        if (response.ok) {
-          data = await response.json();
-          
-          // 🔥 Guardar tokens JWT
-          localStorage.setItem('access_token', data.access);
-          localStorage.setItem('refresh_token', data.refresh);
-          
-          // 🔥 Guardar datos del usuario
-          const userData = data.user;
-          localStorage.setItem('usuario_data', JSON.stringify(userData));
-          
-          setUser(userData);
-          setAccessToken(data.access);
-          setRefreshToken(data.refresh);
-          
-          console.log("✅ Login JWT exitoso:", userData);
-          return true;
+        // 🔥 SI HAY ERROR, LANZARLO PARA QUE Login.js LO CAPTURE
+        if (!response.ok) {
+          const errorData = await response.json();
+          const error = new Error('Login failed');
+          error.response = { 
+            status: response.status,
+            data: errorData 
+          };
+          throw error;
         }
+        
+        // Si el login es exitoso
+        const data = await response.json();
+        
+        // 🔥 Guardar tokens JWT
+        localStorage.setItem('access_token', data.access_token || data.access);
+        localStorage.setItem('refresh_token', data.refresh_token || data.refresh);
+        
+        // 🔥 Guardar datos del usuario
+        const userData = data.user || {
+          id: data.id,
+          username: data.usuario || data.username,
+          nombre: data.nombre,
+          apellido: data.apellido,
+          correo: data.correo,
+          rol: data.rol,
+          foto_perfil: data.foto_perfil
+        };
+        
+        localStorage.setItem('usuario_data', JSON.stringify(userData));
+        
+        setUser(userData);
+        setAccessToken(data.access_token || data.access);
+        setRefreshToken(data.refresh_token || data.refresh);
+        
+        console.log("✅ Login JWT exitoso:", userData);
+        return true;
+        
       } else if (credentials.access_token) {
         // Login con datos existentes (para compatibilidad)
         localStorage.setItem('access_token', credentials.access_token);
@@ -241,9 +257,11 @@ export const AuthProvider = ({ children }) => {
       }
       
       return false;
+      
     } catch (error) {
       console.error("❌ Error en login JWT:", error);
-      return false;
+      // 🔥 IMPORTANTE: Re-lanzar el error para que Login.js lo capture
+      throw error;
     }
   };
 
