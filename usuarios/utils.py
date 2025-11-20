@@ -18,9 +18,18 @@ def get_lockout_time_key(username):
     """Genera la clave para almacenar el tiempo de bloqueo"""
     return f"lockout_until_{username.lower()}"
 
+def get_lockout_level_key(username):
+    """Genera la clave para almacenar el nivel de bloqueo (cuántas veces ha sido bloqueado)"""
+    return f"lockout_level_{username.lower()}"
+
 def get_failed_attempts(username):
     """Obtiene el número de intentos fallidos"""
     key = get_lockout_key(username)
+    return cache.get(key, 0)
+
+def get_lockout_level(username):
+    """Obtiene el nivel de bloqueo actual (0=ninguno, 1=primer bloqueo, 2=segundo, etc.)"""
+    key = get_lockout_level_key(username)
     return cache.get(key, 0)
 
 def increment_failed_attempts(username):
@@ -29,40 +38,40 @@ def increment_failed_attempts(username):
     attempts = get_failed_attempts(username)
     attempts += 1
     
-    # Calcular tiempo de bloqueo según intentos
-    lockout_duration = get_lockout_duration(attempts)
+    # Guardar intentos con TTL de 24 horas (no se borra hasta login exitoso)
+    cache.set(key, attempts, 86400)
     
-    # Guardar intentos (expira después del tiempo de bloqueo)
-    cache.set(key, attempts, lockout_duration)
-    
-    # Si se alcanzó el límite, establecer tiempo de bloqueo
-    if attempts >= 3:
+    # Si se alcanzó el límite de 3 intentos, bloquear
+    if attempts >= 3 and attempts % 3 == 0:
+        # Incrementar nivel de bloqueo
+        level = get_lockout_level(username)
+        level += 1
+        level_key = get_lockout_level_key(username)
+        cache.set(level_key, level, 86400)  # TTL 24 horas
+        
+        # Calcular tiempo de bloqueo según el nivel
+        lockout_duration = get_lockout_duration_by_level(level)
+        
+        # Establecer tiempo de bloqueo
         lockout_until = datetime.now() + timedelta(seconds=lockout_duration)
         time_key = get_lockout_time_key(username)
-        cache.set(time_key, lockout_until.isoformat(), lockout_duration)
+        cache.set(time_key, lockout_until.isoformat(), lockout_duration + 60)  # +60 seg extra de margen
     
     return attempts
 
-def get_lockout_duration(attempts):
-    """Retorna duración del bloqueo en segundos según intentos"""
-    if attempts < 3:
-        return 300  # 5 minutos para mantener el contador
-    elif attempts == 3:
-        return 300  # 5 minutos
-    elif attempts == 4:
-        return 900  # 15 minutos
-    elif attempts == 5:
-        return 1800  # 30 minutos
+def get_lockout_duration_by_level(level):
+    """Retorna duración del bloqueo en segundos según el nivel de bloqueo"""
+    if level == 1:
+        return 300  # 5 minutos (primer bloqueo)
+    elif level == 2:
+        return 900  # 15 minutos (segundo bloqueo)
+    elif level == 3:
+        return 1800  # 30 minutos (tercer bloqueo)
     else:
-        return 3600  # 1 hora
+        return 3600  # 1 hora (cuarto bloqueo en adelante)
 
 def is_user_locked(username):
     """Verifica si el usuario está bloqueado"""
-    attempts = get_failed_attempts(username)
-    
-    if attempts < 3:
-        return False, None
-    
     time_key = get_lockout_time_key(username)
     lockout_until_str = cache.get(time_key)
     
@@ -75,16 +84,19 @@ def is_user_locked(username):
         remaining = lockout_until - datetime.now()
         return True, remaining
     
-    # Si ya pasó el tiempo de bloqueo, limpiar
-    reset_failed_attempts(username)
+    # Si ya pasó el tiempo de bloqueo, NO resetear todo
+    # Solo eliminar el tiempo de bloqueo, mantener intentos y nivel
+    cache.delete(time_key)
     return False, None
 
 def reset_failed_attempts(username):
-    """Resetea los intentos fallidos"""
+    """Resetea completamente los intentos fallidos y el nivel de bloqueo (solo en login exitoso)"""
     key = get_lockout_key(username)
     time_key = get_lockout_time_key(username)
+    level_key = get_lockout_level_key(username)
     cache.delete(key)
     cache.delete(time_key)
+    cache.delete(level_key)
 
 def format_lockout_time(remaining_time):
     """Formatea el tiempo restante de bloqueo"""

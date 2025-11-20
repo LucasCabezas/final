@@ -28,7 +28,8 @@ from .utils import (
     is_user_locked,
     format_lockout_time,
     generate_password_reset_token, 
-    verify_password_reset_token
+    verify_password_reset_token,
+    get_lockout_level
 )
 from .models import PerfilUsuario
 logger = logging.getLogger(__name__)
@@ -52,18 +53,32 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         is_locked, remaining_time = is_user_locked(username)
         
         if is_locked:
+            from .utils import get_lockout_level
+            level = get_lockout_level(username)
             remaining_formatted = format_lockout_time(remaining_time)
+            
+            # Mensaje personalizado según el nivel de bloqueo
+            if level == 1:
+                message = f'Cuenta bloqueada por 3 intentos fallidos. Intenta nuevamente en {remaining_formatted}'
+            elif level == 2:
+                message = f'Segunda vez bloqueado. Intenta nuevamente en {remaining_formatted}'
+            elif level == 3:
+                message = f'Tercera vez bloqueado. Intenta nuevamente en {remaining_formatted}'
+            else:
+                message = f'Cuenta bloqueada. Intenta nuevamente en {remaining_formatted}'
+            
             raise serializers.ValidationError({
-                'non_field_errors': f'Cuenta bloqueada. Intenta nuevamente en {remaining_formatted}',
+                'non_field_errors': message,
                 'locked': True,
-                'remaining_time': int(remaining_time.total_seconds())
+                'remaining_time': int(remaining_time.total_seconds()),
+                'lockout_level': level
             })
         
         try:
             # Intentar autenticación
             data = super().validate(attrs)
             
-            # 🔥 LOGIN EXITOSO - RESETEAR INTENTOS
+            # 🔥 LOGIN EXITOSO - RESETEAR TODO (intentos y nivel de bloqueo)
             reset_failed_attempts(username)
             
             # Agregar datos del usuario a la respuesta
@@ -71,7 +86,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             roles = [group.name for group in user.groups.all()]
             rol_nombre = roles[0] if roles else None
             
-            # Obtener la URL de la foto de perfil si existe
             foto_perfil_url = None
             if hasattr(user, 'perfil') and user.perfil.foto_perfil:
                 foto_perfil_url = user.perfil.foto_perfil.url
@@ -93,23 +107,51 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         except Exception as e:
             # 🔥 LOGIN FALLIDO - INCREMENTAR INTENTOS
             attempts = increment_failed_attempts(username)
+            from .utils import get_lockout_level
+            level = get_lockout_level(username)
             
-            # Calcular mensaje según intentos
-            if attempts >= 6:
-                message = 'Credenciales incorrectas. Cuenta bloqueada por 1 hora.'
-            elif attempts == 5:
-                message = 'Credenciales incorrectas. Próximo intento fallido bloqueará la cuenta por 1 hora.'
-            elif attempts == 4:
-                message = 'Credenciales incorrectas. Cuenta bloqueada por 30 minutos.'
-            elif attempts == 3:
-                message = 'Credenciales incorrectas. Cuenta bloqueada por 15 minutos.'
+            # Calcular intentos hasta el próximo bloqueo
+            attempts_in_current_cycle = attempts % 3
+            if attempts_in_current_cycle == 0:
+                attempts_in_current_cycle = 3
+            remaining_attempts = 3 - attempts_in_current_cycle
+            
+            # Mensajes según situación
+            if attempts % 3 == 0:  # Justo alcanzó el límite, acaba de ser bloqueado
+                if level == 1:
+                    message = 'Credenciales incorrectas. Cuenta bloqueada por 5 minutos.'
+                elif level == 2:
+                    message = 'Credenciales incorrectas. Cuenta bloqueada por 15 minutos.'
+                elif level == 3:
+                    message = 'Credenciales incorrectas. Cuenta bloqueada por 30 minutos.'
+                else:
+                    message = 'Credenciales incorrectas. Cuenta bloqueada por 1 hora.'
             else:
-                remaining = 3 - attempts
-                message = f'Credenciales incorrectas. {remaining} intento{"s" if remaining > 1 else ""} restante{"s" if remaining > 1 else ""}.'
+                # Todavía no alcanzó el límite
+                if remaining_attempts == 1:
+                    if level == 0:
+                        message = f'Credenciales incorrectas. {remaining_attempts} intento restante antes del bloqueo de 5 minutos.'
+                    elif level == 1:
+                        message = f'Credenciales incorrectas. {remaining_attempts} intento restante antes del bloqueo de 15 minutos.'
+                    elif level == 2:
+                        message = f'Credenciales incorrectas. {remaining_attempts} intento restante antes del bloqueo de 30 minutos.'
+                    else:
+                        message = f'Credenciales incorrectas. {remaining_attempts} intento restante antes del bloqueo de 1 hora.'
+                else:
+                    if level == 0:
+                        message = f'Credenciales incorrectas. {remaining_attempts} intentos restantes antes del bloqueo de 5 minutos.'
+                    elif level == 1:
+                        message = f'Credenciales incorrectas. {remaining_attempts} intentos restantes antes del bloqueo de 15 minutos.'
+                    elif level == 2:
+                        message = f'Credenciales incorrectas. {remaining_attempts} intentos restantes antes del bloqueo de 30 minutos.'
+                    else:
+                        message = f'Credenciales incorrectas. {remaining_attempts} intentos restantes antes del bloqueo de 1 hora.'
             
             raise serializers.ValidationError({
                 'non_field_errors': message,
                 'attempts': attempts,
+                'attempts_in_cycle': attempts_in_current_cycle,
+                'lockout_level': level,
                 'max_attempts': 3
             })
 
@@ -157,6 +199,32 @@ class LoginView(APIView):
             }, status=status.HTTP_200_OK)
         else:
             return Response({"error": "Credenciales incorrectas"}, status=status.HTTP_401_UNAUTHORIZED)
+
+class LogoutView(APIView):
+    """
+    Vista para cerrar sesión y limpiar intentos de login fallidos
+    """
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        try:
+            # Si hay un username en el request, limpiar sus intentos
+            username = request.data.get('username')
+            
+            if username:
+                # Limpiar intentos de login del usuario
+                reset_failed_attempts(username)
+                logger.info(f"Intentos de login reseteados para usuario: {username}")
+            
+            return Response({
+                "message": "Sesión cerrada exitosamente"
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Error en logout: {str(e)}")
+            return Response({
+                "message": "Sesión cerrada"
+            }, status=status.HTTP_200_OK)
 
 # ===== VALIDACIÓN DE CORREO =====
 class ValidarCorreoView(APIView):

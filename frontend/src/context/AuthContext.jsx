@@ -326,8 +326,30 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
     console.log("🚪 Cerrando sesión JWT...");
+    
+    try {
+      // Obtener username antes de limpiar
+      const userData = JSON.parse(localStorage.getItem('usuario_data') || '{}');
+      const username = userData.username;
+      
+      // Llamar al endpoint de logout para limpiar intentos de login
+      if (username) {
+        const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
+        await fetch(`${API_URL}/api/usuarios/auth/logout/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ username })
+        });
+        console.log("✅ Intentos de login reseteados en el servidor");
+      }
+    } catch (error) {
+      console.warn("⚠️ Error al llamar logout endpoint:", error);
+      // No fallar el logout por esto
+    }
     
     // Limpiar tokens y datos
     localStorage.removeItem('access_token');
