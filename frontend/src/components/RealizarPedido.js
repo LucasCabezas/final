@@ -15,7 +15,6 @@ import fondoImg from "./assets/fondo.png";
 import { useAuth } from "../context/AuthContext";
 
 const styles = {
-    // ... (Todos tus estilos desde la línea 22 a la 597 se mantienen 100% igual)
   container: {
     padding: "32px",
     minHeight: "100vh",
@@ -157,7 +156,6 @@ const styles = {
     cursor: "pointer",
     color: "#ef4444",
     padding: "4px",
-    // Estilos de RealizarPedido para el botón Eliminar
     display: "flex",
     alignItems: "center",
     gap: "6px",
@@ -171,32 +169,32 @@ const styles = {
     fontWeight: '600',
     textTransform: 'uppercase'
   },
-  estadoPendiente: { // Amarillo (Pendiente Dueño, Pendiente Costurero)
+  estadoPendiente: {
     backgroundColor: 'rgba(251, 191, 36, 0.2)',
     color: '#fbbf24',
     border: '1px solid rgba(251, 191, 36, 0.3)'
   },
-  estadoEnProceso: { // Azul (En Proceso Costurero)
+  estadoEnProceso: {
     backgroundColor: 'rgba(59, 130, 246, 0.2)',
     color: '#3b82f6',
     border: '1px solid rgba(59, 130, 246, 0.3)'
   },
-  estadoPendienteEstampado: { // Purpura (Pendiente Estampador)
+  estadoPendienteEstampado: {
     backgroundColor: 'rgba(168, 85, 247, 0.2)',
     color: '#a855f7',
     border: '1px solid rgba(168, 85, 247, 0.3)'
   },
-  estadoEnProcesoEstampado: { // Indigo (En Proceso Estampador)
+  estadoEnProcesoEstampado: {
     backgroundColor: 'rgba(139, 92, 246, 0.2)',
     color: '#8b5cf6',
     border: '1px solid rgba(139, 92, 246, 0.3)'
   },
-  estadoCompletado: { // Verde
+  estadoCompletado: {
     backgroundColor: 'rgba(34, 197, 94, 0.2)',
     color: '#22c55e',
     border: '1px solid rgba(34, 197, 94, 0.3)'
   },
-  estadoCancelado: { // Rojo
+  estadoCancelado: {
     backgroundColor: 'rgba(239, 68, 68, 0.2)',
     color: '#ef4444',
     border: '1px solid rgba(239, 68, 68, 0.3)'
@@ -505,17 +503,13 @@ export default function RealizarPedido() {
   const [isNavbarCollapsed, setIsNavbarCollapsed] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [prendas, setPrendas] = useState([]);
-  
-  // 🔥 CAMBIO: Renombrado para claridad
   const [masterPedidos, setMasterPedidos] = useState([]); 
-  
   const [pedido, setPedido] = useState([]);
   const [selectedPrenda, setSelectedPrenda] = useState(null);
   const [searchPrenda, setSearchPrenda] = useState("");
   const [formData, setFormData] = useState({
     cantidad: 1,
     talle: "",
-    tipo: "LISA",
     recargoTalle: 10,
     porcentajeGanancia: 25
   });
@@ -537,7 +531,6 @@ export default function RealizarPedido() {
   };
 
   const obtenerEstadoPedido = (p) => {
-    // (Tu lógica se mantiene 100% igual)
     const estadoRaw = p.estado || p.Pedido_estado;
     if (typeof estadoRaw === "string") return estadoRaw.toUpperCase();
     if (estadoRaw === true) return "COMPLETADO";
@@ -546,7 +539,6 @@ export default function RealizarPedido() {
   };
 
   const obtenerSubEstado = (pedidoId) => {
-    // (Tu lógica se mantiene 100% igual)
     try {
       const sub = JSON.parse(localStorage.getItem("pedidos_sub_estados") || "{}");
       return sub[pedidoId] || null;
@@ -556,7 +548,6 @@ export default function RealizarPedido() {
   };
 
   const obtenerEstadoDetallado = (p) => {
-    // (Tu lógica se mantiene 100% igual)
     const estadoBackend = obtenerEstadoPedido(p);
     const sub = obtenerSubEstado(p.Pedido_ID);
     if (estadoBackend === "APROBADO_DUENO") {
@@ -572,7 +563,6 @@ export default function RealizarPedido() {
   };
 
   const obtenerEstiloEstado = (estado) => {
-    // (Tu lógica se mantiene 100% igual)
     switch (estado) {
       case "PENDIENTE_DUENO":
         return { texto: "Pendiente Aprobación", estilo: styles.estadoPendiente };
@@ -597,7 +587,6 @@ export default function RealizarPedido() {
   };
 
   useEffect(() => {
-    // (Tu lógica se mantiene 100% igual)
     const fetchPrendas = async () => {
       try {
         const res = await axios.get("http://localhost:8000/api/inventario/prendas/");
@@ -610,7 +599,6 @@ export default function RealizarPedido() {
   }, []);
 
   useEffect(() => {
-    // (Tu lógica se mantiene 100% igual)
     if (loading || !user) return;
 
     const fetchPedidos = async () => {
@@ -638,7 +626,6 @@ export default function RealizarPedido() {
             filtrados = filtrados.filter(p => p.Usuario === user.id);
         }
         
-        // 🔥 CAMBIO: Guardamos en la lista maestra
         setMasterPedidos(filtrados); 
       } catch (err) {
         showAlert("Error al cargar pedidos", "error");
@@ -649,14 +636,12 @@ export default function RealizarPedido() {
   }, [user, loading]);
 
   const prendasFiltradas = prendas.filter((p) =>
-    // (Tu lógica se mantiene 100% igual)
     (p.Prenda_nombre || "").toLowerCase().includes(searchPrenda.toLowerCase()) ||
     (p.Prenda_marca_nombre || "").toLowerCase().includes(searchPrenda.toLowerCase()) ||
     (p.Prenda_modelo_nombre || "").toLowerCase().includes(searchPrenda.toLowerCase())
   );
 
   const agregarPrenda = () => {
-    // (Tu lógica se mantiene 100% igual)
     if (!selectedPrenda) {
       showAlert("Seleccioná una prenda", "error");
       return;
@@ -677,7 +662,6 @@ export default function RealizarPedido() {
       ...prendaBase,
       cantidad: Number(formData.cantidad) || 1,
       talle: formData.talle,
-      tipo: formData.tipo,
       precioUnitario: precioFinal
     };
 
@@ -687,12 +671,10 @@ export default function RealizarPedido() {
   };
 
   const eliminarPrendaPedido = (index) => {
-    // (Tu lógica se mantiene 100% igual)
     setPedido((prev) => prev.filter((_, i) => i !== index));
   };
 
   const calcularTotales = () => {
-    // (Tu lógica se mantiene 100% igual)
     try {
       if (!pedido || pedido.length === 0) {
         showAlert("No hay prendas en el pedido", "error");
@@ -710,7 +692,6 @@ export default function RealizarPedido() {
   };
 
   const verificarStockAntesDeConfirmar = async () => {
-    // (Tu lógica se mantiene 100% igual)
     try {
       const prendasConCantidades = pedido.map((p) => ({
         id_prenda: p.Prenda_ID,
@@ -741,7 +722,6 @@ export default function RealizarPedido() {
   };
 
   const confirmarPedido = async () => {
-    // (Tu lógica se mantiene 100% igual)
     if (loading || !user || !user.id) {
       showAlert("Error: Usuario no autenticado o no cargado.", "error");
       return;
@@ -758,7 +738,6 @@ export default function RealizarPedido() {
           id_prenda: p.Prenda_ID,
           cantidad: p.cantidad,
           talle: p.talle,
-          tipo: p.tipo || "LISA"
         }))
       };
       data.porcentaje_ganancia = formData.porcentajeGanancia;
@@ -768,7 +747,6 @@ export default function RealizarPedido() {
       showAlert("✅ Pedido realizado correctamente y enviado para aprobación", "success");
 
       const resPedidos = await axios.get("http://localhost:8000/api/pedidos/");
-      // 🔥 CAMBIO: Actualizamos la lista maestra
       setMasterPedidos(resPedidos.data || []); 
 
       setPedido([]);
@@ -784,23 +762,17 @@ export default function RealizarPedido() {
     }
   };
 
-  // 🔥 CAMBIO: Función de búsqueda eliminada
-  // const buscarPedidos = async () => { ... };
-
-  // 🔥 CAMBIO: Limpiar filtros ahora solo resetea el estado
   const limpiarFiltros = async () => {
     setFiltros({ id: "", estado: "", fecha: "" });
     showAlert("Filtros limpiados", "success");
   };
 
   const cancelarPedido = async (id) => {
-    // (Tu lógica se mantiene 100% igual)
     if (!window.confirm("¿Estás seguro de cancelar este pedido?")) return;
     try {
       await axios.patch(`http://localhost:8000/api/pedidos/${id}/`, { Pedido_estado: "CANCELADO" });
       showAlert("✅ Pedido cancelado correctamente", "success");
       const resPedidos = await axios.get("http://localhost:8000/api/pedidos/");
-      // 🔥 CAMBIO: Actualizamos la lista maestra
       setMasterPedidos(resPedidos.data || []); 
     } catch {
       showAlert("❌ Error al conectar con el servidor", "error");
@@ -808,13 +780,11 @@ export default function RealizarPedido() {
   };
 
   const eliminarPedido = async (id) => {
-    // (Tu lógica se mantiene 100% igual)
     if (!window.confirm("¿Estás seguro de eliminar este pedido? Esta acción no se puede deshacer.")) return;
     try {
       await axios.delete(`http://localhost:8000/api/pedidos/${id}/`);
       showAlert("✅ Pedido eliminado correctamente", "success");
       const resPedidos = await axios.get("http://localhost:8000/api/pedidos/");
-      // 🔥 CAMBIO: Actualizamos la lista maestra
       setMasterPedidos(resPedidos.data || []); 
     } catch {
       showAlert("❌ Error al conectar con el servidor", "error");
@@ -822,12 +792,10 @@ export default function RealizarPedido() {
   };
 
   const actualizarEstadoPedido = async (id, nuevoEstado) => {
-    // (Tu lógica se mantiene 100% igual)
     try {
       await axios.patch(`http://localhost:8000/api/pedidos/${id}/`, { Pedido_estado: nuevoEstado });
       showAlert(`✅ Estado actualizado a "${nuevoEstado.replace("_", " ")}"`, "success");
       const resPedidos = await axios.get("http://localhost:8000/api/pedidos/");
-      // 🔥 CAMBIO: Actualizamos la lista maestra
       setMasterPedidos(resPedidos.data || []); 
     } catch {
       showAlert("Error al conectar con el servidor", "error");
@@ -835,7 +803,6 @@ export default function RealizarPedido() {
   };
 
   const verDetallesPedido = async (p) => {
-    // (Tu lógica se mantiene 100% igual)
     try {
       const res = await axios.get(`http://localhost:8000/api/pedidos/${p.Pedido_ID || p.id}/`);
       setPedidoSeleccionado(res.data);
@@ -851,7 +818,6 @@ export default function RealizarPedido() {
     return <div style={{ color: "white", padding: "50px" }}>Cargando usuario y permisos...</div>;
   }
 
-  // 🔥 CAMBIO: Filtramos la lista maestra en cada render
   const pedidosFiltrados = masterPedidos.filter(p => {
     const estado = obtenerEstadoDetallado(p);
     if (filtros.id && filtros.id.trim() !== "" && !String(p.Pedido_ID || p.id || "").includes(filtros.id.trim())) {
@@ -891,7 +857,6 @@ export default function RealizarPedido() {
           </div>
 
           <div style={styles.searchContainer}>
-            {/* ... (Tu barra de filtros se mantiene 100% igual) ... */}
             <input
               type="text"
               placeholder="Buscar por ID..."
@@ -909,14 +874,9 @@ export default function RealizarPedido() {
               <option value="CANCELADO">Cancelado</option>
             </select>
             <input type="date" value={filtros.fecha} onChange={(e) => setFiltros({ ...filtros, fecha: e.target.value })} style={{...styles.searchInput, colorScheme: 'dark'}} />
-            
-            {/* 🔥 CAMBIO: Botón de búsqueda eliminado */}
-            {/* <button style={styles.btnBuscar} onClick={buscarPedidos}><Search size={18} /> Buscar</button> */}
-            
             <button style={styles.btnLimpiar} onClick={limpiarFiltros}><X size={18} /> Limpiar</button>
           </div>
 
-          {/* 🔥 CAMBIO: Usamos la nueva variable `pedidosFiltrados` */}
           {pedidosFiltrados.length > 0 ? (
             <div style={styles.tableContainer}>
               <table style={styles.table}>
@@ -930,7 +890,6 @@ export default function RealizarPedido() {
                   </tr>
                 </thead>
                 <tbody>
-                  {/* 🔥 CAMBIO: Usamos la nueva variable `pedidosFiltrados` */}
                   {pedidosFiltrados.map((p) => {
                     const estado = obtenerEstadoDetallado(p);
                     const { texto, estilo } = obtenerEstiloEstado(estado);
@@ -952,7 +911,6 @@ export default function RealizarPedido() {
                         </td>
                         <td style={styles.td}>
                           <div style={styles.actionsContainer}>
-                            
                             {estado === "PENDIENTE_COSTURERO" && (
                               <button style={styles.btnCancelar} onClick={() => cancelarPedido(p.Pedido_ID || p.id)} title="Cancelar pedido">
                                 <XCircle size={16} /> Cancelar
@@ -974,7 +932,6 @@ export default function RealizarPedido() {
             </div>
           ) : (
             <div style={styles.emptyState}>
-                {/* ... (Tu JSX de estado vacío se mantiene 100% igual) ... */}
               <Package size={64} color="#4b5563" />
               <h3 style={{ marginTop: "16px", color: "#9ca3af" }}>
                 {masterPedidos.length > 0 ? "No se encontraron pedidos con esos filtros" : "No hay pedidos"}
@@ -985,14 +942,9 @@ export default function RealizarPedido() {
             </div>
           )}
 
-          {/* ================================================================== */}
-          {/* TODOS TUS MODALES SE MANTIENEN 100% INTACTOS AQUÍ DEBAJO */}
-          {/* ================================================================== */}
-
           {modalOpen && (
             <div style={styles.modalOverlay} onClick={() => setModalOpen(false)}>
               <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-                {/* ... (Todo tu modal de "Realizar Pedido" se mantiene 100% igual) ... */}
                 <div style={styles.modalHeader}>
                   <h2 style={styles.modalTitle}>Realizar Nuevo Pedido</h2>
                   <button style={styles.btnClose} onClick={() => setModalOpen(false)}><X size={24} /></button>
@@ -1034,13 +986,6 @@ export default function RealizarPedido() {
                         <select value={formData.talle} onChange={(e) => setFormData({ ...formData, talle: e.target.value })} style={styles.selectTalle}>
                           <option value="">Seleccionar talle...</option>
                           {tallesDisponibles.map((t, i) => <option key={i} value={t}>{t}</option>)}
-                        </select>
-                      </div>
-                      <div style={styles.formGroup}>
-                        <label style={styles.label}>Tipo</label>
-                        <select value={formData.tipo} onChange={(e) => setFormData({ ...formData, tipo: e.target.value })} style={styles.selectTalle}>
-                          <option value="LISA">LISA</option>
-                          <option value="ESTAMPADA">ESTAMPADA</option>
                         </select>
                       </div>
                       <div style={styles.formGroup}>
@@ -1109,7 +1054,6 @@ export default function RealizarPedido() {
           {modalDetallesOpen && pedidoSeleccionado && (
             <div style={styles.modalOverlay} onClick={() => setModalDetallesOpen(false)}>
               <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-                {/* ... (Todo tu modal de "Detalles" se mantiene 100% igual) ... */}
                 <div style={styles.modalHeader}>
                   <h2 style={styles.modalTitle}>Detalles del Pedido PED{String(pedidoSeleccionado.Pedido_ID || pedidoSeleccionado.id || "").padStart(3, "0")}</h2>
                   <button style={styles.btnClose} onClick={() => setModalDetallesOpen(false)}><X size={24} /></button>
@@ -1203,7 +1147,6 @@ export default function RealizarPedido() {
 
           {alert && (
             <div style={{ ...styles.alert, ...(alert.type === "success" ? styles.alertSuccess : styles.alertError) }}>
-              {/* ... (Tu JSX de alerta se mantiene 100% igual) ... */}
               <div style={{ display: "flex", alignItems: "center", gap: "12px", width: "100%" }}>
                 {alert.type === "success" ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
                 <div style={{ flex: 1, fontSize: "14px", lineHeight: "1.5" }}>{alert.message}</div>

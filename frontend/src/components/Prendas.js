@@ -732,9 +732,9 @@ const Prendas = () => {
           const color = (prenda.Prenda_color_nombre || '').toLowerCase();
 
           return nombre.includes(busqueda) ||
-                 marca.includes(busqueda) ||
-                 modelo.includes(busqueda) ||
-                 color.includes(busqueda);
+                marca.includes(busqueda) ||
+                modelo.includes(busqueda) ||
+                color.includes(busqueda);
         });
       }
       // Si el filtro está en "TODOS", mostrar todas o filtrar por búsqueda
@@ -748,9 +748,9 @@ const Prendas = () => {
             const color = (prenda.Prenda_color_nombre || '').toLowerCase();
 
             return nombre.includes(busqueda) ||
-                   marca.includes(busqueda) ||
-                   modelo.includes(busqueda) ||
-                   color.includes(busqueda);
+                  marca.includes(busqueda) ||
+                  modelo.includes(busqueda) ||
+                  color.includes(busqueda);
           });
         }
       }
@@ -910,7 +910,11 @@ const Prendas = () => {
         nuevosInsumos[index].unidad = insumoEncontrado.unidad_medida_nombre || '';
       }
     } else if (campo === 'cantidad') {
-      nuevosInsumos[index].cantidad = parseFloat(valor) || 0;
+      // Validación: solo permitir números enteros
+      if (valor !== '' && !/^\d+$/.test(valor)) {
+        return; // No actualizar si no es un número entero
+      }
+      nuevosInsumos[index].cantidad = valor === '' ? 0 : parseInt(valor);
     }
 
     setInsumosSeleccionados(nuevosInsumos);
@@ -1462,14 +1466,18 @@ const Prendas = () => {
                         </select>
 
                         <input
-                          type="number"
+                          type="text"
                           placeholder="Cantidad"
-                          value={insumo.cantidad}
+                          value={insumo.cantidad || ''}
                           onChange={(e) => handleInsumoChange(index, 'cantidad', e.target.value)}
+                          onKeyDown={(e) => {
+                            // Bloquear punto, coma y otros caracteres no numéricos
+                            if (e.key === '.' || e.key === ',' || e.key === '-' || e.key === '+' || e.key === 'e' || e.key === 'E') {
+                              e.preventDefault();
+                            }
+                          }}
                           onFocus={(e) => e.target.value === '0' && (e.target.value = '')}
                           style={styles.input}
-                          min="0"
-                          step="0.01"
                           required
                         />
 

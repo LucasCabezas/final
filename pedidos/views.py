@@ -255,16 +255,25 @@ class PedidoList(APIView):
             for item in prendas:
                 prenda_id = item.get("id_prenda")
                 cantidad = int(item.get("cantidad", 0))
-                tipo = item.get("tipo", "LISA").upper()
-                if tipo not in ['LISA', 'ESTAMPADA']:
-                    tipo = 'LISA'
                 talle_codigo = item.get("talle")
-
+                
                 prenda = Prenda.objects.get(pk=prenda_id)
+                
+                # 🔥🔥🔥 NUEVA LÓGICA DE INFERENCIA DEL TIPO DE PRENDA 🔥🔥🔥
+                # Asumimos que el tipo está en el nombre del modelo (ej: 'Remera Estampada')
+                modelo_nombre = prenda.Prenda_modelo.Modelo_nombre.upper()
+                
+                # 2. Determinar el tipo de la prenda seleccionada
+                if 'ESTAMPADA' in modelo_nombre:
+                    tipo = 'ESTAMPADA'
+                else:
+                    tipo = 'LISA' # Valor por defecto si no es estampada
+                # 🔥🔥🔥 FIN NUEVA LÓGICA 🔥🔥🔥
 
                 talle = None
                 if talle_codigo:
                     try:
+                        from clasificaciones.models import Talle # Importamos aquí o al inicio
                         talle = Talle.objects.get(Talle_codigo=talle_codigo)
                     except Talle.DoesNotExist:
                         pass
@@ -274,7 +283,7 @@ class PedidoList(APIView):
                     pedido=pedido,
                     prenda=prenda,
                     cantidad=cantidad,
-                    tipo=tipo,
+                    tipo=tipo, # AHORA USAMOS EL TIPO DETERMINADO EN EL BACKEND
                     talle=talle,
                     marca=prenda.Prenda_marca,
                     modelo=prenda.Prenda_modelo,
@@ -597,16 +606,28 @@ def aceptar_pedido_costurero(request, pedido_id):
 @api_view(['POST'])
 def terminar_pedido_costurero(request, pedido_id):
     """
-    Costurero marca el pedido como terminado.
+    Costurero marca el pedido como terminado y decide el siguiente paso.
+    Si requiere estampado, va a PENDIENTE_ESTAMPADO. Si no, va a COMPLETADO.
     """
     pedido = get_object_or_404(Pedido, pk=pedido_id)
     
     if pedido.Pedido_estado != 'EN_PROCESO_COSTURERO':
         return Response({'error': 'El pedido no está en proceso.'}, status=status.HTTP_400_BAD_REQUEST)
     
-    pedido.Pedido_estado = 'COMPLETADO' # O el estado final que uses
+    # 🔥🔥🔥 LÓGICA DE FLUJO AUTOMÁTICO 🔥🔥🔥
+    if pedido.requiere_estampado():
+        # Si el modelo tiene al menos un detalle 'ESTAMPADA', va a la cola de estampado
+        nuevo_estado = 'PENDIENTE_ESTAMPADO'
+        mensaje = 'Pedido terminado por Costurero y trasladado a Estampado.'
+    else:
+        # Si no requiere estampado, el proceso de costura es el final.
+        nuevo_estado = 'COMPLETADO' 
+        mensaje = 'Pedido terminado por Costurero y Completado.'
+    
+    pedido.Pedido_estado = nuevo_estado
     pedido.save()
-    return Response({'mensaje': 'Pedido marcado como terminado.'}, status=status.HTTP_200_OK)
+    
+    return Response({'mensaje': mensaje, 'nuevo_estado': nuevo_estado}, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])
