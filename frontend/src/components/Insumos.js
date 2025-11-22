@@ -991,6 +991,14 @@ function Insumos() {
       }
     }
 
+    // Validación para cantidad y cantidadMinima: solo números enteros
+    if (name === 'cantidad' || name === 'cantidadMinima') {
+      // Permitir solo números enteros (sin decimales)
+      if (value !== '' && !/^\d+$/.test(value)) {
+        return;
+      }
+    }
+
     setFormData((prev) => ({
       ...prev,
       [name]: value
@@ -1315,7 +1323,7 @@ function Insumos() {
                         value={formData.cantidad}
                         onChange={handleInputChange}
                         min="0"
-                        step="0.01"
+                        step="1"
                         style={styles.input}
                         className="form-input"
                         placeholder="0"
@@ -1392,7 +1400,7 @@ function Insumos() {
                         value={formData.cantidadMinima || ''}
                         onChange={handleInputChange}
                         min="0"
-                        step="0.01"
+                        step="1"
                         style={styles.input}
                         className="form-input"
                         placeholder="Ej: 10"

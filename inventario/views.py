@@ -318,7 +318,7 @@ class PrendaList(APIView):
     def post(self, request):
         """Crear nueva prenda con insumos y talles"""
         try:
-            print("📥 Datos recibidos:", request.data)
+            print("🔥 Datos recibidos:", request.data)
             
             data = request.data.copy()
             
@@ -326,10 +326,14 @@ class PrendaList(APIView):
             insumos_data = data.pop('insumos_prendas', None)
             talles_data = data.pop('talles', None)
             
-            print("🔍 Insumos antes de parsear:", insumos_data, type(insumos_data))
-            print("🔍 Talles antes de parsear:", talles_data, type(talles_data))
+            print("📋 Insumos antes de parsear:", insumos_data, type(insumos_data))
+            print("📋 Talles antes de parsear:", talles_data, type(talles_data))
             
             # ✅ PARSEAR JSON si vienen como string
+            # Django a veces envuelve el JSON string en una lista
+            if isinstance(insumos_data, list) and len(insumos_data) > 0:
+                insumos_data = insumos_data[0]  # Extraer el primer elemento
+            
             if isinstance(insumos_data, str):
                 try:
                     insumos_data = json.loads(insumos_data) if insumos_data.strip() else []
@@ -338,6 +342,10 @@ class PrendaList(APIView):
                         {'error': f'Error al parsear insumos_prendas: {str(e)}'}, 
                         status=status.HTTP_400_BAD_REQUEST
                     )
+            
+            # Hacer lo mismo con talles_data
+            if isinstance(talles_data, list) and len(talles_data) > 0:
+                talles_data = talles_data[0]  # Extraer el primer elemento
             
             if isinstance(talles_data, str):
                 try:
@@ -350,6 +358,13 @@ class PrendaList(APIView):
             
             print("✅ Insumos después de parsear:", insumos_data, type(insumos_data))
             print("✅ Talles después de parsear:", talles_data, type(talles_data))
+            
+            # ✅ Asegurar que insumos_data sea una lista
+            if not isinstance(insumos_data, list):
+                return Response(
+                    {'error': 'insumos_prendas debe ser una lista'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             
             # Validar que haya insumos y talles
             if not insumos_data or len(insumos_data) == 0:
@@ -384,7 +399,7 @@ class PrendaList(APIView):
                 if not isinstance(item, dict):
                     prenda.delete()
                     return Response(
-                        {'error': f'Formato inválido para insumo: {item}'},
+                        {'error': f'Formato inválido para insumo. Se esperaba un diccionario pero se recibió: {type(item).__name__}'},
                         status=status.HTTP_400_BAD_REQUEST
                     )
                 
@@ -467,7 +482,7 @@ class PrendaDetail(APIView):
         """Actualizar prenda existente"""
         try:
             print("📝 Actualizando prenda:", pk)
-            print("📥 Datos recibidos:", request.data)
+            print("🔥 Datos recibidos:", request.data)
             
             prenda = get_object_or_404(Prenda, pk=pk)
             
@@ -478,6 +493,10 @@ class PrendaDetail(APIView):
             talles_data = data.pop('talles', None)
             
             # ✅ PARSEAR JSON si vienen como string
+            # Django a veces envuelve el JSON string en una lista
+            if isinstance(insumos_data, list) and len(insumos_data) > 0:
+                insumos_data = insumos_data[0]  # Extraer el primer elemento
+            
             if isinstance(insumos_data, str):
                 try:
                     insumos_data = json.loads(insumos_data) if insumos_data.strip() else None
@@ -486,6 +505,10 @@ class PrendaDetail(APIView):
                         {'error': f'Error al parsear insumos_prendas: {str(e)}'}, 
                         status=status.HTTP_400_BAD_REQUEST
                     )
+            
+            # Hacer lo mismo con talles_data
+            if isinstance(talles_data, list) and len(talles_data) > 0:
+                talles_data = talles_data[0]  # Extraer el primer elemento
             
             if isinstance(talles_data, str):
                 try:
@@ -512,6 +535,13 @@ class PrendaDetail(APIView):
 
             # Actualizar insumos si se enviaron
             if insumos_data is not None:
+                # ✅ Asegurar que insumos_data sea una lista
+                if not isinstance(insumos_data, list):
+                    return Response(
+                        {'error': 'insumos_prendas debe ser una lista'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
                 prenda.insumos_prendas.all().delete()
                 costo_insumos_total = 0
                 
@@ -519,7 +549,7 @@ class PrendaDetail(APIView):
                     # ✅ Validar que item sea un diccionario
                     if not isinstance(item, dict):
                         return Response(
-                            {'error': f'Formato inválido para insumo: {item}'},
+                            {'error': f'Formato inválido para insumo. Se esperaba un diccionario pero se recibió: {type(item).__name__}'},
                             status=status.HTTP_400_BAD_REQUEST
                         )
                     

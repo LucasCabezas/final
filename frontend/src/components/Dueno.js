@@ -18,6 +18,9 @@ function Dueno({ usuarioId }) {
   const [datosGraficoPedidos, setDatosGraficoPedidos] = useState([]);
   const [totalPedidosRango, setTotalPedidosRango] = useState(0);
 
+  // Estados para Alertas
+  const [alertasPedidos, setAlertasPedidos] = useState([]);
+
   const [isNavbarCollapsed, setIsNavbarCollapsed] = useState(false);
 
   const COLORS_INSUMOS = ["#3498db", "#f39c12", "#e74c3c", "#2ecc71", "#9b59b6", "#1abc9c", "#e67e22", "#95a5a6"];
@@ -68,6 +71,24 @@ function Dueno({ usuarioId }) {
         if (!response.ok) return;
         const data = await response.json();
         setPedidos(data);
+        
+        console.log("Todos los pedidos:", data); // Debug
+        
+        // Filtrar pedidos pendientes de aprobación para alertas
+        const pedidosPendientes = data.filter(p => {
+          const estado = (p.Pedido_estado_real || p.Pedido_estado || p.estado || '').toUpperCase();
+          console.log(`Pedido ${p.Pedido_ID}: estado = ${estado}`); // Debug
+          return estado === 'PENDIENTE_DUENO' || estado === 'PENDIENTE_DUEÑO';
+        });
+        
+        console.log("Pedidos pendientes encontrados:", pedidosPendientes); // Debug
+        
+        // Tomar los últimos 5 pedidos pendientes
+        const ultimosPendientes = pedidosPendientes
+          .sort((a, b) => new Date(b.Pedido_fecha) - new Date(a.Pedido_fecha))
+          .slice(0, 5);
+        
+        setAlertasPedidos(ultimosPendientes);
     } catch (error) {
         console.error("❌ Error cargando pedidos:", error);
     }
@@ -229,6 +250,48 @@ function Dueno({ usuarioId }) {
                 : ""}
             </h2>
           </div>
+
+          {/* Alertas Recientes */}
+          <section style={{...styles.alertasSection, marginBottom: "40px"}}>
+            <h3 style={styles.alertasTitle}>Alertas Recientes</h3>
+            <ul style={styles.alertasList}>
+              {alertasPedidos.length > 0 ? (
+                alertasPedidos.map((pedido) => (
+                  <li
+                    key={pedido.Pedido_ID}
+                    style={{
+                      ...styles.alertaItem,
+                      borderLeftColor: "#f39c12",
+                    }}
+                  >
+                    📦 Nuevo pedido #{pedido.Pedido_ID} pendiente de aprobación
+                    {pedido.Usuario_nombre && (
+                      <span style={{ color: "#9ca3af", fontSize: "12px", display: "block", marginTop: "4px" }}>
+                        Vendedor: {pedido.Usuario_nombre} {pedido.Usuario_apellido || ''}
+                      </span>
+                    )}
+                  </li>
+                ))
+              ) : (
+                <li
+                  style={{
+                    ...styles.alertaItem,
+                    borderLeftColor: "#3498db",
+                  }}
+                >
+                  ℹ️ No hay pedidos pendientes de aprobación
+                </li>
+              )}
+              <li
+                style={{
+                  ...styles.alertaItem,
+                  borderLeftColor: "#3498db",
+                }}
+              >
+                ℹ️ Sistema funcionando correctamente
+              </li>
+            </ul>
+          </section>
 
           {/* Resumen General de Insumos */}
           <section style={{ marginBottom: "40px" }}>
@@ -401,29 +464,6 @@ function Dueno({ usuarioId }) {
                 </p>
               )}
             </div>
-          </section>
-
-          {/* Alertas Recientes */}
-          <section style={styles.alertasSection}>
-            <h3 style={styles.alertasTitle}>Alertas Recientes</h3>
-            <ul style={styles.alertasList}>
-              <li
-                style={{
-                  ...styles.alertaItem,
-                  borderLeftColor: "#f39c12",
-                }}
-              >
-                📦 Nuevo pedido recibido
-              </li>
-              <li
-                style={{
-                  ...styles.alertaItem,
-                  borderLeftColor: "#3498db",
-                }}
-              >
-                ℹ️ Sistema funcionando correctamente
-              </li>
-            </ul>
           </section>
         </div>
       </main>
