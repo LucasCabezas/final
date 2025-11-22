@@ -3,12 +3,11 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Componente from './componente.jsx';
 import fondoImg from "./assets/fondo.png";
-import { XCircle, CheckCircle, Package, Send, Play, Square, X, AlertCircle, Search } from 'lucide-react';
+import { XCircle, CheckCircle, Package, Trash2, X, AlertCircle } from 'lucide-react';
 
 const API_PEDIDOS_URL = "http://localhost:8000/api/pedidos/";
 
 const styles = {
-    // ... (Todos tus estilos (container, main, modalOverlay, alert, etc.) se mantienen 100% igual)
     container: {
         display: "flex", 
         minHeight: "100vh", 
@@ -159,7 +158,7 @@ const styles = {
         display: 'flex',
         alignItems: 'center',
         gap: '4px',
-        marginRight: '8px'
+        transition: 'all 0.2s',
     },
     btnRechazar: {
         backgroundColor: '#ef4444',
@@ -173,7 +172,19 @@ const styles = {
         display: 'flex',
         alignItems: 'center',
         gap: '4px',
-        marginRight: '8px'
+        transition: 'all 0.2s',
+    },
+    btnEliminar: {
+        background: 'none',
+        border: 'none',
+        cursor: 'pointer',
+        color: '#ef4444',
+        padding: '4px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        fontSize: '13px',
+        fontWeight: '500',
     },
     btnVer: {
         backgroundColor: '#3b82f6', 
@@ -274,14 +285,92 @@ const styles = {
     alertError: { 
         backgroundColor: "#ef4444", 
         color: "#fff" 
+    },
+    // Nuevos estilos para el modal de confirmación
+    confirmModalOverlay: {
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(0, 0, 0, 0.9)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 2000,
+    },
+    confirmModalContent: {
+        backgroundColor: "rgba(30, 30, 30, 0.98)",
+        borderRadius: "16px",
+        padding: "32px",
+        maxWidth: "450px",
+        width: "90%",
+        boxShadow: "0 10px 25px rgba(0, 0, 0, 0.5)",
+        border: "1px solid rgba(255, 215, 15, 0.3)",
+        textAlign: "center"
+    },
+    confirmTitle: {
+        fontSize: "24px",
+        fontWeight: "bold",
+        color: "#ef4444",
+        marginBottom: "16px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "10px"
+    },
+    confirmMessage: {
+        fontSize: "16px",
+        color: "#d1d5db",
+        marginBottom: "24px"
+    },
+    confirmActions: {
+        display: "flex",
+        justifyContent: "space-between",
+        gap: "16px"
+    },
+    btnConfirmYes: {
+        flex: 1,
+        padding: "10px 20px",
+        backgroundColor: "#ef4444",
+        color: "#fff",
+        border: "none",
+        borderRadius: "8px",
+        fontWeight: "600",
+        cursor: "pointer",
+        transition: "all 0.2s"
+    },
+    btnConfirmNo: {
+        flex: 1,
+        padding: "10px 20px",
+        backgroundColor: "#4b5563",
+        color: "#fff",
+        border: "none",
+        borderRadius: "8px",
+        fontWeight: "600",
+        cursor: "pointer",
+        transition: "all 0.2s"
     }
 };
 
+// Función de utilidad para formatear la fecha sin desfase de zona horaria (mantenida de RealizarPedido.js)
+const formatDateForDisplay = (dateString) => {
+    if (!dateString) return "-";
+    
+    // El backend envía 'YYYY-MM-DD'. Creamos la fecha para evitar conversiones implícitas de zona horaria.
+    const parts = dateString.split('-');
+    // Date constructor: new Date(year, monthIndex, day). MonthIndex es 0-base.
+    const date = new Date(parts[0], parts[1] - 1, parts[2]); 
+    
+    const options = { year: 'numeric', month: '2-digit', day: '2-digit' };
+    return date.toLocaleDateString(undefined, options); 
+}
+
+// Función de utilidad para obtener el estilo del estado
 const obtenerEstiloEstado = (estado) => {
-    // ... (La función se mantiene 100% igual)
     switch (estado) {
         case "PENDIENTE_DUENO":
-            return { texto: "Pendiente Aprobación", estilo: styles.estadoPendiente };
+            return { texto: "Pendiente Aprobación", estilo: { ...styles.estadoBadge, ...styles.estadoPendiente } };
         case "PENDIENTE_COSTURERO":
             return { texto: "Pendiente Costurero", estilo: { ...styles.estadoBadge, ...styles.estadoPendiente } };
         case "EN_PROCESO_COSTURERO":
@@ -293,16 +382,15 @@ const obtenerEstiloEstado = (estado) => {
         case "EN_PROCESO_ESTAMPADOR": 
             return { texto: "En Proceso Estampador", estilo: { ...styles.estadoBadge, ...styles.estadoEnProcesoEstampado } };
         case "COMPLETADO":
-            return { texto: "Completado", estilo: styles.estadoCompletado };
+            return { texto: "Completado", estilo: { ...styles.estadoBadge, ...styles.estadoCompletado } };
         case "CANCELADO":
-            return { texto: "Cancelado", estilo: styles.estadoCancelado }; 
+            return { texto: "Cancelado", estilo: { ...styles.estadoBadge, ...styles.estadoCancelado } }; 
         default:
-            return { texto: estado, estilo: styles.estadoPendiente };
+            return { texto: estado, estilo: { ...styles.estadoBadge, ...styles.estadoPendiente } };
     }
 };
 
 const AprobacionPedidos = () => {
-    // ... (Toda la lógica, states, effects y funciones se mantienen 100% igual)
     const { user } = useAuth();
     const [masterPedidos, setMasterPedidos] = useState([]);
     const [pedidosMostrados, setPedidosMostrados] = useState([]);
@@ -310,6 +398,8 @@ const AprobacionPedidos = () => {
     const [alert, setAlert] = useState(null);
     const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
     const [isNavbarCollapsed, setIsNavbarCollapsed] = useState(false);
+    // Nuevo estado para el modal de confirmación
+    const [confirmAction, setConfirmAction] = useState(null); // { id: number, type: 'cancel' | 'delete', message: string, title: string }
     
     const [filtros, setFiltros] = useState({
         id: '',
@@ -318,8 +408,6 @@ const AprobacionPedidos = () => {
     });
 
     const navbarWidth = isNavbarCollapsed ? 70 : 250;
-
-    console.log('Usuario en AprobacionPedidos:', user);
 
     const mostrarAlert = (message, type = "success") => {
         setAlert({ message, type });
@@ -335,15 +423,16 @@ const AprobacionPedidos = () => {
         try {
             setLoading(true);
             
+            // Usamos el filtro de Django para obtener solo los pedidos que no son del usuario actual
             const urlConCacheBuster = `${API_PEDIDOS_URL}?t=${new Date().getTime()}`;
             const response = await axios.get(urlConCacheBuster);
             const data = response.data;
             
+            // Filtramos en el frontend si el backend no lo hace (asumimos el rol Dueño ve todo excepto sus propios pedidos)
             let pedidosDeVendedores = data.filter(pedido => 
                 pedido.Usuario !== user.id 
             );
             
-            console.log('Pedidos cargados (master list vendedores):', pedidosDeVendedores);
             setMasterPedidos(pedidosDeVendedores);
 
         } catch (error) {
@@ -371,9 +460,10 @@ const AprobacionPedidos = () => {
             );
         }
         
+        // CORRECCIÓN DE FILTRO DE FECHA
         if (filtros.fecha) {
             pedidosFiltrados = pedidosFiltrados.filter(p => 
-                p.Pedido_fecha && p.Pedido_fecha.startsWith(filtros.fecha)
+                p.Pedido_fecha && p.Pedido_fecha === filtros.fecha
             );
         }
         
@@ -384,16 +474,23 @@ const AprobacionPedidos = () => {
         setPedidosMostrados(pedidosFiltrados);
     }, [filtros, masterPedidos]);
 
-    const actualizarEstadoPedido = async (pedidoId, nuevoEstado) => {
+    const actualizarEstadoPedido = async (pedidoId, nuevoEstado, mensajeExito) => {
         try {
-            const response = await axios.patch(`${API_PEDIDOS_URL}${pedidoId}/`, { 
+            await axios.patch(`${API_PEDIDOS_URL}${pedidoId}/`, { 
                 Pedido_estado: nuevoEstado
             });
-            mostrarAlert(`Pedido ${nuevoEstado.toLowerCase().replace('_', ' ')} exitosamente`);
+            mostrarAlert(mensajeExito);
 
+            // Actualizar la lista maestra
             setMasterPedidos(prevMasterList => {
                 if (nuevoEstado === 'CANCELADO') {
-                    return prevMasterList.filter(p => p.Pedido_ID !== pedidoId);
+                    // Solo si es rechazado/cancelado, lo marcamos como tal, no lo eliminamos del master list
+                    return prevMasterList.map(pedido => {
+                        if (pedido.Pedido_ID === pedidoId) {
+                            return { ...pedido, Pedido_estado: nuevoEstado };
+                        }
+                        return pedido;
+                    });
                 }
                 return prevMasterList.map(pedido => {
                     if (pedido.Pedido_ID === pedidoId) {
@@ -406,40 +503,110 @@ const AprobacionPedidos = () => {
         } catch (error) {
             console.error("Error al actualizar pedido:", error);
             mostrarAlert("Error al actualizar el pedido", "error");
+        } finally {
+            setConfirmAction(null); // Cerrar el modal de confirmación
         }
     };
 
     const aceptarPedido = (pedidoId) => {
-        actualizarEstadoPedido(pedidoId, 'PENDIENTE_COSTURERO');
+        actualizarEstadoPedido(pedidoId, 'PENDIENTE_COSTURERO', 'Pedido ACEPTADO y enviado a Costurero exitosamente');
     };
 
-    const rechazarPedido = (pedidoId) => {
-        if (!window.confirm("¿Estás seguro de rechazar este pedido? Esta acción lo marcará como CANCELADO.")) return;
-        actualizarEstadoPedido(pedidoId, 'CANCELADO');
+    const performRechazarPedido = (pedidoId) => {
+        actualizarEstadoPedido(pedidoId, 'CANCELADO', 'Pedido RECHAZADO y CANCELADO exitosamente');
     };
+    
+    const performEliminarPedido = async (id) => {
+        try {
+            await axios.delete(`${API_PEDIDOS_URL}${id}/`);
+            mostrarAlert("✅ Pedido ELIMINADO permanentemente", "success");
+            
+            // Eliminar de la lista maestra
+            setMasterPedidos(prev => prev.filter(p => p.Pedido_ID !== id)); 
+        } catch {
+            mostrarAlert("❌ Error al eliminar el pedido", "error");
+        } finally {
+            setConfirmAction(null);
+        }
+    };
+
+
+    // Funciones para manejar el modal de confirmación
+    const confirmarRechazo = (id) => {
+        setConfirmAction({
+            id,
+            type: 'cancel',
+            title: 'Rechazar Pedido',
+            message: '¿Estás seguro de RECHAZAR este pedido? Se marcará como CANCELADO.',
+            confirmText: 'Sí, Rechazar',
+            confirmColor: styles.btnRechazar.backgroundColor
+        });
+    };
+    
+    const confirmarEliminacion = (id) => {
+        setConfirmAction({
+            id,
+            type: 'delete',
+            title: 'Eliminar Pedido',
+            message: '¿Estás seguro de ELIMINAR este pedido permanentemente? Esta acción no se puede deshacer.',
+            confirmText: 'Sí, Eliminar',
+            confirmColor: styles.btnEliminar.color
+        });
+    };
+
+    const handleConfirmAction = () => {
+        if (!confirmAction) return;
+
+        if (confirmAction.type === 'cancel') {
+            performRechazarPedido(confirmAction.id);
+        } else if (confirmAction.type === 'delete') {
+            performEliminarPedido(confirmAction.id);
+        }
+    };
+
 
     const renderAcciones = (pedido) => {
+        if (pedido.Pedido_estado === 'PENDIENTE_DUENO') {
+            return (
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                        style={styles.btnAceptar}
+                        onClick={() => aceptarPedido(pedido.Pedido_ID)}
+                        onMouseEnter={(e) => e.target.style.backgroundColor = '#059669'}
+                        onMouseLeave={(e) => e.target.style.backgroundColor = '#10b981'}
+                    >
+                        <CheckCircle size={14} />
+                        Aceptar
+                    </button>
+                    <button
+                        style={styles.btnRechazar}
+                        onClick={() => confirmarRechazo(pedido.Pedido_ID)}
+                        onMouseEnter={(e) => e.target.style.backgroundColor = '#dc2626'}
+                        onMouseLeave={(e) => e.target.style.backgroundColor = '#ef4444'}
+                    >
+                        <XCircle size={14} />
+                        Rechazar
+                    </button>
+                </div>
+            );
+        } else if (pedido.Pedido_estado === 'COMPLETADO' || pedido.Pedido_estado === 'CANCELADO') {
+            return (
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <button 
+                        style={styles.btnEliminar} 
+                        onClick={() => confirmarEliminacion(pedido.Pedido_ID)} 
+                        title="Eliminar pedido permanentemente"
+                    >
+                        <Trash2 size={16} /> Eliminar
+                    </button>
+                </div>
+            );
+        }
+        
         return (
-            <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                    style={styles.btnAceptar}
-                    onClick={() => aceptarPedido(pedido.Pedido_ID)}
-                    onMouseEnter={(e) => e.target.style.backgroundColor = '#059669'}
-                    onMouseLeave={(e) => e.target.style.backgroundColor = '#10b981'}
-                >
-                    <CheckCircle size={14} />
-                    Aceptar
-                </button>
-                <button
-                    style={styles.btnRechazar}
-                    onClick={() => rechazarPedido(pedido.Pedido_ID)}
-                    onMouseEnter={(e) => e.target.style.backgroundColor = '#dc2626'}
-                    onMouseLeave={(e) => e.target.style.backgroundColor = '#ef4444'}
-                >
-                    <XCircle size={14} />
-                    Rechazar
-                </button>
-            </div>
+            <span style={{color: '#9ca3af', fontSize: '12px'}}>
+                (En flujo de producción)
+            </span>
         );
     };
     
@@ -458,7 +625,6 @@ const AprobacionPedidos = () => {
 
 
     if (loading || !user) {
-        // ... (Tu JSX de "Cargando..." se mantiene 100% igual)
         return (
             <>
                 <div style={styles.container}>
@@ -467,7 +633,8 @@ const AprobacionPedidos = () => {
                     />
                     <div style={styles.main(navbarWidth)}>
                         <div style={styles.contentWrapper}>
-                            { /* ... (loading spinner) ... */ }
+                            {/* Opcional: Agregar un spinner o mensaje de carga */}
+                            <h1 style={{color: 'white'}}>Cargando pedidos...</h1>
                         </div>
                     </div>
                 </div>
@@ -558,15 +725,17 @@ const AprobacionPedidos = () => {
                                             
                                             return (
                                                 <tr key={pedido.Pedido_ID}>
-                                                    <td style={styles.td}>#{pedido.Pedido_ID}</td>
+                                                    {/* ID PEDIDO CORREGIDO */}
+                                                    <td style={styles.td}>PED{String(pedido.Pedido_ID || "").padStart(3, "0")}</td>
                                                     
                                                     <td style={styles.td}>
                                                         <span style={{...styles.estadoBadge, ...estilo}}>
                                                             {texto}
                                                         </span>
                                                     </td>
+                                                    {/* FECHA CORREGIDA */}
                                                     <td style={styles.td}>
-                                                        {new Date(pedido.Pedido_fecha).toLocaleDateString()}
+                                                        {formatDateForDisplay(pedido.Pedido_fecha)}
                                                     </td>
                                                     <td style={styles.td}>
                                                         <button
@@ -580,14 +749,7 @@ const AprobacionPedidos = () => {
                                                         </button>
                                                     </td>
                                                     <td style={styles.td}>
-                                                        {pedido.Pedido_estado === 'PENDIENTE_DUENO' ? 
-                                                            renderAcciones(pedido) : 
-                                                            (
-                                                                <span style={{color: '#9ca3af', fontSize: '12px'}}>
-                                                                    (Gestionado)
-                                                                </span>
-                                                            )
-                                                        }
+                                                        {renderAcciones(pedido)}
                                                     </td>
                                                 </tr>
                                             );
@@ -599,6 +761,35 @@ const AprobacionPedidos = () => {
                     </div>
                 </div>
 
+                {/* Modal de confirmación personalizado */}
+                {confirmAction && (
+                    <div style={styles.confirmModalOverlay} onClick={() => setConfirmAction(null)}>
+                        <div style={styles.confirmModalContent} onClick={(e) => e.stopPropagation()}>
+                            <div style={styles.confirmTitle}>
+                                {confirmAction.type === 'delete' ? <Trash2 size={24} color="#ef4444" /> : <XCircle size={24} color="#ef4444" />}
+                                {confirmAction.title}
+                            </div>
+                            <div style={styles.confirmMessage}>
+                                {confirmAction.message}
+                            </div>
+                            <div style={styles.confirmActions}>
+                                <button 
+                                    style={styles.btnConfirmNo} 
+                                    onClick={() => setConfirmAction(null)}
+                                >
+                                    No, Mantener
+                                </button>
+                                <button 
+                                    style={{ ...styles.btnConfirmYes, backgroundColor: confirmAction.confirmColor }} 
+                                    onClick={handleConfirmAction}
+                                >
+                                    {confirmAction.confirmText}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
                 {/* Modal de detalles */}
                 {pedidoSeleccionado && (
                     <div style={styles.modalOverlay} onClick={() => setPedidoSeleccionado(null)}>
@@ -607,7 +798,7 @@ const AprobacionPedidos = () => {
                             {/* Header del Modal */}
                             <div style={styles.modalHeader}>
                                 <h2 style={styles.modalTitle}>
-                                    Detalles del Pedido #{pedidoSeleccionado.Pedido_ID}
+                                    Detalles del Pedido PED{String(pedidoSeleccionado.Pedido_ID || "").padStart(3, "0")}
                                 </h2>
                                 <button
                                     style={styles.btnClose}
@@ -646,7 +837,8 @@ const AprobacionPedidos = () => {
                                     <div>
                                         <div style={{ fontSize: "12px", color: "#9ca3af", marginBottom: "4px" }}>Fecha</div>
                                         <div style={{ color: "#fff", fontSize: "16px", fontWeight: "600" }}>
-                                            {new Date(pedidoSeleccionado.Pedido_fecha).toLocaleDateString("es-AR", { year: "numeric", month: "long", day: "numeric" })}
+                                            {/* FECHA CORREGIDA */}
+                                            {pedidoSeleccionado.Pedido_fecha ? formatDateForDisplay(pedidoSeleccionado.Pedido_fecha) : "-"}
                                         </div>
                                     </div>
                                     <div>
@@ -658,7 +850,7 @@ const AprobacionPedidos = () => {
                                 </div>
                             </div>
 
-                            {/* Lista de Prendas */}
+                            {/* Lista de Prendas (código de detalles se mantiene igual) */}
                             <div>
                                 <h3 style={{ 
                                     color: '#fff', 

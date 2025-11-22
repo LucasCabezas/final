@@ -19,6 +19,7 @@ class DetallePedidoSerializer(serializers.ModelSerializer):
 class PedidoSerializer(serializers.ModelSerializer):
     detalles = DetallePedidoSerializer(many=True, read_only=True)
     usuario = serializers.CharField(source='Usuario.username', read_only=True)
+    Pedido_fecha = serializers.DateField(format='%Y-%m-%d')
 
     class Meta:
         model = Pedido

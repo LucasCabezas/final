@@ -245,7 +245,7 @@ class PedidoList(APIView):
             # 🔹 2️⃣ Si todo bien, crear el pedido directamente para costurero
             pedido = Pedido.objects.create(
                 Usuario=usuario,
-                Pedido_fecha=timezone.now().date(),
+                Pedido_fecha=timezone.localdate(),
                 Pedido_estado=estado_recibido  # PENDIENTE_COSTURERO = va directo al costurero
             )
 
@@ -504,7 +504,7 @@ def crear_pedido(request):
         # Crear el pedido
         pedido = Pedido.objects.create(
             Usuario_id=usuario_id if usuario_id else None,
-            Pedido_fecha=timezone.now(),
+            Pedido_fecha=timezone.localdate(),
             Pedido_estado=estado
         )
 

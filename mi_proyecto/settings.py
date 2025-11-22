@@ -137,7 +137,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # 🌎 Internacionalización
 # ---------------------------------------------------
 LANGUAGE_CODE = 'es-AR'
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/Argentina/Salta'
 USE_I18N = True
 USE_L10N = True
 USE_TZ = True

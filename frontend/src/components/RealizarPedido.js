@@ -494,8 +494,85 @@ const styles = {
     fontSize: "16px",
     color: "#fff",
     fontWeight: "600"
+  },
+  // Estilos para el modal de confirmación
+  confirmModalOverlay: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.9)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 2000,
+  },
+  confirmModalContent: {
+    backgroundColor: "rgba(30, 30, 30, 0.98)",
+    borderRadius: "16px",
+    padding: "32px",
+    maxWidth: "450px",
+    width: "90%",
+    boxShadow: "0 10px 25px rgba(0, 0, 0, 0.5)",
+    border: "1px solid rgba(255, 215, 15, 0.3)",
+    textAlign: "center"
+  },
+  confirmTitle: {
+    fontSize: "24px",
+    fontWeight: "bold",
+    color: "#ef4444",
+    marginBottom: "16px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "10px"
+  },
+  confirmMessage: {
+    fontSize: "16px",
+    color: "#d1d5db",
+    marginBottom: "24px"
+  },
+  confirmActions: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "16px"
+  },
+  btnConfirmYes: {
+    flex: 1,
+    padding: "10px 20px",
+    backgroundColor: "#ef4444",
+    color: "#fff",
+    border: "none",
+    borderRadius: "8px",
+    fontWeight: "600",
+    cursor: "pointer",
+    transition: "all 0.2s"
+  },
+  btnConfirmNo: {
+    flex: 1,
+    padding: "10px 20px",
+    backgroundColor: "#4b5563",
+    color: "#fff",
+    border: "none",
+    borderRadius: "8px",
+    fontWeight: "600",
+    cursor: "pointer",
+    transition: "all 0.2s"
   }
 };
+
+// Función de utilidad mejorada para formatear la fecha sin desfase de zona horaria
+const formatDateForDisplay = (dateString) => {
+    if (!dateString) return "-";
+
+    const parts = dateString.split('-');
+    const date = new Date(parts[0], parts[1] - 1, parts[2]); 
+    
+    const options = { year: 'numeric', month: '2-digit', day: '2-digit' };
+    return date.toLocaleDateString(undefined, options); 
+}
+
 
 export default function RealizarPedido() {
   const { user, loading } = useAuth();
@@ -522,6 +599,7 @@ export default function RealizarPedido() {
   const [resultado, setResultado] = useState(null);
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
   const [modalDetallesOpen, setModalDetallesOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null); 
 
   const navbarWidth = isNavbarCollapsed ? 70 : 250;
 
@@ -767,29 +845,62 @@ export default function RealizarPedido() {
     showAlert("Filtros limpiados", "success");
   };
 
-  const cancelarPedido = async (id) => {
-    if (!window.confirm("¿Estás seguro de cancelar este pedido?")) return;
+  const performCancelPedido = async (id) => {
     try {
       await axios.patch(`http://localhost:8000/api/pedidos/${id}/`, { Pedido_estado: "CANCELADO" });
       showAlert("✅ Pedido cancelado correctamente", "success");
       const resPedidos = await axios.get("http://localhost:8000/api/pedidos/");
       setMasterPedidos(resPedidos.data || []); 
+      setConfirmAction(null);
     } catch {
       showAlert("❌ Error al conectar con el servidor", "error");
     }
   };
 
-  const eliminarPedido = async (id) => {
-    if (!window.confirm("¿Estás seguro de eliminar este pedido? Esta acción no se puede deshacer.")) return;
+  const performEliminarPedido = async (id) => {
     try {
       await axios.delete(`http://localhost:8000/api/pedidos/${id}/`);
       showAlert("✅ Pedido eliminado correctamente", "success");
       const resPedidos = await axios.get("http://localhost:8000/api/pedidos/");
       setMasterPedidos(resPedidos.data || []); 
+      setConfirmAction(null);
     } catch {
       showAlert("❌ Error al conectar con el servidor", "error");
     }
   };
+
+  const confirmarCancelacion = (id) => {
+    setConfirmAction({
+      id,
+      type: 'cancel',
+      title: 'Cancelar Pedido',
+      message: '¿Estás seguro de cancelar este pedido? Esta acción cambiará su estado a "Cancelado".',
+      confirmText: 'Sí, Cancelar',
+      confirmColor: styles.btnCancelar.backgroundColor
+    });
+  };
+
+  const confirmarEliminacion = (id) => {
+    setConfirmAction({
+      id,
+      type: 'delete',
+      title: 'Eliminar Pedido',
+      message: '¿Estás seguro de ELIMINAR este pedido? Esta acción es PERMANENTE y no se puede deshacer.',
+      confirmText: 'Sí, Eliminar',
+      confirmColor: styles.btnEliminar.color
+    });
+  };
+
+  const handleConfirmAction = () => {
+    if (!confirmAction) return;
+
+    if (confirmAction.type === 'cancel') {
+      performCancelPedido(confirmAction.id);
+    } else if (confirmAction.type === 'delete') {
+      performEliminarPedido(confirmAction.id);
+    }
+  };
+
 
   const actualizarEstadoPedido = async (id, nuevoEstado) => {
     try {
@@ -826,9 +937,14 @@ export default function RealizarPedido() {
     if (filtros.estado && filtros.estado !== "" && estado !== filtros.estado) {
         return false;
     }
+    // Lógica de filtro de fecha: Compara directamente las cadenas YYYY-MM-DD
     if (filtros.fecha && filtros.fecha !== "") {
         if (!p.Pedido_fecha) return false;
-        return p.Pedido_fecha.split("T")[0] === filtros.fecha;
+        
+        // El backend nos devuelve un formato 'YYYY-MM-DD' directamente.
+        const fechaPedido = p.Pedido_fecha; 
+
+        return fechaPedido === filtros.fecha;
     }
     return true;
   });
@@ -897,7 +1013,8 @@ export default function RealizarPedido() {
                       <tr key={p.Pedido_ID || p.id}>
                         <td style={styles.td}>PED{String(p.Pedido_ID || p.id || "").padStart(3, "0")}</td>
                         <td style={styles.td}><span style={{ ...styles.estadoBadge, ...estilo }}>{texto}</span></td>
-                        <td style={styles.td}>{p.Pedido_fecha ? new Date(p.Pedido_fecha).toLocaleDateString() : "-"}</td>
+                        {/* Uso de la función de utilidad para el formato visual correcto */}
+                        <td style={styles.td}>{formatDateForDisplay(p.Pedido_fecha)}</td>
                         <td style={styles.td}>
                           <button 
                             style={styles.btnVer} 
@@ -912,13 +1029,13 @@ export default function RealizarPedido() {
                         <td style={styles.td}>
                           <div style={styles.actionsContainer}>
                             {estado === "PENDIENTE_COSTURERO" && (
-                              <button style={styles.btnCancelar} onClick={() => cancelarPedido(p.Pedido_ID || p.id)} title="Cancelar pedido">
+                              <button style={styles.btnCancelar} onClick={() => confirmarCancelacion(p.Pedido_ID || p.id)} title="Cancelar pedido">
                                 <XCircle size={16} /> Cancelar
                               </button>
                             )}
 
                             {(estado === "COMPLETADO" || estado === "CANCELADO") && (
-                              <button style={styles.btnEliminar} onClick={() => eliminarPedido(p.Pedido_ID || p.id)} title="Eliminar pedido">
+                              <button style={styles.btnEliminar} onClick={() => confirmarEliminacion(p.Pedido_ID || p.id)} title="Eliminar pedido">
                                 <Trash2 size={16} /> Eliminar
                               </button>
                             )}
@@ -1075,7 +1192,7 @@ export default function RealizarPedido() {
                     <div>
                       <div style={{ fontSize: "12px", color: "#9ca3af", marginBottom: "4px" }}>Fecha</div>
                       <div style={{ color: "#fff", fontSize: "16px", fontWeight: "600" }}>
-                        {pedidoSeleccionado.Pedido_fecha ? new Date(pedidoSeleccionado.Pedido_fecha).toLocaleDateString("es-AR", { year: "numeric", month: "long", day: "numeric" }) : "-"}
+                        {formatDateForDisplay(pedidoSeleccionado.Pedido_fecha)}
                       </div>
                     </div>
                     <div>
@@ -1141,6 +1258,35 @@ export default function RealizarPedido() {
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Modal de Confirmación Personalizado */}
+          {confirmAction && (
+            <div style={styles.confirmModalOverlay} onClick={() => setConfirmAction(null)}>
+              <div style={styles.confirmModalContent} onClick={(e) => e.stopPropagation()}>
+                <div style={styles.confirmTitle}>
+                  {confirmAction.type === 'delete' ? <Trash2 size={24} color="#ef4444" /> : <XCircle size={24} color="#ef4444" />}
+                  {confirmAction.title}
+                </div>
+                <div style={styles.confirmMessage}>
+                  {confirmAction.message}
+                </div>
+                <div style={styles.confirmActions}>
+                  <button 
+                    style={styles.btnConfirmNo} 
+                    onClick={() => setConfirmAction(null)}
+                  >
+                    No, Mantener
+                  </button>
+                  <button 
+                    style={{ ...styles.btnConfirmYes, backgroundColor: confirmAction.confirmColor }} 
+                    onClick={handleConfirmAction}
+                  >
+                    {confirmAction.confirmText}
+                  </button>
+                </div>
               </div>
             </div>
           )}
