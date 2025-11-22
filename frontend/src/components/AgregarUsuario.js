@@ -31,16 +31,22 @@ const styles = {
   headerActions: {
     display: 'flex',
     alignItems: 'center',
-    gap: '16px'
+    gap: '16px' // Espacio entre los grupos de elementos
+  },
+  searchGroup: { // Nuevo contenedor para el input de búsqueda y el contador
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
   },
   searchContainer: {
     position: 'relative',
     display: 'flex',
-    alignItems: 'center'
+    alignItems: 'center',
+    gap: '12px' 
   },
   searchIcon: {
     position: 'absolute',
-    left: '12px',
+    left: '12px', // Posición ajustada
     top: '50%',
     transform: 'translateY(-50%)',
     color: '#000',
@@ -77,7 +83,7 @@ const styles = {
     justifyContent: 'center'
   },
   searchCounter: {
-    marginLeft: '0',
+    marginLeft: '16px', // Espacio ajustado
     padding: '6px 12px',
     backgroundColor: 'rgba(255, 215, 15, 0.2)',
     color: '#ffd70f',
@@ -230,6 +236,17 @@ const styles = {
     transition: 'border-color 0.2s',
     boxSizing: 'border-box',
     cursor: 'pointer'
+  },
+  selectFilter: { 
+    padding: '8px 16px',
+    backgroundColor: '#fff',
+    color: '#000',
+    borderRadius: '8px',
+    border: '1px solid #d1d5db',
+    outline: 'none',
+    transition: 'border-color 0.2s',
+    fontSize: '14px',
+    cursor: 'pointer',
   },
   modalActions: {
     display: 'flex',
@@ -431,9 +448,10 @@ const styleSheet = `
 function GestionUsuarios() {
   const { authenticatedFetch } = useAuth();
   const [isNavbarCollapsed, setIsNavbarCollapsed] = useState(false);
-  const [usuarios, setUsuarios] = useState([]);
+  const [usuarios, setUsuarios] = useState([]); // Lista completa de usuarios
   const [roles, setRoles] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterMode, setFilterMode] = useState('-'); // Estado del desplegable: '-' o 'TODOS'
   const [showModal, setShowModal] = useState(false);
   const [editingUsuario, setEditingUsuario] = useState(null);
   const [formData, setFormData] = useState({
@@ -456,7 +474,6 @@ function GestionUsuarios() {
   });
 
   useEffect(() => {
-    // 🔥 CAMBIO: Solo se ejecuta si 'authenticatedFetch' está listo
     if (authenticatedFetch) { 
       cargarUsuarios();
       cargarRoles();
@@ -465,14 +482,11 @@ function GestionUsuarios() {
 
   const cargarUsuarios = async () => {
     try {
-      // No necesitas añadir headers aquí, 'authenticatedFetch' lo hace por ti
       const response = await authenticatedFetch('http://localhost:8000/api/usuarios/usuarios/');
       const data = await response.json();
       setUsuarios(data);
     } catch (error) {
       console.error('Error cargando usuarios:', error);
-      // Si el token es inválido o expiró, authenticatedFetch debería manejarlo (ej. logout)
-      // Mostramos un error genérico por si acaso
       if (error.message.includes('401')) {
           showAlert('Tu sesión expiró. Por favor, vuelve a ingresar.', 'error');
       } else {
@@ -483,7 +497,6 @@ function GestionUsuarios() {
 
   const cargarRoles = async () => {
     try {
-      // No necesitas añadir headers aquí, 'authenticatedFetch' lo hace por ti
       const response = await authenticatedFetch('http://localhost:8000/api/usuarios/roles/');
       const data = await response.json();
       setRoles(data);
@@ -504,16 +517,34 @@ function GestionUsuarios() {
     }, 3000);
   };
 
-  const filteredUsuarios = searchTerm.trim() === '' ? [] : usuarios.filter(usuario => {
-    const search = searchTerm.toLowerCase();
-    return (
-      usuario.nombre?.toLowerCase().includes(search) ||
-      usuario.apellido?.toLowerCase().includes(search) ||
-      usuario.email?.toLowerCase().includes(search) ||
-      usuario.dni?.toString().includes(search) ||
-      usuario.rol?.toLowerCase().includes(search)
-    );
-  });
+  // Lógica de filtrado corregida: El input de búsqueda SIEMPRE filtra sobre la lista completa.
+  const filteredUsuarios = (() => {
+    const search = searchTerm.trim().toLowerCase();
+    
+    // Si no hay término de búsqueda, el comportamiento depende del filterMode:
+    if (search === '') {
+        return filterMode === 'TODOS' ? usuarios : [];
+    }
+
+    // Si hay término de búsqueda, siempre filtramos la lista completa.
+    return usuarios.filter(usuario => {
+        return (
+          usuario.nombre?.toLowerCase().includes(search) ||
+          usuario.apellido?.toLowerCase().includes(search) ||
+          usuario.email?.toLowerCase().includes(search) ||
+          usuario.dni?.toString().includes(search) ||
+          usuario.rol?.toLowerCase().includes(search)
+        );
+    });
+  })();
+  
+  const handleFilterModeChange = (e) => {
+      setFilterMode(e.target.value);
+      // Opcional: Si el usuario cambia a "-", podríamos limpiar el término de búsqueda para mostrar el estado inicial.
+      // if (e.target.value === '-') {
+      //     setSearchTerm('');
+      // }
+  };
 
   const handleOpenModal = (usuario = null) => {
     if (usuario) {
@@ -552,7 +583,7 @@ function GestionUsuarios() {
       rol_id: ''
     });
 
-  setPasswordRequirements({
+    setPasswordRequirements({
       minLength: false,
       hasUpperCase: false,
       hasLowerCase: false,
@@ -586,7 +617,6 @@ function GestionUsuarios() {
       }
     }
     
-    // 🔥 CAMBIO: Llamar a la validación si es el input de contraseña
     if (name === 'password') {
       validatePasswordRequirements(value);
     }
@@ -782,6 +812,81 @@ function GestionUsuarios() {
     return null;
   };
 
+  // Determinar el contenido a mostrar en la tabla
+  const tableContent = (() => {
+    const searchActive = searchTerm.trim() !== '';
+
+    // Estado inicial: Desplegable en "-" y sin búsqueda
+    if (filterMode === '-' && !searchActive) {
+        return (
+            <tr>
+              <td colSpan="4" style={styles.emptyState}>
+                Selecciona **"TODOS"** en el desplegable o comienza a escribir en el buscador para ver los resultados.
+              </td>
+            </tr>
+        );
+    }
+    
+    // Si la lista de resultados está vacía
+    if (filteredUsuarios.length === 0) {
+        return (
+            <tr>
+              <td colSpan="4" style={styles.emptyState}>
+                No se encontraron usuarios que coincidan con "{searchTerm}"
+              </td>
+            </tr>
+        );
+    }
+    
+    // Mostrar resultados
+    return filteredUsuarios.map((usuario) => {
+        const badgeColor = getRolBadgeColor(usuario.rol);
+        return (
+            <tr key={usuario.id} style={styles.tr} className="hover-row">
+              <td style={styles.td}>{usuario.nombre}</td>
+              <td style={styles.td}>{usuario.apellido}</td>
+              <td style={styles.td}>
+                {usuario.rol ? (
+                  <span style={{
+                    ...styles.rolBadge,
+                    backgroundColor: badgeColor.bg,
+                    color: badgeColor.color
+                  }}>
+                    {usuario.rol}
+                  </span>
+                ) : (
+                  <span style={{
+                    ...styles.rolBadge,
+                    backgroundColor: 'rgba(156, 163, 175, 0.2)',
+                    color: '#d1d5db'
+                  }}>
+                    Sin rol
+                  </span>
+                )}
+              </td>
+              <td style={styles.tdCenter}>
+                <div style={styles.actionsContainer}>
+                  <button
+                    onClick={() => handleOpenModal(usuario)}
+                    style={styles.iconButton}
+                    className="hover-icon"
+                  >
+                    <Edit2 style={{ width: '20px', height: '20px', color: '#60a5fa' }} />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteClick(usuario)}
+                    style={styles.iconButton}
+                    className="hover-icon"
+                  >
+                    <Trash2 style={{ width: '20px', height: '20px', color: '#f87171' }} />
+                  </button>
+                </div>
+              </td>
+            </tr>
+        );
+    });
+  })();
+
   return (
     <>
       <style>{styleSheet}</style>
@@ -795,45 +900,65 @@ function GestionUsuarios() {
           marginLeft: isNavbarCollapsed ? '70px' : '250px'
         }}>
           <div style={styles.contentWrapper}>
-            {/* ... (Todo el JSX del header y la tabla se mantiene 100% igual) ... */}
             <div style={styles.header}>
               <h1 style={styles.title}>Gestión de Usuarios</h1>
               <div style={styles.headerActions}>
-                <div style={styles.searchContainer}>
-                  <Search style={styles.searchIcon} />
-                  <input
-                    type="text"
-                    placeholder="Buscar usuario..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    style={styles.searchInput}
-                    className="search-input"
-                    autoFocus
-                  />
-                  {searchTerm && (
-                    <button
-                      onClick={handleClearSearch}
-                      style={styles.clearButton}
-                      className="hover-clear"
-                      title="Limpiar búsqueda"
-                    >
-                      <X style={{ width: '18px', height: '18px' }} />
-                    </button>
-                  )}
+                
+                {/* GRUPO DE BÚSQUEDA */}
+                <div style={styles.searchGroup}>
+                    <Search style={styles.searchIcon} />
+                    <input
+                      type="text"
+                      placeholder="Buscar usuario..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      style={styles.searchInput}
+                      className="search-input"
+                      autoFocus
+                      // El input NO está deshabilitado en ningún momento
+                    />
+                    {searchTerm && (
+                      <button
+                        onClick={handleClearSearch}
+                        style={styles.clearButton}
+                        className="hover-clear"
+                        title="Limpiar búsqueda"
+                      >
+                        <X style={{ width: '18px', height: '18px' }} />
+                      </button>
+                    )}
                 </div>
-                {searchTerm && (
-                  <div style={styles.searchCounter}>
-                    {filteredUsuarios.length} de {usuarios.length}
-                  </div>
-                )}
-                <button
-                  onClick={() => handleOpenModal()}
-                  style={styles.addButton}
-                  className="hover-button"
-                >
-                  <Plus style={{ width: '20px', height: '20px' }} />
-                  Agregar Usuario
-                </button>
+                
+                {/* CONTADOR y BOTONES A LA DERECHA */}
+                <div style={styles.searchContainer}>
+                  {/* CONTADOR */}
+                  {(searchTerm.trim() !== '' || filterMode === 'TODOS') && (
+                    <div style={styles.searchCounter}>
+                      {filteredUsuarios.length} de {usuarios.length}
+                    </div>
+                  )}
+
+                  {/* DESPLEGABLE DE FILTRO */}
+                  <select
+                    value={filterMode}
+                    onChange={handleFilterModeChange}
+                    style={styles.selectFilter}
+                    className="form-input"
+                  >
+                    <option value="-">-</option>
+                    <option value="TODOS">TODOS</option>
+                  </select>
+                  
+                  {/* BOTÓN AGREGAR */}
+                  <button
+                    onClick={() => handleOpenModal()}
+                    style={styles.addButton}
+                    className="hover-button"
+                  >
+                    <Plus style={{ width: '20px', height: '20px' }} />
+                    Agregar Usuario
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -848,66 +973,7 @@ function GestionUsuarios() {
                   </tr>
                 </thead>
                 <tbody>
-                  {searchTerm.trim() === '' ? (
-                    <tr>
-                      <td colSpan="4" style={styles.emptyState}>
-                        Comienza a escribir en el buscador para ver los usuarios
-                      </td>
-                    </tr>
-                  ) : filteredUsuarios.length === 0 ? (
-                    <tr>
-                      <td colSpan="4" style={styles.emptyState}>
-                        No se encontraron usuarios que coincidan con "{searchTerm}"
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredUsuarios.map((usuario) => {
-                      const badgeColor = getRolBadgeColor(usuario.rol);
-                      return (
-                        <tr key={usuario.id} style={styles.tr} className="hover-row">
-                          <td style={styles.td}>{usuario.nombre}</td>
-                          <td style={styles.td}>{usuario.apellido}</td>
-                          <td style={styles.td}>
-                            {usuario.rol ? (
-                              <span style={{
-                                ...styles.rolBadge,
-                                backgroundColor: badgeColor.bg,
-                                color: badgeColor.color
-                              }}>
-                                {usuario.rol}
-                              </span>
-                            ) : (
-                              <span style={{
-                                ...styles.rolBadge,
-                                backgroundColor: 'rgba(156, 163, 175, 0.2)',
-                                color: '#d1d5db'
-                              }}>
-                                Sin rol
-                              </span>
-                            )}
-                          </td>
-                          <td style={styles.tdCenter}>
-                            <div style={styles.actionsContainer}>
-                              <button
-                                onClick={() => handleOpenModal(usuario)}
-                                style={styles.iconButton}
-                                className="hover-icon"
-                              >
-                                <Edit2 style={{ width: '20px', height: '20px', color: '#60a5fa' }} />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteClick(usuario)}
-                                style={styles.iconButton}
-                                className="hover-icon"
-                              >
-                                <Trash2 style={{ width: '20px', height: '20px', color: '#f87171' }} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
+                  {tableContent}
                 </tbody>
               </table>
             </div>
@@ -993,7 +1059,7 @@ function GestionUsuarios() {
                           />
                         </div>
 
-                        {/* 🔥 CORRECCIÓN: El div de requisitos va DENTRO del formGroup de la contraseña */}
+                        {/* Contraseña con requisitos */}
                         <div style={styles.formGroup}>
                           <label style={styles.label}>Contraseña *</label>
                           <input
@@ -1045,7 +1111,6 @@ function GestionUsuarios() {
                       </>
                     ) : null}
 
-                    {/* ESTE 'div' de formGroup estaba mal cerrado en tu archivo */}
                     <div style={styles.formGroup}>
                       <label style={styles.label}>Rol *</label>
                       <select
@@ -1083,7 +1148,7 @@ function GestionUsuarios() {
                     </button>
                   </div>
                 </div>
-              </div> // <-- 🔥 CORRECCIÓN: Faltaba este '</div>'
+              </div> 
             )}
 
             {showConfirmModal && (() => {

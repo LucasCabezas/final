@@ -712,7 +712,7 @@ const AprobacionPedidos = () => {
                                 <table style={styles.table}>
                                     <thead>
                                         <tr>
-                                            <th style={styles.th}>ID Pedido</th>
+                                            <th style={styles.th}>Pedido</th>
                                             <th style={styles.th}>Estado</th>
                                             <th style={styles.th}>Fecha</th>
                                             <th style={styles.th}>Detalle</th> 

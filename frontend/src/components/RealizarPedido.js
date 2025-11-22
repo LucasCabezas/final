@@ -998,7 +998,7 @@ export default function RealizarPedido() {
               <table style={styles.table}>
                 <thead>
                   <tr>
-                    <th style={styles.th}>Pedido ID</th>
+                    <th style={styles.th}>Pedido</th>
                     <th style={styles.th}>Estado</th>
                     <th style={styles.th}>Fecha</th>
                     <th style={styles.th}>Detalles</th>
