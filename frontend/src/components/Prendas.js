@@ -1142,15 +1142,15 @@ const Prendas = () => {
                   {prendasMostradas.length} de {prendas.length} prendas
                 </div>
               )}
+              {user?.rol === "Dueño" && (
               <button
                 style={styles.addButton}
                 onClick={abrirModalCrear}
-                onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
-                onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
               >
                 <Plus style={{ width: '20px', height: '20px' }} />
                 Nueva Prenda
               </button>
+            )}
             </div>
           </div>
 
@@ -1220,47 +1220,41 @@ const Prendas = () => {
                   </div>
                 </div>
 
-                <div style={styles.prendaActions}>
-                  <button
-                    style={{...styles.actionButton, ...styles.btnVer}}
-                    onClick={() => abrirModalDetalles(prenda)}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'rgba(33, 150, 243, 0.3)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'rgba(33, 150, 243, 0.2)';
-                    }}
-                  >
-                    <Eye style={{ width: '16px', height: '16px' }} />
-                    Ver
-                  </button>
-                  <button
-                    style={{...styles.actionButton, ...styles.btnEditar}}
-                    onClick={() => abrirModalEditar(prenda)}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'rgba(255, 152, 0, 0.3)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'rgba(255, 152, 0, 0.2)';
-                    }}
-                  >
-                    <Edit2 style={{ width: '16px', height: '16px' }} />
-                    Editar
-                  </button>
-                  <button
-                    style={{...styles.actionButton, ...styles.btnEliminar}}
-                    onClick={() => eliminarPrenda(prenda)}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'rgba(244, 67, 54, 0.3)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'rgba(244, 67, 54, 0.2)';
-                    }}
-                  >
-                    <Trash2 style={{ width: '16px', height: '16px' }} />
-                    Eliminar
-                  </button>
-                </div>
+<div style={styles.prendaActions}>
+
+  {/* 🔵 Ver: todos los roles pueden ver */}
+  <button
+    style={{ ...styles.actionButton, ...styles.btnVer }}
+    onClick={() => abrirModalDetalles(prenda)}
+  >
+    <Eye style={{ width: '16px', height: '16px' }} />
+    Ver
+  </button>
+
+  {/* ✏️ Editar: SOLO dueño */}
+  {user?.rol === "Dueño" && (
+    <button
+      style={{ ...styles.actionButton, ...styles.btnEditar }}
+      onClick={() => abrirModalEditar(prenda)}
+    >
+      <Edit2 style={{ width: '16px', height: '16px' }} />
+      Editar
+    </button>
+  )}
+
+  {/* 🗑 Eliminar: SOLO dueño */}
+  {user?.rol === "Dueño" && (
+    <button
+      style={{ ...styles.actionButton, ...styles.btnEliminar }}
+      onClick={() => eliminarPrenda(prenda)}
+    >
+      <Trash2 style={{ width: '16px', height: '16px' }} />
+      Eliminar
+    </button>
+  )}
+
+</div>
+
               </div>
             ))}
           </div>

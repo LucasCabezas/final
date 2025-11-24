@@ -214,7 +214,7 @@ function Vendedor() {
           <div style={styles.header}>
             <h2 style={styles.title}>
               ¡Bienvenido Vendedor!{" "}
-              {user ? `${user.Usuario_nombre} ${user.Usuario_apellido}` : ""}
+              {user ? `${user.nombre} ${user.apellido}` : ""}
             </h2>
              <p style={styles.subtitle}>
               Resumen y seguimiento de los pedidos que has ingresado.

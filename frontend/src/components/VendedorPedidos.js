@@ -953,13 +953,7 @@ export default function VendedorPedidos() {
                           {tallesDisponibles.map((t, i) => <option key={i} value={t}>{t}</option>)}
                         </select>
                       </div>
-                      <div style={styles.formGroup}>
-                        <label style={styles.label}>Tipo</label>
-                        <select value={formData.tipo} onChange={(e) => setFormData({ ...formData, tipo: e.target.value })} style={styles.selectTalle}>
-                          <option value="LISA">LISA</option>
-                          <option value="ESTAMPADA">ESTAMPADA</option>
-                        </select>
-                      </div>
+                     
                       <div style={styles.formGroup}>
                         <label style={styles.label}>Cantidad</label>
                         <input type="number" min="1" value={formData.cantidad} onChange={(e) => setFormData({ ...formData, cantidad: e.target.value })} style={styles.input} />

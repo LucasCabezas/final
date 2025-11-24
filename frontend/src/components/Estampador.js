@@ -48,46 +48,44 @@ function Estampador() {
     cargarInsumosEstampador(); // ✅ AGREGAR CARGA DE INSUMOS
   }, [user, loading]);
 
-  const cargarPedidosEstampador = async () => {
+ const cargarPedidosEstampador = async () => {
     setIsLoading(true);
     try {
-      console.log("🔄 Estampador - Intentando cargar pedidos...");
-      
-      const response = await fetch(API_PEDIDOS_URL); // Carga todos los pedidos
-      
-      if (!response.ok) {
-        throw new Error(`Error en la respuesta: ${response.status} ${response.statusText}`);
-      }
-      
+      const response = await fetch(API_PEDIDOS_URL);
+
+      if (!response.ok) throw new Error("Error al obtener pedidos");
+
       const data = await response.json();
-      
-      // Filtrar los pedidos que son relevantes para el Estampador
+
+      // 🔥 USAR LA ESTRUCTURA REAL DEL BACKEND
       const pedidosEstampador = data.filter(
-        (item) => item.estado === 'PENDIENTE_ESTAMPADO' || item.estado === 'COMPLETADO'
+        p =>
+          p.Pedido_estado === "PENDIENTE_ESTAMPADO" ||
+          p.Pedido_estado === "EN_PROCESO_ESTAMPADO"
       );
 
       setPedidos(pedidosEstampador);
 
-      // Calcular Pedidos Pendientes de Estampado
-      const pendientes = pedidosEstampador.filter(
-          (item) => item.estado === 'PENDIENTE_ESTAMPADO'
-      ).length;
+      // 🔥 Cantidad correcta = suma de cantidades en detalles
+      const pendientes = pedidosEstampador.length;
       setPendientesEstampado(pendientes);
 
-      // (Simulación) Calcular pedidos completados hoy
       const hoy = new Date().toISOString().slice(0, 10);
       const completados = pedidosEstampador.filter(
-          (item) => item.estado === 'COMPLETADO' && item.fecha_finalizacion && item.fecha_finalizacion.startsWith(hoy)
+        p => p.Pedido_estado === "COMPLETADO" &&
+             p.fecha_finalizacion?.startsWith(hoy)
       ).length;
+
       setCompletadosHoy(completados);
 
-      console.log("✅ Estampador - Pedidos cargados correctamente");
     } catch (error) {
-      console.error("❌ Estampador - Error cargando pedidos:", error);
+      console.error("❌ Error cargando pedidos:", error);
     } finally {
       setIsLoading(false);
     }
-  };
+};
+
+
   
   // 🔹 NUEVA FUNCIÓN PARA CARGAR INSUMOS DE ESTAMPADO
   const cargarInsumosEstampador = async () => {
@@ -209,80 +207,7 @@ function Estampador() {
             </div>
           </section>
 
-          {/* 🔹 NUEVA SECCIÓN: Inventario de Insumos de Estampado */}
-          <section style={{ marginBottom: "40px" }}>
-            <h3 style={{ ...styles.title, fontSize: "20px", marginBottom: "8px" }}>
-              Inventario de Insumos de Estampado
-            </h3>
-            <p style={styles.subtitle}>
-              Estado actual de tus materiales de trabajo.
-            </p>
-            
-            <div style={styles.resumenGrid}>
-              {/* Card 1: Valor Total de Insumos */}
-              <div style={styles.resumenCard}>
-                <h4 style={styles.cardLabel}>
-                  Valor Total de Insumos
-                </h4>
-                <p style={{ ...styles.cardValue, fontSize: "28px" }}>
-                  ${totalValor.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-              </div>
-
-              {/* Card 2: Artículos Bajo Stock */}
-              <div style={styles.resumenCard}>
-                <h4 style={styles.cardLabel}>
-                  Insumos con Bajo Stock
-                </h4>
-                <p style={{ ...styles.cardValue, fontSize: "28px", color: bajoStock > 0 ? "#e74c3c" : "#2ecc71" }}>
-                  {bajoStock}
-                </p>
-                <p style={styles.subtitle}>
-                  {bajoStock > 0 ? "Requieren atención" : "Stock adecuado"}
-                </p>
-              </div>
-            </div>
-            
-            {/* Tabla de Insumos */}
-            {insumos.length > 0 && (
-              <div style={{ ...styles.resumenCard, marginTop: "20px" }}>
-                <h4 style={{ color: "#ffffff", fontSize: "16px", fontWeight: "600", marginBottom: "15px" }}>
-                  Mis Insumos de Estampado
-                </h4>
-                <div style={{ overflowX: "auto" }}>
-                  <table style={styles.table}>
-                    <thead>
-                      <tr>
-                        <th style={styles.th}>Insumo</th>
-                        <th style={styles.th}>Cantidad</th>
-                        <th style={styles.th}>Stock Mínimo</th>
-                        <th style={styles.th}>Estado</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {insumos.map((insumo) => (
-                        <tr key={insumo.Insumo_ID}>
-                          <td style={styles.td}>{insumo.Insumo_nombre}</td>
-                          <td style={styles.td}>
-                            {insumo.Insumo_cantidad} {insumo.unidad_medida?.nombre || ''}
-                          </td>
-                          <td style={styles.td}>{insumo.Insumo_cantidad_minima}</td>
-                          <td style={styles.td}>
-                            <span style={{
-                              color: insumo.Insumo_cantidad <= insumo.Insumo_cantidad_minima ? '#e74c3c' : '#2ecc71',
-                              fontWeight: '600'
-                            }}>
-                              {insumo.Insumo_cantidad <= insumo.Insumo_cantidad_minima ? '⚠️ Bajo Stock' : '✅ OK'}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-          </section>
+          
           
           {/* Listado Detallado de Pedidos Pendientes */}
           <section>
@@ -300,7 +225,7 @@ function Estampador() {
                         <thead>
                             <tr>
                                 <th style={styles.th}>ID</th>
-                                <th style={styles.th}>Cliente</th>
+                                
                                 <th style={styles.th}>Descripción</th>
                                 <th style={styles.th}>Cantidad</th>
                                 <th style={styles.th}>Estado</th>
@@ -309,14 +234,15 @@ function Estampador() {
                         <tbody>
                             {pedidos.map((pedido) => (
                                 <tr key={pedido.id}>
-                                    <td style={styles.td}>{pedido.id}</td>
-                                    <td style={styles.td}>{pedido.Cliente_nombre || 'N/A'}</td>
-                                    <td style={styles.td}>{pedido.Descripcion_pedido || 'Sin descripción'}</td>
-                                    <td style={styles.td}>{pedido.Cantidad_prendas || 0}</td>
+                                    <td style={styles.td}>{pedido.Pedido_ID}</td>
+                                    
+                                    <td>{pedido.detalles?.map(d => d.prenda_nombre).join(", ") || "Sin descripción"}</td>
+                                    <td>{pedido.detalles?.reduce((acc, d) => acc + d.cantidad, 0) || 0}</td>
+
                                     <td style={styles.td}>
-                                        <span style={{color: getStatusColor(pedido.estado)}}>
-                                            {pedido.estado 
-                                                ? pedido.estado.replace('_', ' ') 
+                                        <span style={{color: getStatusColor(pedido.Pedido_estado)}}>
+                                            {pedido.Pedido_estado 
+                                                ? pedido.Pedido_estado.replace('_', ' ') 
                                                 : 'ESTADO DESCONOCIDO'}
                                         </span>
                                     </td>
