@@ -1220,40 +1220,40 @@ const Prendas = () => {
                   </div>
                 </div>
 
-<div style={styles.prendaActions}>
+                <div style={styles.prendaActions}>
 
-  {/* 🔵 Ver: todos los roles pueden ver */}
-  <button
-    style={{ ...styles.actionButton, ...styles.btnVer }}
-    onClick={() => abrirModalDetalles(prenda)}
-  >
-    <Eye style={{ width: '16px', height: '16px' }} />
-    Ver
-  </button>
+                  {/* 🔵 Ver: todos los roles pueden ver */}
+                  <button
+                    style={{ ...styles.actionButton, ...styles.btnVer }}
+                    onClick={() => abrirModalDetalles(prenda)}
+                  >
+                    <Eye style={{ width: '16px', height: '16px' }} />
+                    Ver
+                  </button>
 
-  {/* ✏️ Editar: SOLO dueño */}
-  {user?.rol === "Dueño" && (
-    <button
-      style={{ ...styles.actionButton, ...styles.btnEditar }}
-      onClick={() => abrirModalEditar(prenda)}
-    >
-      <Edit2 style={{ width: '16px', height: '16px' }} />
-      Editar
-    </button>
-  )}
+                  {/* ✏️ Editar: SOLO dueño */}
+                  {user?.rol === "Dueño" && (
+                    <button
+                      style={{ ...styles.actionButton, ...styles.btnEditar }}
+                      onClick={() => abrirModalEditar(prenda)}
+                    >
+                      <Edit2 style={{ width: '16px', height: '16px' }} />
+                      Editar
+                    </button>
+                  )}
 
-  {/* 🗑 Eliminar: SOLO dueño */}
-  {user?.rol === "Dueño" && (
-    <button
-      style={{ ...styles.actionButton, ...styles.btnEliminar }}
-      onClick={() => eliminarPrenda(prenda)}
-    >
-      <Trash2 style={{ width: '16px', height: '16px' }} />
-      Eliminar
-    </button>
-  )}
+                  {/* 🗑 Eliminar: SOLO dueño */}
+                  {user?.rol === "Dueño" && (
+                    <button
+                      style={{ ...styles.actionButton, ...styles.btnEliminar }}
+                      onClick={() => eliminarPrenda(prenda)}
+                    >
+                      <Trash2 style={{ width: '16px', height: '16px' }} />
+                      Eliminar
+                    </button>
+                  )}
 
-</div>
+                </div>
 
               </div>
             ))}
@@ -1649,115 +1649,127 @@ const Prendas = () => {
           )}
 
           {/* MODAL DETALLES */}
-          {modalDetalles && prendaDetalles && (
-            <div style={styles.modalOverlay} onClick={() => setModalDetalles(false)}>
-              <div
-                style={{...styles.modal, ...styles.modalDetalles}}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div style={styles.modalHeader}>
-                  <h2 style={styles.modalTitle}>Detalles de la Prenda</h2>
-                  <button
-                    style={styles.closeButton}
-                    onClick={() => setModalDetalles(false)}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                  >
-                    <X style={{ width: '24px', height: '24px', color: '#9ca3af' }} />
-                  </button>
-                </div>
+          // En el MODAL DETALLES, reemplaza la sección completa desde el título hasta el final del modal con esto:
 
-                <div style={styles.detallesContenido}>
-                  <div style={styles.detallesImagenGrande}>
-                    {prendaDetalles.Prenda_imagen_url ? (
-                      <img
-                        src={prendaDetalles.Prenda_imagen_url}
-                        alt={prendaDetalles.Prenda_nombre}
-                        style={styles.detallesImagenGrandeImg}
-                      />
-                    ) : (
-                      <div style={styles.imagePlaceholder}>Sin imagen</div>
-                    )}
-                  </div>
+{/* MODAL DETALLES */}
+{modalDetalles && prendaDetalles && (
+  <div style={styles.modalOverlay} onClick={() => setModalDetalles(false)}>
+    <div
+      style={{...styles.modal, ...styles.modalDetalles}}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div style={styles.modalHeader}>
+        <h2 style={styles.modalTitle}>Detalles de la Prenda</h2>
+        <button
+          style={styles.closeButton}
+          onClick={() => setModalDetalles(false)}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)')}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+        >
+          <X style={{ width: '24px', height: '24px', color: '#9ca3af' }} />
+        </button>
+      </div>
 
-                  <div style={styles.detallesInfo}>
-                    <h3 style={styles.detallesInfoTitulo}>{prendaDetalles.Prenda_nombre}</h3>
+      <div style={styles.detallesContenido}>
+        <div style={styles.detallesImagenGrande}>
+          {prendaDetalles.Prenda_imagen_url ? (
+            <img
+              src={prendaDetalles.Prenda_imagen_url}
+              alt={prendaDetalles.Prenda_nombre}
+              style={styles.detallesImagenGrandeImg}
+            />
+          ) : (
+            <div style={styles.imagePlaceholder}>Sin imagen</div>
+          )}
+        </div>
 
-                    <div style={styles.detalleItem}>
-                      <span style={styles.detalleItemLabel}>Marca:</span>
-                      <span style={styles.detalleItemValue}>
-                        {prendaDetalles.Prenda_marca_nombre || 'N/A'}
-                      </span>
-                    </div>
+        <div style={styles.detallesInfo}>
+          <h3 style={styles.detallesInfoTitulo}>{prendaDetalles.Prenda_nombre}</h3>
 
-                    <div style={styles.detalleItem}>
-                      <span style={styles.detalleItemLabel}>Modelo:</span>
-                      <span style={styles.detalleItemValue}>
-                        {prendaDetalles.Prenda_modelo_nombre || 'N/A'}
-                      </span>
-                    </div>
+          <div style={styles.detalleItem}>
+            <span style={styles.detalleItemLabel}>Marca:</span>
+            <span style={styles.detalleItemValue}>
+              {prendaDetalles.Prenda_marca_nombre || 'N/A'}
+            </span>
+          </div>
 
-                    <div style={styles.detalleItem}>
-                      <span style={styles.detalleItemLabel}>Color:</span>
-                      <span style={styles.detalleItemValue}>
-                        {prendaDetalles.Prenda_color_nombre || 'N/A'}
-                      </span>
-                    </div>
+          <div style={styles.detalleItem}>
+            <span style={styles.detalleItemLabel}>Modelo:</span>
+            <span style={styles.detalleItemValue}>
+              {prendaDetalles.Prenda_modelo_nombre || 'N/A'}
+            </span>
+          </div>
 
-                    <div style={styles.detalleItem}>
-                      <span style={styles.detalleItemLabel}>Costo Total de Producción:</span>
-                      <span style={styles.detalleItemValue}>
-                        ${prendaDetalles.Prenda_costo_total_produccion?.toFixed(2) || '0.00'}
-                      </span>
-                    </div>
+          <div style={styles.detalleItem}>
+            <span style={styles.detalleItemLabel}>Color:</span>
+            <span style={styles.detalleItemValue}>
+              {prendaDetalles.Prenda_color_nombre || 'N/A'}
+            </span>
+          </div>
 
-                    <div style={styles.detalleSeccion}>
-                      <h4 style={styles.detalleSeccionTitulo}>Insumos Utilizados:</h4>
-                      {prendaDetalles.insumos_prendas?.length > 0 ? (
-                        <table style={styles.tablaInsumos}>
-                          <thead style={styles.tablaInsumosHead}>
-                            <tr>
-                              <th style={styles.tablaInsumosTh}>Insumo</th>
-                              <th style={styles.tablaInsumosTh}>Cantidad</th>
-                              <th style={styles.tablaInsumosTh}>Costo</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {prendaDetalles.insumos_prendas.map((ip, index) => (
-                              <tr key={index}>
-                                <td style={styles.tablaInsumosTd}>{ip.insumo_nombre}</td>
-                                <td style={styles.tablaInsumosTd}>
-                                  {ip.Insumo_prenda_cantidad_utilizada} {ip.Insumo_prenda_unidad_medida}
-                                </td>
-                                <td style={styles.tablaInsumosTd}>
-                                  ${ip.Insumo_prenda_costo_total?.toFixed(2) || '0.00'}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      ) : (
-                        <p style={{ color: '#999' }}>No hay insumos registrados</p>
-                      )}
-                    </div>
-
-                    <div style={styles.detalleSeccion}>
-                      <h4 style={styles.detalleSeccionTitulo}>Talles Disponibles:</h4>
-                      {prendaDetalles.talles?.length > 0 ? (
-                        <div style={styles.tallesLista}>
-                          {prendaDetalles.talles.map((talle, index) => (
-                            <span key={index} style={styles.talleBadge}>{talle}</span>
-                          ))}
-                        </div>
-                      ) : (
-                        <p style={{ color: '#999' }}>No hay talles disponibles</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
+          {/* 🔒 SOLO MOSTRAR COSTO SI NO ES COSTURERO NI ESTAMPADOR */}
+          {user?.rol !== "Costurero" && user?.rol !== "Estampador" && (
+            <div style={styles.detalleItem}>
+              <span style={styles.detalleItemLabel}>Costo Total de Producción:</span>
+              <span style={styles.detalleItemValue}>
+                ${prendaDetalles.Prenda_costo_total_produccion?.toFixed(2) || '0.00'}
+              </span>
             </div>
           )}
+
+          <div style={styles.detalleSeccion}>
+            <h4 style={styles.detalleSeccionTitulo}>Insumos Utilizados:</h4>
+            {prendaDetalles.insumos_prendas?.length > 0 ? (
+              <table style={styles.tablaInsumos}>
+                <thead style={styles.tablaInsumosHead}>
+                  <tr>
+                    <th style={styles.tablaInsumosTh}>Insumo</th>
+                    <th style={styles.tablaInsumosTh}>Cantidad</th>
+                    {/* 🔒 SOLO MOSTRAR COLUMNA COSTO SI NO ES COSTURERO NI ESTAMPADOR */}
+                    {user?.rol !== "Costurero" && user?.rol !== "Estampador" && (
+                      <th style={styles.tablaInsumosTh}>Costo</th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {prendaDetalles.insumos_prendas.map((ip, index) => (
+                    <tr key={index}>
+                      <td style={styles.tablaInsumosTd}>{ip.insumo_nombre}</td>
+                      <td style={styles.tablaInsumosTd}>
+                        {ip.Insumo_prenda_cantidad_utilizada} {ip.Insumo_prenda_unidad_medida}
+                      </td>
+                      {/* 🔒 SOLO MOSTRAR COSTO SI NO ES COSTURERO NI ESTAMPADOR */}
+                      {user?.rol !== "Costurero" && user?.rol !== "Estampador" && (
+                        <td style={styles.tablaInsumosTd}>
+                          ${ip.Insumo_prenda_costo_total?.toFixed(2) || '0.00'}
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p style={{ color: '#999' }}>No hay insumos registrados</p>
+            )}
+          </div>
+
+          <div style={styles.detalleSeccion}>
+            <h4 style={styles.detalleSeccionTitulo}>Talles Disponibles:</h4>
+            {prendaDetalles.talles?.length > 0 ? (
+              <div style={styles.tallesLista}>
+                {prendaDetalles.talles.map((talle, index) => (
+                  <span key={index} style={styles.talleBadge}>{talle}</span>
+                ))}
+              </div>
+            ) : (
+              <p style={{ color: '#999' }}>No hay talles disponibles</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
           {/* ALERTA */}
           {alert && (

@@ -5,7 +5,6 @@ import Componente from './componente.jsx';
 import { useAuth } from '../context/AuthContext'; 
 import fondoImg from "./assets/fondo.png";
 
-
 const API_PEDIDOS_URL = "http://localhost:8000/api/pedidos/"; 
 
 const getStatusColor = (estado) => {
@@ -16,7 +15,7 @@ const getStatusColor = (estado) => {
         case 'PENDIENTE_COSTURA':
             return '#3498db';
         case 'PENDIENTE_ESTAMPADO':
-            return '#9b59b6'; // Púrpura, el color del Estampador
+            return '#9b59b6';
         case 'COMPLETADO':
             return '#2ecc71';
         case 'CANCELADO':
@@ -32,7 +31,7 @@ function Estampador() {
   const [pedidos, setPedidos] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [pendientesEstampado, setPendientesEstampado] = useState(0);
-  const [completadosHoy, setCompletadosHoy] = useState(0); // Métrica relevante
+  const [completadosHoy, setCompletadosHoy] = useState(0);
   const [isNavbarCollapsed, setIsNavbarCollapsed] = useState(false);
 
   // 🔹 ESTADOS PARA INVENTARIO DE INSUMOS
@@ -45,10 +44,10 @@ function Estampador() {
   useEffect(() => {
     if (!user || loading) return;
     cargarPedidosEstampador();
-    cargarInsumosEstampador(); // ✅ AGREGAR CARGA DE INSUMOS
+    cargarInsumosEstampador();
   }, [user, loading]);
 
- const cargarPedidosEstampador = async () => {
+  const cargarPedidosEstampador = async () => {
     setIsLoading(true);
     try {
       const response = await fetch(API_PEDIDOS_URL);
@@ -57,40 +56,30 @@ function Estampador() {
 
       const data = await response.json();
 
-      // 🔥 USAR LA ESTRUCTURA REAL DEL BACKEND
+      // 🔥 Pedidos pendientes
       const pedidosEstampador = data.filter(
         p =>
           p.Pedido_estado === "PENDIENTE_ESTAMPADO" ||
           p.Pedido_estado === "EN_PROCESO_ESTAMPADO"
       );
-
       setPedidos(pedidosEstampador);
+      setPendientesEstampado(pedidosEstampador.length);
 
-      // 🔥 Cantidad correcta = suma de cantidades en detalles
-      const pendientes = pedidosEstampador.length;
-      setPendientesEstampado(pendientes);
-
-      const hoy = new Date().toISOString().slice(0, 10);
-      const completados = pedidosEstampador.filter(
-        p => p.Pedido_estado === "COMPLETADO" &&
-             p.fecha_finalizacion?.startsWith(hoy)
-      ).length;
-
-      setCompletadosHoy(completados);
+      // 🔥 Contar TODOS los pedidos finalizados (completados)
+      const finalizados = data.filter(p => p.Pedido_estado === "COMPLETADO");
+      setCompletadosHoy(finalizados.length);
 
     } catch (error) {
       console.error("❌ Error cargando pedidos:", error);
     } finally {
       setIsLoading(false);
     }
-};
+  };
 
-
-  
   // 🔹 NUEVA FUNCIÓN PARA CARGAR INSUMOS DE ESTAMPADO
   const cargarInsumosEstampador = async () => {
     try {
-      console.log("🔄 Estampador - Intentando cargar insumos...");
+      console.log("📄 Estampador - Intentando cargar insumos...");
       const response = await fetch("http://localhost:8000/api/inventario/insumos/");
       
       if (!response.ok) {
@@ -128,7 +117,6 @@ function Estampador() {
   };
 
   const styles = {
-    // Estilos basados en Dueno.js y Vendedor.js
     container: { display: "flex", minHeight: "100vh", width: "100%" },
     main: {
       marginLeft: `${navbarWidth}px`, padding: "32px",
@@ -157,11 +145,9 @@ function Estampador() {
     cardValue: {
       fontSize: "36px", fontWeight: "bold", color: "#ffffff",
     },
-    // Estilos de tabla
     table: { width: '100%', borderCollapse: 'collapse', color: '#ffffff', textAlign: 'left', marginTop: '20px', },
     th: { padding: '12px 15px', borderBottom: '2px solid rgba(255, 255, 255, 0.1)', fontSize: '14px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', },
     td: { padding: '12px 15px', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', fontSize: '14px', },
-    statusBadge: getStatusColor, // Usamos la función directamente
   };
 
   return (
@@ -174,13 +160,12 @@ function Estampador() {
             <h2 style={styles.title}>
               ¡Bienvenido Estampador!{" "}
               {user ? (
-                // Uso la validación de undefined para evitar el error
                 `${user.Usuario_nombre || ''} ${user.Usuario_apellido || ''}`
               ) : (
                 ""
               )}
             </h2>
-             <p style={styles.subtitle}>
+            <p style={styles.subtitle}>
               Tu panel de trabajo: seguimiento de prendas y pedidos listos para estampado.
             </p>
           </div>
@@ -193,26 +178,23 @@ function Estampador() {
             <div style={styles.resumenGrid}>
               {/* Card 1: Pedidos Pendientes de Estampado */}
               <div style={styles.resumenCard}>
-                <h4 style={styles.cardLabel}>Pedidos Pendientes de Estampado</h4>
+                <h4 style={styles.cardLabel}>Pedidos Pendientes</h4>
                 <p style={{...styles.cardValue, color: '#9b59b6'}}>{isLoading ? '...' : pendientesEstampado}</p>
                 <p style={styles.subtitle}>Listos para iniciar producción.</p>
               </div>
 
-              {/* Card 2: Pedidos Completados Hoy */}
+              {/* Card 2: Pedidos Completados */}
               <div style={styles.resumenCard}>
-                <h4 style={styles.cardLabel}>Pedidos Finalizados Hoy</h4>
+                <h4 style={styles.cardLabel}>Pedidos Finalizados</h4>
                 <p style={{...styles.cardValue, color: '#2ecc71'}}>{isLoading ? '...' : completadosHoy}</p>
-                <p style={styles.subtitle}>Métrica de rendimiento.</p>
               </div>
             </div>
           </section>
 
-          
-          
           {/* Listado Detallado de Pedidos Pendientes */}
           <section>
             <h3 style={{ ...styles.title, fontSize: "24px", marginBottom: "20px" }}>
-              Pedidos Asignados (Pendientes o en Progreso)
+              Pedidos Asignados (Pendientes o en Proceso)
             </h3>
             <p style={styles.subtitle}>
                 Utiliza la sección de "Aprobación de Pedidos" para marcar como completados.
@@ -225,7 +207,6 @@ function Estampador() {
                         <thead>
                             <tr>
                                 <th style={styles.th}>ID</th>
-                                
                                 <th style={styles.th}>Descripción</th>
                                 <th style={styles.th}>Cantidad</th>
                                 <th style={styles.th}>Estado</th>
@@ -235,10 +216,8 @@ function Estampador() {
                             {pedidos.map((pedido) => (
                                 <tr key={pedido.id}>
                                     <td style={styles.td}>{pedido.Pedido_ID}</td>
-                                    
-                                    <td>{pedido.detalles?.map(d => d.prenda_nombre).join(", ") || "Sin descripción"}</td>
-                                    <td>{pedido.detalles?.reduce((acc, d) => acc + d.cantidad, 0) || 0}</td>
-
+                                    <td style={styles.td}>{pedido.detalles?.map(d => d.prenda_nombre).join(", ") || "Sin descripción"}</td>
+                                    <td style={styles.td}>{pedido.detalles?.reduce((acc, d) => acc + d.cantidad, 0) || 0}</td>
                                     <td style={styles.td}>
                                         <span style={{color: getStatusColor(pedido.Pedido_estado)}}>
                                             {pedido.Pedido_estado 

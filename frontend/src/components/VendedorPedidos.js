@@ -688,45 +688,47 @@ export default function VendedorPedidos() {
   };
 
   const confirmarPedido = async () => {
-    // ... (sin cambios en la lógica interna)
-    if (loading || !user || !user.id) {
-      showAlert("Error: Usuario no autenticado o no cargado.", "error");
-      return;
-    }
-    const stockOk = await verificarStockAntesDeConfirmar();
-    if (!stockOk) return;
+  if (loading || !user || !user.id) {
+    showAlert("Error: Usuario no autenticado o no cargado.", "error");
+    return;
+  }
+  const stockOk = await verificarStockAntesDeConfirmar();
+  if (!stockOk) return;
 
-    try {
-      let estadoInicial = "PENDIENTE_DUENO";
-      const data = {
-        usuario: user.id,
-        estado: estadoInicial,
-        prendas: pedido.map((p) => ({
-          id_prenda: p.Prenda_ID,
-          cantidad: p.cantidad,
-          talle: p.talle,
-          tipo: p.tipo || "LISA"
-        }))
-      };
-      const response = await axios.post("http://localhost:8000/api/pedidos/", data);
-      
-      showAlert("✅ Pedido realizado correctamente y enviado para aprobación", "success");
-      
-      setMasterPedidos(prev => [...prev, response.data]); 
-      setFiltros(prev => ({...prev, estado: 'PENDIENTE_DUENO'})); 
-      
-      setPedido([]);
-      setModalOpen(false);
+  try {
+    let estadoInicial = "PENDIENTE_DUENO";
+    const data = {
+      usuario: user.id,
+      estado: estadoInicial,
+      prendas: pedido.map((p) => ({
+        id_prenda: p.Prenda_ID,
+        cantidad: p.cantidad,
+        talle: p.talle,
+        tipo: p.tipo || "LISA"
+      }))
+    };
+    const response = await axios.post("http://localhost:8000/api/pedidos/", data);
+    
+    showAlert("✅ Pedido realizado correctamente y enviado para aprobación", "success");
+    
+    // 🔧 FIX: Recargar la lista completa de pedidos desde el servidor
+    await cargarPedidos();
+    
+    // 🔧 FIX: Actualizar filtros para mostrar los pedidos pendientes
+    setFiltros(prev => ({...prev, estado: 'PENDIENTE_DUENO'})); 
+    
+    setPedido([]);
+    setModalOpen(false);
 
-    } catch (err) {
-      const responseData = err.response?.data || {};
-      if (responseData.tipo === "stock_insuficiente") {
-        showAlert(`❌ Stock insuficiente:\n\n${(responseData.mensajes || []).join("\n")}`, "error");
-      } else {
-        showAlert(`❌ Error: ${err.response?.data?.error || "Error al realizar pedido"}`, "error");
-      }
+  } catch (err) {
+    const responseData = err.response?.data || {};
+    if (responseData.tipo === "stock_insuficiente") {
+      showAlert(`❌ Stock insuficiente:\n\n${(responseData.mensajes || []).join("\n")}`, "error");
+    } else {
+      showAlert(`❌ Error: ${err.response?.data?.error || "Error al realizar pedido"}`, "error");
     }
-  };
+  }
+};
 
   const handleFiltroChange = (e) => {
       const { name, value } = e.target;

@@ -104,14 +104,10 @@ function Costurero({ usuarioId }) {
   useEffect(() => {
     const cargarPedidosCostura = async () => {
       try {
-        console.log(
-          "Costurero: cargando pedidos con estado=PENDIENTE_COSTURERO…"
-        );
+        console.log("Costurero: cargando todos los pedidos…");
         setIsLoading(true);
 
-        const response = await fetch(
-          "http://localhost:8000/api/pedidos/?estado=PENDIENTE_COSTURERO"
-        );
+        const response = await fetch("http://localhost:8000/api/pedidos/");
 
         console.log("Costurero: response status", response.status);
 
@@ -126,21 +122,21 @@ function Costurero({ usuarioId }) {
         const data = await response.json();
         console.log("Costurero: pedidos recibidos", data);
 
-        setPedidos(Array.isArray(data) ? data : []);
-
-        // Pendientes actuales (ya vienen filtrados por estado)
-        setPendientesCostura(Array.isArray(data) ? data.length : 0);
-
-        // Completados hoy (tomados del listado general si lo quisieras
-        // pero por ahora 0 porque este endpoint solo trae pendientes)
-        const hoy = new Date().toISOString().slice(0, 10);
-        const completados = (Array.isArray(data) ? data : []).filter(
-          (p) =>
-            p.Pedido_estado === "COMPLETADO" &&
-            p.Pedido_fecha &&
-            p.Pedido_fecha.startsWith(hoy)
+        // Filtrar pedidos pendientes de costura
+        const pendientes = data.filter(
+          (p) => p.Pedido_estado === "PENDIENTE_COSTURERO" || 
+                 p.Pedido_estado === "EN_PROCESO_COSTURERO"
         );
-        setCompletadosHoy(completados.length);
+        setPedidos(pendientes);
+        setPendientesCostura(pendientes.length);
+
+        // Contar TODOS los pedidos finalizados (COMPLETADO o enviados a ESTAMPADO)
+        const finalizados = data.filter(
+          (p) => p.Pedido_estado === "COMPLETADO" || 
+                 p.Pedido_estado === "PENDIENTE_ESTAMPADO"
+        );
+        setCompletadosHoy(finalizados.length);
+
       } catch (err) {
         console.error("❌ Error cargando pedidos costura:", err);
         setPedidos([]);
@@ -172,12 +168,15 @@ function Costurero({ usuarioId }) {
       }
 
       // recargar lista
-      const refreshed = await fetch(
-        "http://localhost:8000/api/pedidos/?estado=PENDIENTE_COSTURERO"
-      );
+      const refreshed = await fetch("http://localhost:8000/api/pedidos/");
       const data = await refreshed.json();
-      setPedidos(Array.isArray(data) ? data : []);
-      setPendientesCostura(Array.isArray(data) ? data.length : 0);
+      
+      const pendientes = data.filter(
+        (p) => p.Pedido_estado === "PENDIENTE_COSTURERO" || 
+               p.Pedido_estado === "EN_PROCESO_COSTURERO"
+      );
+      setPedidos(pendientes);
+      setPendientesCostura(pendientes.length);
     } catch (err) {
       console.error("❌ Error en actualización:", err);
     }
@@ -188,50 +187,75 @@ function Costurero({ usuarioId }) {
   // ===========================================================
   const styles = {
     container: { display: "flex", minHeight: "100vh", width: "100%" },
-    insumosContainer: {
+    main: {
       marginLeft: `${navbarWidth}px`,
       padding: "32px",
       backgroundImage: `url(${fondoImg})`,
       backgroundSize: "cover",
+      backgroundPosition: "center",
+      backgroundRepeat: "no-repeat",
       backgroundAttachment: "fixed",
+      overflowY: "auto",
       flex: 1,
       transition: "margin-left 0.3s ease",
+      width: `calc(100% - ${navbarWidth}px)`,
     },
     contentWrapper: { maxWidth: "1400px", margin: "0 auto" },
     header: { marginBottom: "32px" },
-    title: { fontSize: "36px", fontWeight: "bold", color: "#fff" },
-    subtitle: { color: "#d1d5db", marginTop: "8px" },
+    title: { fontSize: "36px", fontWeight: "bold", color: "#ffffff" },
+    subtitle: { color: "#d1d5db", fontSize: "15px", marginTop: "8px" },
     resumenGrid: {
       display: "grid",
-      gridTemplateColumns: "1fr 1fr",
+      gridTemplateColumns: "repeat(2, 1fr)",
       gap: "20px",
-      marginBottom: "32px",
+      marginBottom: "40px",
     },
     resumenCard: {
-      backgroundColor: "rgba(30,30,30,0.9)",
+      backgroundColor: "rgba(30, 30, 30, 0.9)",
       padding: "20px",
       borderRadius: "8px",
+      border: "1px solid rgba(255, 255, 255, 0.1)",
+      boxShadow: "0 0 10px rgba(0, 0, 0, 0.2)",
+      textAlign: "center",
     },
-    alertasSection: {
-      backgroundColor: "rgba(30,30,30,0.9)",
-      padding: "20px",
-      borderRadius: "8px",
-      marginTop: "40px",
+    cardLabel: {
+      color: "#9ca3af",
+      fontSize: "14px",
+      fontWeight: "600",
+      marginBottom: "12px",
     },
-    alertasTitle: {
-      color: "#fff",
-      fontSize: "18px",
+    cardValue: {
+      fontSize: "36px",
       fontWeight: "bold",
-      marginBottom: "15px",
+      color: "#ffffff",
     },
-    td: { padding: "10px", borderBottom: "1px solid rgba(255,255,255,0.1)" },
+    table: {
+      width: "100%",
+      borderCollapse: "collapse",
+      color: "#ffffff",
+      textAlign: "left",
+      marginTop: "20px",
+    },
+    th: {
+      padding: "12px 15px",
+      borderBottom: "2px solid rgba(255, 255, 255, 0.1)",
+      fontSize: "14px",
+      fontWeight: "600",
+      color: "#9ca3af",
+      textTransform: "uppercase",
+    },
+    td: {
+      padding: "12px 15px",
+      borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
+      fontSize: "14px",
+    },
   };
 
   return (
     <div style={styles.container}>
       <Componente onToggle={setIsNavbarCollapsed} />
 
-      <main style={styles.insumosContainer}>
+      <main style={styles.main}>
         <div style={styles.contentWrapper}>
           {/* HEADER */}
           <div style={styles.header}>
@@ -245,22 +269,22 @@ function Costurero({ usuarioId }) {
           </div>
 
           {/* RESUMEN DE TAREAS */}
-          <section>
-            <h3 style={{ ...styles.title, fontSize: "22px" }}>
+          <section style={{ marginBottom: "40px" }}>
+            <h3 style={{ ...styles.title, fontSize: "20px", marginBottom: "8px" }}>
               Resumen de Tareas
             </h3>
-
             <div style={styles.resumenGrid}>
               <div style={styles.resumenCard}>
-                <h4 style={{ color: "#9ca3af" }}>Pedidos Pendientes</h4>
-                <p style={{ color: "#9b59b6", fontSize: "30px" }}>
+                <h4 style={styles.cardLabel}>Pedidos Pendientes</h4>
+                <p style={{ ...styles.cardValue, color: "#9b59b6" }}>
                   {isLoading ? "..." : pendientesCostura}
                 </p>
+                <p style={styles.subtitle}>Listos para iniciar producción.</p>
               </div>
 
               <div style={styles.resumenCard}>
-                <h4 style={{ color: "#9ca3af" }}>Pedidos Finalizados Hoy</h4>
-                <p style={{ color: "#2ecc71", fontSize: "30px" }}>
+                <h4 style={styles.cardLabel}>Pedidos Finalizados</h4>
+                <p style={{ ...styles.cardValue, color: "#2ecc71" }}>
                   {isLoading ? "..." : completadosHoy}
                 </p>
               </div>
@@ -268,63 +292,64 @@ function Costurero({ usuarioId }) {
           </section>
 
           {/* PEDIDOS ASIGNADOS */}
-          <section style={styles.alertasSection}>
-            <h3 style={styles.alertasTitle}>Pedidos Asignados (En Progreso)</h3>
-
-            {isLoading ? (
-              <p style={{ color: "#9ca3af", textAlign: "center" }}>
-                Cargando pedidos...
-              </p>
-            ) : pedidos.length > 0 ? (
-              <table
-                style={{ width: "100%", color: "#fff", fontSize: "14px" }}
-              >
-                <thead>
-                  <tr style={{ backgroundColor: "rgba(255,255,255,0.05)" }}>
-                    <th>ID</th>
-                    <th>Descripción</th>
-                    <th>Cant.</th>
-                    <th>Estado</th>
-                    
-                  </tr>
-                </thead>
-                <tbody>
-                  {pedidos.map((pedido) => (
-                    <tr key={pedido.Pedido_ID}>
-                      <td style={styles.td}>{pedido.Pedido_ID}</td>
-
-                      <td style={styles.td}>
-                        {pedido.detalles
-                          ?.map((d) => d.prenda_nombre)
-                          .join(", ") || "Sin descripción"}
-                      </td>
-
-                      <td style={styles.td}>
-                        {pedido.detalles?.reduce(
-                          (acc, d) => acc + d.cantidad,
-                          0
-                        ) || 0}
-                      </td>
-
-                      <td
-                        style={{
-                          ...styles.td,
-                          color: getStatusColor(pedido.Pedido_estado),
-                        }}
-                      >
-                        {pedido.Pedido_estado.replace("_", " ")}
-                      </td>
-
-                      
+          <section>
+            <h3 style={{ ...styles.title, fontSize: "24px", marginBottom: "20px" }}>
+              Pedidos Asignados (Pendientes o en Proceso)
+            </h3>
+            <p style={styles.subtitle}>
+              Utiliza la sección de "Aprobación de Pedidos" para marcar como completados.
+            </p>
+            <div style={styles.resumenCard}>
+              {isLoading ? (
+                <p style={{ color: "#9ca3af", textAlign: "center" }}>
+                  Cargando pedidos...
+                </p>
+              ) : pedidos.length > 0 ? (
+                <table style={styles.table}>
+                  <thead>
+                    <tr>
+                      <th style={styles.th}>ID</th>
+                      <th style={styles.th}>Descripción</th>
+                      <th style={styles.th}>Cantidad</th>
+                      <th style={styles.th}>Estado</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <p style={{ color: "#9ca3af" }}>
-                No hay pedidos asignados actualmente.
-              </p>
-            )}
+                  </thead>
+                  <tbody>
+                    {pedidos.map((pedido) => (
+                      <tr key={pedido.Pedido_ID}>
+                        <td style={styles.td}>{pedido.Pedido_ID}</td>
+                        <td style={styles.td}>
+                          {pedido.detalles
+                            ?.map((d) => d.prenda_nombre)
+                            .join(", ") || "Sin descripción"}
+                        </td>
+                        <td style={styles.td}>
+                          {pedido.detalles?.reduce(
+                            (acc, d) => acc + d.cantidad,
+                            0
+                          ) || 0}
+                        </td>
+                        <td style={styles.td}>
+                          <span
+                            style={{
+                              color: getStatusColor(pedido.Pedido_estado),
+                            }}
+                          >
+                            {pedido.Pedido_estado
+                              ? pedido.Pedido_estado.replace("_", " ")
+                              : "ESTADO DESCONOCIDO"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p style={{ color: "#9ca3af", textAlign: "center" }}>
+                  ¡Genial! No hay pedidos pendientes de costura en este momento.
+                </p>
+              )}
+            </div>
           </section>
         </div>
       </main>
