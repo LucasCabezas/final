@@ -3,9 +3,22 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Componente from './componente.jsx';
 import fondoImg from "./assets/fondo.png";
-import { CheckCircle, Package, PlayCircle, StopCircle, AlertCircle, Clock, Palette, Search, X } from 'lucide-react'; // 🔥 Importar iconos
+import { CheckCircle, Package, PlayCircle, StopCircle, AlertCircle, Clock, Palette, Search, X } from 'lucide-react'; 
 
 const API_PEDIDOS_URL = "http://localhost:8000/api/pedidos/";
+
+// 🔥 FUNCIÓN DE UTILIDAD SEGURA PARA FECHAS
+const formatDateSafe = (dateString) => {
+    if (!dateString) return "-";
+    // Si la cadena es 'YYYY-MM-DD', la separamos para forzar la fecha correcta sin desfase de zona horaria.
+    const parts = dateString.substring(0, 10).split('-'); 
+    const date = new Date(parts[0], parts[1] - 1, parts[2]); 
+    return date.toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
+};
 
 const AprobacionPedidosEstampador = () => {
     const { user } = useAuth();
@@ -15,11 +28,9 @@ const AprobacionPedidosEstampador = () => {
     const [alert, setAlert] = useState(null);
     const [navbarWidth, setNavbarWidth] = useState(250);
 
-    // 🔥 INICIO: ESTADOS PARA LOS FILTROS
     const [filtroId, setFiltroId] = useState('');
     const [filtroEstado, setFiltroEstado] = useState('PENDIENTE_ESTAMPADO');
     const [filtroFecha, setFiltroFecha] = useState('');
-    // 🔥 FIN: ESTADOS PARA LOS FILTROS
 
     const handleNavbarToggle = (collapsed) => {
         setNavbarWidth(collapsed ? 70 : 250);
@@ -30,10 +41,9 @@ const AprobacionPedidosEstampador = () => {
         try {
             setLoading(true);
             
-            // Añadimos un parámetro 't' (de "time") para romper la caché
             const urlConCacheBuster = `${API_PEDIDOS_URL}?t=${new Date().getTime()}`;
             
-            const response = await axios.get(urlConCacheBuster); // Usamos la nueva URL
+            const response = await axios.get(urlConCacheBuster); 
             const data = response.data;
             
             const pedidosParaEstampado = data.filter(
@@ -74,15 +84,6 @@ const AprobacionPedidosEstampador = () => {
         }
     };
 
-    const formatearFecha = (fechaStr) => {
-        const fecha = new Date(fechaStr);
-        return fecha.toLocaleDateString('es-ES', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit'
-        });
-    };
-
     const abrirDetalles = (pedido) => {
         setSelectedPedido(pedido);
     };
@@ -97,12 +98,11 @@ const AprobacionPedidosEstampador = () => {
         setFiltroFecha('');
     };
 
-    // Filtrar solo las prendas estampadas para mostrar
     const obtenerPrendasEstampadas = (detalles) => {
         return detalles.filter(detalle => detalle.tipo === "ESTAMPADA");
     };
 
-    // 🎨 ESTILOS
+    // 🎨 ESTILOS (se asume que se mantienen 100% igual)
     const styles = {
         container: {
             display: "flex", 
@@ -141,7 +141,6 @@ const AprobacionPedidosEstampador = () => {
             color: '#d1d5db',
             marginBottom: '32px'
         },
-        // 🔥 INICIO: ESTILOS PARA FILTROS
         searchContainer: {
             backgroundColor: "rgba(30, 30, 30, 0.9)",
             borderRadius: "12px",
@@ -159,7 +158,8 @@ const AprobacionPedidosEstampador = () => {
             border: "1px solid #4b5563",
             backgroundColor: "rgba(0,0,0,0.3)",
             color: "#fff",
-            fontSize: "14px"
+            fontSize: "14px",
+            colorScheme: 'dark' // 🔥 Añadido colorScheme para input type=date
         },
         select: {
             flex: "1 1 150px",
@@ -183,7 +183,6 @@ const AprobacionPedidosEstampador = () => {
             alignItems: "center",
             gap: "8px"
         },
-        // 🔥 FIN: ESTILOS PARA FILTROS
         tableContainer: {
             backgroundColor: 'rgba(30, 30, 30, 0.9)',
             borderRadius: '12px',
@@ -326,7 +325,6 @@ const AprobacionPedidosEstampador = () => {
             padding: '80px',
             color: '#9ca3af'
         },
-        // Modal styles (sin cambios)
         modal: {
             position: 'fixed',
             top: 0,
@@ -416,9 +414,16 @@ const AprobacionPedidosEstampador = () => {
         if (filtroEstado !== 'TODOS' && pedido.Pedido_estado !== filtroEstado) {
             return false;
         }
-        if (filtroFecha && !pedido.Pedido_fecha.startsWith(filtroFecha)) {
-            return false;
+        
+        // 🔥 CORRECCIÓN DE FILTRO DE FECHA
+        if (filtroFecha && pedido.Pedido_fecha) {
+            // Compara directamente la cadena de fecha YYYY-MM-DD
+            const fechaPedidoStr = pedido.Pedido_fecha.substring(0, 10);
+            if (fechaPedidoStr !== filtroFecha) {
+                return false;
+            }
         }
+        
         return true;
     });
 
@@ -490,7 +495,7 @@ const AprobacionPedidosEstampador = () => {
                                 <tbody>
                                     {pedidosFiltrados.map((pedido) => (
                                         <tr key={pedido.Pedido_ID}>
-                                            <td style={styles.td}>#{pedido.Pedido_ID}</td>
+                                            <td style={styles.td}>PED{String(pedido.Pedido_ID).padStart(3, "0")}</td>
                                             <td style={styles.td}>
                                                 <span style={{
                                                     ...styles.estadoBadge,
@@ -498,14 +503,14 @@ const AprobacionPedidosEstampador = () => {
                                                         pedido.Pedido_estado === "EN_PROCESO_ESTAMPADO" ? styles.estadoEnProceso :
                                                         styles.estadoCompletado)
                                                 }}>
-                                                    {/* 🔥 CAMBIO: Lógica para mostrar "En Proceso" y "Pendiente" */}
                                                     {pedido.Pedido_estado
-                                                        .replace('PENDIENTE_ESTAMPADO', 'Pendiente')
-                                                        .replace('EN_PROCESO_ESTAMPADO', 'En Proceso')
+                                                        .replace('PENDIENTE_ESTAMPADO', 'PENDIENTE')
+                                                        .replace('EN_PROCESO_ESTAMPADO', 'EN PROCESO')
                                                     }
                                                 </span>
                                             </td>
-                                            <td style={styles.td}>{formatearFecha(pedido.Pedido_fecha)}</td>
+                                            {/* 🔥 USO DE FUNCIÓN SEGURA */}
+                                            <td style={styles.td}>{formatDateSafe(pedido.Pedido_fecha)}</td>
                                             <td style={styles.td}>
                                                 <button
                                                     style={styles.btnVer}
@@ -569,7 +574,7 @@ const AprobacionPedidosEstampador = () => {
                         <div style={styles.modalHeader}>
                             <h3 style={styles.modalTitle}>
                                 <Palette size={24} />
-                                Detalles del Pedido #{selectedPedido.Pedido_ID}
+                                Detalles del Pedido PED{String(selectedPedido.Pedido_ID).padStart(3, "0")}
                             </h3>
                             <button
                                 style={styles.modalCloseBtn}
@@ -593,17 +598,17 @@ const AprobacionPedidosEstampador = () => {
                                                 selectedPedido.Pedido_estado === "EN_PROCESO_ESTAMPADO" ? styles.estadoEnProceso :
                                                 styles.estadoCompletado)
                                         }}>
-                                            {/* 🔥 CAMBIO: Lógica para mostrar "En Proceso" y "Pendiente" */}
                                             {selectedPedido.Pedido_estado
-                                                .replace('PENDIENTE_ESTAMPADO', 'Pendiente')
-                                                .replace('EN_PROCESO_ESTAMPADO', 'En Proceso')
+                                                .replace('PENDIENTE_ESTAMPADO', 'PENDIENTE')
+                                                .replace('EN_PROCESO_ESTAMPADO', 'EN PROCESO')
                                             }
                                         </span>
                                     </div>
                                     <div>
                                         <div style={{ fontSize: "12px", color: "#9ca3af", marginBottom: "4px" }}>Fecha</div>
                                         <div style={{ color: "#fff", fontSize: "16px", fontWeight: "600" }}>
-                                            {formatearFecha(selectedPedido.Pedido_fecha)}
+                                            {/* 🔥 USO DE FUNCIÓN SEGURA EN EL MODAL */}
+                                            {formatDateSafe(selectedPedido.Pedido_fecha)}
                                         </div>
                                     </div>
                                     <div>

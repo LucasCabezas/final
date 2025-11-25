@@ -7,10 +7,24 @@ import { CheckCircle, Package, PlayCircle, StopCircle, Send, AlertCircle, Clock,
 
 const API_PEDIDOS_URL = "http://localhost:8000/api/pedidos/";
 
+// 🔥 FUNCIÓN DE UTILIDAD SEGURA PARA FECHAS
+const formatDateSafe = (dateString) => {
+    if (!dateString) return "-";
+    // Si la cadena es 'YYYY-MM-DD', la separamos para forzar la fecha correcta sin desfase de zona horaria.
+    const parts = dateString.substring(0, 10).split('-'); 
+    // Date constructor: new Date(year, monthIndex, day). MonthIndex es 0-base (0=Enero).
+    const date = new Date(parts[0], parts[1] - 1, parts[2]); 
+    return date.toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
+};
+
 const AprobacionPedidosCosturero = () => {
     const { user } = useAuth();
     const [pedidos, setPedidos] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(true); // ✅ Declaración correcta
     const [selectedPedido, setSelectedPedido] = useState(null);
     const [alert, setAlert] = useState(null);
     const [navbarWidth, setNavbarWidth] = useState(250);
@@ -65,7 +79,9 @@ const AprobacionPedidosCosturero = () => {
             mostrarAlerta(`Error: ${errorMsg}`, "error");
         }
     };
-
+    
+    // Función eliminada, se usa formatDateSafe ahora
+    /*
     const formatearFecha = (fechaStr) => {
         const fecha = new Date(fechaStr);
         return fecha.toLocaleDateString('es-ES', {
@@ -74,6 +90,7 @@ const AprobacionPedidosCosturero = () => {
             day: '2-digit'
         });
     };
+    */
 
     const abrirDetalles = (pedido) => {
         setSelectedPedido(pedido);
@@ -145,7 +162,8 @@ const AprobacionPedidosCosturero = () => {
             border: "1px solid #4b5563",
             backgroundColor: "rgba(0,0,0,0.3)",
             color: "#fff",
-            fontSize: "14px"
+            fontSize: "14px",
+            colorScheme: 'dark' // Ajustado para input type=date
         },
         select: {
             flex: "1 1 150px",
@@ -403,9 +421,15 @@ const AprobacionPedidosCosturero = () => {
         if (filtroEstado !== 'TODOS' && pedido.Pedido_estado !== filtroEstado) {
             return false;
         }
-        if (filtroFecha && !pedido.Pedido_fecha.startsWith(filtroFecha)) {
-            return false;
+        
+        // 🔥 CORRECCIÓN DEL FILTRO DE FECHA: Compara la cadena YYYY-MM-DD
+        if (filtroFecha && pedido.Pedido_fecha) {
+            const fechaPedidoStr = pedido.Pedido_fecha.substring(0, 10);
+            if (fechaPedidoStr !== filtroFecha) {
+                return false;
+            }
         }
+        
         return true;
     });
 
@@ -443,7 +467,7 @@ const AprobacionPedidosCosturero = () => {
                             type="date"
                             value={filtroFecha}
                             onChange={(e) => setFiltroFecha(e.target.value)}
-                            style={styles.searchInput}
+                            style={{...styles.searchInput}}
                         />
                         <button style={styles.btnLimpiar} onClick={limpiarFiltros}>
                             <X size={18} /> Limpiar
@@ -476,12 +500,11 @@ const AprobacionPedidosCosturero = () => {
                                 </thead>
                                 <tbody>
                                     {pedidosFiltrados.map((pedido) => {
-                                        // 🔥 CAMBIO AQUÍ: Verificamos si el pedido tiene items para estampar
                                         const tieneEstampadas = pedido.detalles?.some(d => d.tipo === 'ESTAMPADA') || false;
                                         
                                         return (
                                             <tr key={pedido.Pedido_ID}>
-                                                <td style={styles.td}>#{pedido.Pedido_ID}</td>
+                                                <td style={styles.td}>PED{String(pedido.Pedido_ID).padStart(3, "0")}</td>
                                                 <td style={styles.td}>
                                                     {pedido.Pedido_estado === "PENDIENTE_COSTURERO" ? (
                                                         <span style={{ ...styles.estadoBadge, ...styles.estadoPendiente }}>
@@ -493,7 +516,8 @@ const AprobacionPedidosCosturero = () => {
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td style={styles.td}>{formatearFecha(pedido.Pedido_fecha)}</td>
+                                                {/* 🔥 USO DE FUNCIÓN SEGURA */}
+                                                <td style={styles.td}>{formatDateSafe(pedido.Pedido_fecha)}</td>
                                                 <td style={styles.td}>
                                                     <button
                                                         style={styles.btnVer}
@@ -519,7 +543,6 @@ const AprobacionPedidosCosturero = () => {
                                                             </button>
                                                         )}
                                                         
-                                                        {/* 🔥 CAMBIO AQUÍ: Lógica condicional de botones */}
                                                         {pedido.Pedido_estado === "EN_PROCESO_COSTURERO" && (
                                                             <>
                                                                 {/* Si tiene estampadas, SÓLO mostrar "Enviar a Estampado" */}
@@ -561,24 +584,14 @@ const AprobacionPedidosCosturero = () => {
                 </div>
             </div>
 
-            {/* ... (Todo tu modal de detalles y alertas se mantiene 100% igual) ... */}
-
-            {alert && (
-                <div style={styles.alertContainer}>
-                    <div style={styles.alert(alert.tipo)}>
-                        <AlertCircle size={20} />
-                        {alert.mensaje}
-                    </div>
-                </div>
-            )}
-
+            {/* Modal de detalles */}
             {selectedPedido && (
                 <div style={styles.modal} onClick={cerrarDetalles}>
                     <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
                         <div style={styles.modalHeader}>
                             <h3 style={styles.modalTitle}>
                                 <Scissors size={24} />
-                                Detalles del Pedido #{selectedPedido.Pedido_ID}
+                                Detalles del Pedido PED{String(selectedPedido.Pedido_ID).padStart(3, "0")}
                             </h3>
                             <button
                                 style={styles.modalCloseBtn}
@@ -608,7 +621,7 @@ const AprobacionPedidosCosturero = () => {
                                     <div>
                                         <div style={{ fontSize: "12px", color: "#9ca3af", marginBottom: "4px" }}>Fecha</div>
                                         <div style={{ color: "#fff", fontSize: "16px", fontWeight: "600" }}>
-                                            {formatearFecha(selectedPedido.Pedido_fecha)}
+                                            {formatDateSafe(selectedPedido.Pedido_fecha)}
                                         </div>
                                     </div>
                                     <div>
