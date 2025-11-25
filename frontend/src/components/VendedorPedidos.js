@@ -14,7 +14,20 @@ import Componente from "./componente.jsx";
 import fondoImg from "./assets/fondo.png";
 import { useAuth } from "../context/AuthContext";
 
-// 🔥 CAMBIO: Estilos estandarizados (copiados de RealizarPedido)
+// Función de utilidad para formatear la fecha sin desfase de zona horaria
+const formatDateForDisplay = (dateString) => {
+    if (!dateString) return "-";
+    
+    // El backend envía 'YYYY-MM-DD'.
+    // Creamos la fecha separando las partes para evitar que la zona horaria la corra un día.
+    const parts = dateString.substring(0, 10).split('-');
+    // Date constructor: new Date(year, monthIndex, day). MonthIndex es 0-base (0=Enero).
+    const date = new Date(parts[0], parts[1] - 1, parts[2]); 
+    
+    const options = { year: 'numeric', month: '2-digit', day: '2-digit' };
+    return date.toLocaleDateString(undefined, options); 
+}
+
 const styles = {
   container: {
     padding: "32px",
@@ -137,7 +150,6 @@ const styles = {
     borderBottom: "1px solid rgba(255, 255, 255, 0.05)"
   },
   
-  // 🔥 CAMBIO: Añadido el estilo 'btnVer' unificado
   btnVer: {
     backgroundColor: '#3b82f6',
     color: '#fff',
@@ -180,7 +192,7 @@ const styles = {
     fontWeight: "500",
   },
   
-  // 🔥 CAMBIO: Estilos de estado reemplazados por los de RealizarPedido
+  // Estilos de estado reemplazados por los de RealizarPedido
   estadoBadge: {
     padding: '4px 12px',
     borderRadius: '20px',
@@ -487,7 +499,6 @@ const styles = {
   }
 };
 
-// 🔥 CAMBIO: Aquí estaba el error. Faltaba combinar 'styles.estadoBadge'
 const obtenerEstiloEstado = (estado) => {
   switch (estado) {
     case "PENDIENTE_DUENO":
@@ -596,23 +607,29 @@ export default function VendedorPedidos() {
   }, [user, loading]);
 
   useEffect(() => {
-      let filtrados = [...masterPedidos];
-      
-      if (filtros.id && filtros.id.trim() !== "") {
-        filtrados = filtrados.filter((p) => String(p.Pedido_ID || p.id || "").includes(filtros.id.trim()));
-      }
-      if (filtros.estado && filtros.estado !== "TODOS") {
-        filtrados = filtrados.filter((p) => obtenerEstadoPedido(p) === filtros.estado);
-      }
-      if (filtros.fecha && filtros.fecha !== "") {
-        filtrados = filtrados.filter((p) => {
-          if (!p.Pedido_fecha) return false;
-          return p.Pedido_fecha.split("T")[0] === filtros.fecha;
-        });
-      }
-      setPedidosMostrados(filtrados);
-  }, [filtros, masterPedidos]);
-
+    let filtrados = [...masterPedidos];
+    
+    if (filtros.id && filtros.id.trim() !== "") {
+      filtrados = filtrados.filter((p) => String(p.Pedido_ID || p.id || "").includes(filtros.id.trim()));
+    }
+    
+    if (filtros.estado && filtros.estado !== "TODOS") {
+      filtrados = filtrados.filter((p) => obtenerEstadoPedido(p) === filtros.estado);
+    }
+    
+    if (filtros.fecha && filtros.fecha !== "") {
+      filtrados = filtrados.filter((p) => {
+        if (!p.Pedido_fecha) return false;
+        
+        // CORRECCIÓN DEL FILTRO DE FECHA: Compara la cadena YYYY-MM-DD
+        const fechaPedidoStr = p.Pedido_fecha.substring(0, 10);
+        
+        return fechaPedidoStr === filtros.fecha;
+      });
+    }
+    
+    setPedidosMostrados(filtrados);
+}, [filtros, masterPedidos]);
 
   const prendasFiltradas = prendas.filter((p) =>
     (p.Prenda_nombre || "").toLowerCase().includes(searchPrenda.toLowerCase()) ||
@@ -621,7 +638,6 @@ export default function VendedorPedidos() {
   );
 
   const agregarPrenda = () => {
-    // ... (sin cambios)
     if (!selectedPrenda) {
       showAlert("Seleccioná una prenda", "error");
       return;
@@ -677,10 +693,11 @@ export default function VendedorPedidos() {
 
   const actualizarListaLocal = (pedidoId, nuevoEstado) => {
       setMasterPedidos(prevMasterList => {
-          // 🔥 CAMBIO: Añadido 'ELIMINADO' para filtrar la lista
-          if (nuevoEstado === 'CANCELADO' || nuevoEstado === 'ELIMINADO') {
+          // Si es eliminado, lo quitamos de la lista
+          if (nuevoEstado === 'ELIMINADO') {
               return prevMasterList.filter(p => p.Pedido_ID !== pedidoId);
           }
+          // Si es cancelado, actualizamos su estado
           return prevMasterList.map(p => 
               p.Pedido_ID === pedidoId ? { ...p, Pedido_estado: nuevoEstado, estado: nuevoEstado } : p
           );
@@ -707,14 +724,12 @@ export default function VendedorPedidos() {
         tipo: p.tipo || "LISA"
       }))
     };
-    const response = await axios.post("http://localhost:8000/api/pedidos/", data);
+    await axios.post("http://localhost:8000/api/pedidos/", data);
     
     showAlert("✅ Pedido realizado correctamente y enviado para aprobación", "success");
     
-    // 🔧 FIX: Recargar la lista completa de pedidos desde el servidor
     await cargarPedidos();
     
-    // 🔧 FIX: Actualizar filtros para mostrar los pedidos pendientes
     setFiltros(prev => ({...prev, estado: 'PENDIENTE_DUENO'})); 
     
     setPedido([]);
@@ -740,8 +755,7 @@ export default function VendedorPedidos() {
   };
 
   const cancelarPedido = async (id) => {
-    // 🔥 CAMBIO: Se usa window.confirm (la "alerta personalizada" de RealizarPedido)
-    if (!window.confirm("¿Estás seguro de cancelar este pedido?")) return;
+    if (!window.confirm("¿Estás seguro de cancelar este pedido? Esta acción lo marcará como CANCELADO.")) return;
     try {
       await axios.patch(`http://localhost:8000/api/pedidos/${id}/`, { Pedido_estado: "CANCELADO" });
       showAlert("✅ Pedido cancelado correctamente", "success");
@@ -752,7 +766,6 @@ export default function VendedorPedidos() {
   };
 
   const eliminarPedido = async (id) => {
-    // 🔥 CAMBIO: Se usa window.confirm (la "alerta personalizada" de RealizarPedido)
     if (!window.confirm("¿Estás seguro de eliminar este pedido? Esta acción no se puede deshacer.")) return;
     try {
       await axios.delete(`http://localhost:8000/api/pedidos/${id}/`);
@@ -764,7 +777,6 @@ export default function VendedorPedidos() {
   };
 
   const verDetallesPedido = async (p) => {
-    // ... (lógica sin cambios)
     try {
       const res = await axios.get(`http://localhost:8000/api/pedidos/${p.Pedido_ID || p.id}/`);
       setPedidoSeleccionado(res.data);
@@ -820,7 +832,8 @@ export default function VendedorPedidos() {
             >
                 <option value="TODOS">Mis Pedidos (Todos)</option>
                 <option value="PENDIENTE_DUENO">Pendiente Aprobación</option>
-                <option valueV="PENDIENTE_COSTURERO">Pendiente Costurero</option>
+                <option value="APROBADO_DUENO">Aprobado Dueño</option>
+                <option value="PENDIENTE_COSTURERO">Pendiente Costurero</option>
                 <option value="EN_PROCESO_COSTURERO">En Proceso Costurero</option>
                 <option value="PENDIENTE_ESTAMPADO">Pendiente Estampador</option>
                 <option value="EN_PROCESO_ESTAMPADO">En Proceso Estampador</option>
@@ -859,9 +872,9 @@ export default function VendedorPedidos() {
                         
                         <td style={styles.td}><span style={estilo}>{texto}</span></td>
                         
-                        <td style={styles.td}>{p.Pedido_fecha ? new Date(p.Pedido_fecha).toLocaleDateString() : "-"}</td>
+                        {/* USO DE LA FUNCIÓN SEGURA PARA LA VISUALIZACIÓN */}
+                        <td style={styles.td}>{p.Pedido_fecha ? formatDateForDisplay(p.Pedido_fecha) : "-"}</td>
                         
-                        {/* 🔥 CAMBIO: Nueva celda para el botón 'Ver Detalles' */}
                         <td style={styles.td}>
                           <button 
                             style={styles.btnVer} 
@@ -874,11 +887,10 @@ export default function VendedorPedidos() {
                           </button>
                         </td>
 
-                        {/* 🔥 CAMBIO: Lógica actualizada para 'Acciones' */}
                         <td style={styles.td}>
                           <div style={styles.actionsContainer}>
-                            {/* Solo se muestra si está PENDIENTE_DUENO */}
-                            {estado === "PENDIENTE_DUENO" && (
+                            {/* Solo se muestra si está PENDIENTE_DUENO o PENDIENTE_COSTURERO (antes de ser aceptado por alguien) */}
+                            {(estado === "PENDIENTE_DUENO" || estado === "APROBADO_DUENO") && (
                               <button style={styles.btnCancelar} onClick={() => cancelarPedido(p.Pedido_ID || p.id)} title="Cancelar pedido">
                                 <XCircle size={16} /> Cancelar
                               </button>
@@ -910,21 +922,19 @@ export default function VendedorPedidos() {
             </div>
           )}
 
-          {/* ... (Todo tu MODAL de CREAR PEDIDO se mantiene 100% igual) ... */}
+          {/* MODAL DE CREAR PEDIDO */}
           {modalOpen && (
             <div style={styles.modalOverlay} onClick={() => setModalOpen(false)}>
               <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-                {/* ... (Modal Header) ... */}
+                {/* ... (Contenido del modal) ... */}
                 <div style={styles.modalHeader}>
                   <h2 style={styles.modalTitle}>Realizar Nuevo Pedido</h2>
                   <button style={styles.btnClose} onClick={() => setModalOpen(false)}><X size={24} /></button>
                 </div>
-                {/* ... (Search Prenda) ... */}
                 <div style={styles.searchPrendaContainer}>
                   <input type="text" placeholder="🔍 Buscar prenda por nombre, marca o modelo..." value={searchPrenda} onChange={(e) => setSearchPrenda(e.target.value)} style={styles.searchPrendaInput} />
                   <Search style={styles.searchIcon} size={20} />
                 </div>
-                {/* ... (Prendas Grid) ... */}
                 {searchPrenda.trim() !== "" && (
                   prendasFiltradas.length > 0 ? (
                     <div style={styles.prendasGrid}>
@@ -942,9 +952,13 @@ export default function VendedorPedidos() {
                         );
                       })}
                     </div>
-                  ) : {/* ... (empty state) ... */ } 
+                  ) : (
+                    <div style={styles.emptyState}>
+                        <Package size={48} color="#4b5563" />
+                        <p style={{ margin: 0, marginTop: '10px' }}>No se encontraron prendas.</p>
+                    </div>
+                  )
                 )}
-                {/* ... (Form Container) ... */}
                 {selectedPrenda && (
                   <div style={styles.formContainer}>
                     <div style={styles.formGrid}>
@@ -966,7 +980,6 @@ export default function VendedorPedidos() {
                     </div>
                   </div>
                 )}
-                {/* ... (Pedido List) ... */}
                 {pedido.length > 0 && (
                   <div style={styles.pedidosList}>
                     <h3 style={{ color: "#fff", marginBottom: "12px", fontSize: "18px" }}>Prendas en el pedido ({pedido.length})</h3>
@@ -991,16 +1004,14 @@ export default function VendedorPedidos() {
             </div>
           )}
 
-          {/* ... (Todo tu MODAL de DETALLES se mantiene 100% igual) ... */}
+          {/* MODAL DE DETALLES */}
           {modalDetallesOpen && pedidoSeleccionado && (
             <div style={styles.modalOverlay} onClick={() => setModalDetallesOpen(false)}>
               <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-                {/* ... (Modal Header) ... */}
                 <div style={styles.modalHeader}>
                   <h2 style={styles.modalTitle}>Detalles del Pedido PED{String(pedidoSeleccionado.Pedido_ID || pedidoSeleccionado.id || "").padStart(3, "0")}</h2>
                   <button style={styles.btnClose} onClick={() => setModalDetallesOpen(false)}><X size={24} /></button>
                 </div>
-                {/* ... (Info Grid) ... */}
                 <div style={{ backgroundColor: "rgba(30, 30, 30, 0.6)", borderRadius: "12px", padding: "20px", marginBottom: "20px", border: "1px solid rgba(255,255,255,0.1)" }}>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px" }}>
                     <div>
@@ -1008,14 +1019,13 @@ export default function VendedorPedidos() {
                       {(() => {
                         const est = obtenerEstadoPedido(pedidoSeleccionado);
                         const { texto, estilo } = obtenerEstiloEstado(est);
-                        // (El estilo combinado se aplica aquí también)
                         return <span style={estilo}>{texto}</span>;
                       })()}
                     </div>
                     <div>
                       <div style={{ fontSize: "12px", color: "#9ca3af", marginBottom: "4px" }}>Fecha</div>
                       <div style={{ color: "#fff", fontSize: "16px", fontWeight: "600" }}>
-                        {pedidoSeleccionado.Pedido_fecha ? new Date(pedidoSeleccionado.Pedido_fecha).toLocaleDateString("es-AR", { year: "numeric", month: "long", day: "numeric" }) : "-"}
+                        {pedidoSeleccionado.Pedido_fecha ? formatDateForDisplay(pedidoSeleccionado.Pedido_fecha) : "-"}
                       </div>
                     </div>
                     <div>
@@ -1026,7 +1036,6 @@ export default function VendedorPedidos() {
                     </div>
                   </div>
                 </div>
-                {/* ... (Prendas List) ... */}
                 <h3 style={{ color: "#fff", marginBottom: "16px", fontSize: "18px", display: "flex", alignItems: "center", gap: "8px" }}><Package size={20} /> Prendas del Pedido</h3>
                 <div style={{ maxHeight: "400px", overflowY: "auto" }}>
                   {pedidoSeleccionado.detalles && pedidoSeleccionado.detalles.length > 0 ? (
@@ -1045,14 +1054,18 @@ export default function VendedorPedidos() {
                         </div>
                       </div>
                     ))
-                  ) : {/* ... (empty state) ... */ } 
+                  ) : (
+                    <div style={styles.emptyState}>
+                        <AlertCircle size={48} style={{ margin: "0 auto 12px" }} />
+                        <p>No hay detalles disponibles para este pedido</p>
+                    </div>
+                  ) 
                   }
                 </div>
               </div>
             </div>
           )}
 
-          {/* ... (Tu Alerta se mantiene 100% igual) ... */}
           {alert && (
             <div style={{ ...styles.alert, ...(alert.type === "success" ? styles.alertSuccess : styles.alertError) }}>
               <div style={{ display: "flex", alignItems: "center", gap: "12px", width: "100%" }}>
