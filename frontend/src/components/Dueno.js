@@ -3,8 +3,10 @@ import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from "recha
 import Componente from './componente.jsx';
 import fondoImg from "./assets/fondo.png";
 import { Package, Calendar, BarChart2 } from "lucide-react";
+import { useAuth } from '../context/AuthContext'; // Importar useAuth
 
 function Dueno({ usuarioId }) {
+  const { user } = useAuth(); // Usar useAuth para obtener el usuario
   const [usuario, setUsuario] = useState(null);
   
   // Estados de Insumos
@@ -38,6 +40,7 @@ function Dueno({ usuarioId }) {
 
   useEffect(() => {
     if (usuarioId) {
+       // Si bien se pasa usuarioId, usaremos el 'user' del contexto para el nombre
        fetch(`http://localhost:8000/api/usuarios/${usuarioId}`)
         .then((res) => res.json())
         .then((data) => setUsuario(data))
@@ -244,9 +247,9 @@ function Dueno({ usuarioId }) {
         <div style={styles.contentWrapper}>
           <div style={styles.header}>
             <h2 style={styles.title}>
-              ¡Bienvenido!{" "}
-              {usuario
-                ? `${usuario.Usuario_nombre} ${usuario.Usuario_apellido}`
+              ¡Bienvenido Dueño!{" "}
+              {user
+                ? `${user.nombre || ''} ${user.apellido || ''}`
                 : ""}
             </h2>
           </div>

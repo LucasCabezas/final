@@ -159,11 +159,9 @@ function Estampador() {
           <div style={styles.header}>
             <h2 style={styles.title}>
               ¡Bienvenido Estampador!{" "}
-              {user ? (
-                `${user.Usuario_nombre || ''} ${user.Usuario_apellido || ''}`
-              ) : (
-                ""
-              )}
+              {user
+                ? `${user.nombre || ''} ${user.apellido || ''}`
+                : ""}
             </h2>
             <p style={styles.subtitle}>
               Tu panel de trabajo: seguimiento de prendas y pedidos listos para estampado.

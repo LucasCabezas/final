@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import Componente from "./componente.jsx";
 import fondoImg from "./assets/fondo.png";
+import { useAuth } from '../context/AuthContext'; // Importar useAuth
 
 function Costurero({ usuarioId }) {
+  const { user } = useAuth(); // Usar useAuth para obtener el usuario
   const [usuario, setUsuario] = useState(null);
   const [insumos, setInsumos] = useState([]);
   const [totalValor, setTotalValor] = useState(0);
@@ -44,12 +46,11 @@ function Costurero({ usuarioId }) {
     const fetchUsuario = async () => {
       try {
         console.log("Costurero: cargando usuario", usuarioId);
-        const response = await fetch(
-          `http://localhost:8000/api/usuarios/${usuarioId}/`
-        );
-        const data = await response.json();
-        console.log("Costurero: usuario recibido", data);
-        setUsuario(data);
+        // La carga de usuario del backend puede ser opcional si usamos el contexto
+        // const response = await fetch(`http://localhost:8000/api/usuarios/${usuarioId}/`);
+        // const data = await response.json();
+        // console.log("Costurero: usuario recibido", data);
+        // setUsuario(data); 
       } catch (error) {
         console.error("❌ Error cargando usuario:", error);
       }
@@ -261,7 +262,9 @@ function Costurero({ usuarioId }) {
           <div style={styles.header}>
             <h2 style={styles.title}>
               ¡Bienvenido Costurero!{" "}
-              {usuario ? `${usuario.nombre} ${usuario.apellido}` : ""}
+              {user
+                ? `${user.nombre || ''} ${user.apellido || ''}`
+                : ""}
             </h2>
             <p style={styles.subtitle}>
               Tu panel de trabajo: producción y seguimiento de prendas.
