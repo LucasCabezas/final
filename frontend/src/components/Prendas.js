@@ -172,6 +172,10 @@ const styles = {
   prendaDetailLabel: {
     color: '#999999'
   },
+  prendaDetailValue: {
+    color: '#ffffff',
+    fontWeight: '500'
+  },
   prendaActions: {
     display: 'flex',
     gap: '8px',
@@ -605,16 +609,90 @@ const styles = {
   },
   alertSuccess: {
     backgroundColor: 'rgba(76, 175, 80, 0.95)',
-    border: '1px solid rgba(76, 175, 80, 1)'
+    color: '#ffffff'
   },
   alertError: {
     backgroundColor: 'rgba(244, 67, 54, 0.95)',
-    border: '1px solid rgba(244, 67, 54, 1)'
+    color: '#ffffff'
   },
   alertText: {
     color: '#ffffff',
     fontSize: '14px',
     fontWeight: '500'
+  },
+  // 🔥 ESTILOS PARA EL MODAL DE CONFIRMACIÓN (Tomados de AgregarUsuario)
+  confirmModalOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 3000, 
+  },
+  confirmModal: {
+    backgroundColor: 'rgba(30, 30, 30, 0.98)',
+    borderRadius: '12px',
+    padding: '28px',
+    width: '100%',
+    maxWidth: '420px',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    textAlign: 'center'
+  },
+  confirmTitle: {
+    fontSize: '22px',
+    fontWeight: 'bold',
+    marginBottom: '12px'
+  },
+  confirmMessage: {
+    color: '#d1d5db',
+    fontSize: '15px',
+    lineHeight: '1.5',
+    marginBottom: '24px'
+  },
+  confirmActions: {
+    display: 'flex',
+    gap: '12px',
+    justifyContent: 'center',
+  },
+  confirmCancelButton: {
+    flex: 1,
+    padding: '10px 16px',
+    backgroundColor: '#374151',
+    color: '#ffffff',
+    borderRadius: '8px',
+    border: 'none',
+    cursor: 'pointer',
+    fontWeight: '600',
+    transition: 'background-color 0.2s',
+    fontSize: '14px'
+  },
+  confirmActionButton: { // ESTILO PARA GUARDAR
+    flex: 1,
+    padding: '10px 16px',
+    backgroundColor: '#10b981', // Verde
+    color: '#ffffff',
+    borderRadius: '8px',
+    border: 'none',
+    cursor: 'pointer',
+    fontWeight: '600',
+    transition: 'background-color 0.2s',
+    fontSize: '14px'
+  },
+  confirmDeleteButton: { // ESTILO PARA ELIMINAR
+    flex: 1,
+    padding: '10px 16px',
+    backgroundColor: '#ef4444', // Rojo
+    color: '#ffffff',
+    borderRadius: '8px',
+    border: 'none',
+    cursor: 'pointer',
+    fontWeight: '600',
+    transition: 'background-color 0.2s',
+    fontSize: '14px'
   }
 };
 
@@ -636,6 +714,11 @@ const Prendas = () => {
   // Estados para el modal de detalles
   const [modalDetalles, setModalDetalles] = useState(false);
   const [prendaDetalles, setPrendaDetalles] = useState(null);
+
+  // Estados para la confirmación de eliminación/edición
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(''); // 'edit' o 'delete'
+  const [confirmData, setConfirmData] = useState(null); 
 
   // Estados del formulario
   const [formData, setFormData] = useState({
@@ -722,10 +805,14 @@ const Prendas = () => {
 
       let prendasFiltradas = response.data;
 
-      // Si el filtro está en "-" y hay búsqueda, buscar en todos los campos
-      if (filtroTipo === '-' && filtroBusqueda.trim() !== '') {
-        const busqueda = filtroBusqueda.toLowerCase();
+      // Lógica de filtrado
+      const busqueda = filtroBusqueda.toLowerCase().trim();
+
+      // Si el filtro está en "TODOS" o si hay una búsqueda activa
+      if (filtroTipo === 'TODOS' || busqueda !== '') {
         prendasFiltradas = prendasFiltradas.filter(prenda => {
+          if (busqueda === '') return true; // Mostrar todos si es 'TODOS' y no hay búsqueda
+          
           const nombre = (prenda.Prenda_nombre || '').toLowerCase();
           const marca = (prenda.Prenda_marca_nombre || '').toLowerCase();
           const modelo = (prenda.Prenda_modelo_nombre || '').toLowerCase();
@@ -737,27 +824,11 @@ const Prendas = () => {
                 color.includes(busqueda);
         });
       }
-      // Si el filtro está en "TODOS", mostrar todas o filtrar por búsqueda
-      else if (filtroTipo === 'TODOS') {
-        if (filtroBusqueda.trim() !== '') {
-          const busqueda = filtroBusqueda.toLowerCase();
-          prendasFiltradas = prendasFiltradas.filter(prenda => {
-            const nombre = (prenda.Prenda_nombre || '').toLowerCase();
-            const marca = (prenda.Prenda_marca_nombre || '').toLowerCase();
-            const modelo = (prenda.Prenda_modelo_nombre || '').toLowerCase();
-            const color = (prenda.Prenda_color_nombre || '').toLowerCase();
-
-            return nombre.includes(busqueda) ||
-                  marca.includes(busqueda) ||
-                  modelo.includes(busqueda) ||
-                  color.includes(busqueda);
-          });
-        }
-      }
-      // Si el filtro está en "-" sin búsqueda, no mostrar nada
-      else if (filtroTipo === '-') {
+      // Si el filtro está en "-" y no hay búsqueda, no mostrar nada
+      else if (filtroTipo === '-' && busqueda === '') {
         prendasFiltradas = [];
       }
+
 
       setPrendas(prendasFiltradas);
       setPrendasMostradas(prendasFiltradas.slice(0, ITEMS_POR_PAGINA));
@@ -789,14 +860,13 @@ const Prendas = () => {
   // CARGAR MÁS PRENDAS
   const cargarMasPrendas = () => {
     const nuevaPagina = paginaActual + 1;
-    const inicio = 0;
     const fin = (nuevaPagina + 1) * ITEMS_POR_PAGINA;
-    setPrendasMostradas(prendas.slice(inicio, fin));
+    setPrendasMostradas(prendas.slice(0, fin));
     setPaginaActual(nuevaPagina);
   };
 
   const hayMasPrendas = () => {
-    return prendas.length > (paginaActual + 1) * ITEMS_POR_PAGINA;
+    return prendas.length > prendasMostradas.length;
   };
 
   // ABRIR MODALES
@@ -975,7 +1045,7 @@ const Prendas = () => {
     }
   };
 
-  // GUARDAR PRENDA
+  // GUARDAR PRENDA (Maneja la verificación y abre el modal si es edición)
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -1012,29 +1082,53 @@ const Prendas = () => {
         return;
       }
     }
+    
+    if (modoEdicion) {
+        // Intercepta la edición para mostrar el modal de confirmación
+        setConfirmAction('edit');
+        setConfirmData({
+            formData,
+            insumos: insumosSeleccionados,
+            talles: tallesSeleccionados
+        });
+        setShowConfirmModal(true);
+        return;
+    }
+    
+    // Si es CREACIÓN, llama directamente a la función de confirmación
+    handleConfirmSubmit();
+  };
+  
+  // FUNCIÓN QUE EJECUTA LA ACCIÓN DE LA API (llamada por el modal de confirmación)
+  const handleConfirmSubmit = async () => {
+    const dataToUse = confirmAction === 'edit' ? confirmData : {
+        formData,
+        insumos: insumosSeleccionados,
+        talles: tallesSeleccionados
+    };
 
     try {
       setLoading(true);
 
       const formDataToSend = new FormData();
-      formDataToSend.append('Prenda_nombre', formData.Prenda_nombre.trim());
-      formDataToSend.append('Prenda_marca', formData.Prenda_marca);
-      formDataToSend.append('Prenda_modelo', formData.Prenda_modelo);
-      formDataToSend.append('Prenda_color', formData.Prenda_color);
-      formDataToSend.append('Prenda_precio_unitario', formData.Prenda_precio_unitario);
+      formDataToSend.append('Prenda_nombre', dataToUse.formData.Prenda_nombre.trim());
+      formDataToSend.append('Prenda_marca', dataToUse.formData.Prenda_marca);
+      formDataToSend.append('Prenda_modelo', dataToUse.formData.Prenda_modelo);
+      formDataToSend.append('Prenda_color', dataToUse.formData.Prenda_color);
+      formDataToSend.append('Prenda_precio_unitario', dataToUse.formData.Prenda_precio_unitario);
 
-      if (formData.Prenda_imagen) {
-        formDataToSend.append('Prenda_imagen', formData.Prenda_imagen);
+      if (dataToUse.formData.Prenda_imagen) {
+        formDataToSend.append('Prenda_imagen', dataToUse.formData.Prenda_imagen);
       }
 
       formDataToSend.append('insumos_prendas', JSON.stringify(
-        insumosSeleccionados.map(i => ({
+        dataToUse.insumos.map(i => ({
           insumo: i.insumo,
           cantidad: i.cantidad
         }))
       ));
 
-      formDataToSend.append('talles', JSON.stringify(tallesSeleccionados));
+      formDataToSend.append('talles', JSON.stringify(dataToUse.talles));
 
       if (modoEdicion) {
         await axios.put(
@@ -1060,7 +1154,10 @@ const Prendas = () => {
         mostrarAlerta('Prenda creada correctamente');
       }
 
+      setShowConfirmModal(false);
       setModalAbierto(false);
+      setConfirmAction('');
+      setConfirmData(null);
       buscarPrendas();
     } catch (err) {
       console.error('Error guardando prenda:', err);
@@ -1070,29 +1167,75 @@ const Prendas = () => {
     }
   };
 
-  // ELIMINAR PRENDA
-  const eliminarPrenda = async (prenda) => {
-    if (!window.confirm(`¿Está seguro de eliminar la prenda "${prenda.Prenda_nombre}"?`)) {
-      return;
-    }
+
+  // 🗑️ LÓGICA DE ELIMINACIÓN
+  
+  const handleDeleteClick = (prenda) => {
+    setConfirmAction('delete');
+    setConfirmData(prenda);
+    setShowConfirmModal(true);
+  };
+  
+  const handleCancelConfirm = () => {
+    setShowConfirmModal(false);
+    setConfirmAction('');
+    setConfirmData(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    const prenda = confirmData;
+    if (!prenda) return;
 
     try {
       setLoading(true);
       await axios.delete(`${API_URL}/api/inventario/prendas/${prenda.Prenda_ID}/`);
-      mostrarAlerta('Prenda eliminada correctamente');
+      mostrarAlerta(`Prenda "${prenda.Prenda_nombre}" eliminada correctamente`);
+      setShowConfirmModal(false);
+      setConfirmAction('');
+      setConfirmData(null);
       buscarPrendas();
     } catch (err) {
       console.error('Error eliminando prenda:', err);
       const mensaje = err.response?.data?.error || 'Error al eliminar la prenda';
       mostrarAlerta(mensaje, 'error');
+      setShowConfirmModal(false);
     } finally {
       setLoading(false);
     }
   };
 
+  const eliminarPrenda = (prenda) => {
+    handleDeleteClick(prenda); // Llama al modal personalizado
+  };
+
   const limpiarBusqueda = () => {
     setFiltroBusqueda('');
   };
+  
+  // Contenido del Modal de Confirmación
+  const getConfirmModalContent = () => {
+    if (confirmAction === 'edit') {
+      return {
+        title: 'Guardar Cambios',
+        message: '¿Está seguro que desea actualizar la prenda con los cambios realizados?',
+        buttonText: 'Actualizar',
+        buttonColor: styles.confirmActionButton.backgroundColor, // Verde
+        onConfirm: handleConfirmSubmit,
+        icon: <Edit2 size={40} style={{marginRight: '12px', color: styles.confirmActionButton.backgroundColor}} />
+      };
+    } else if (confirmAction === 'delete') {
+      return {
+        title: 'Confirmar Eliminación',
+        message: `¿Está seguro de que desea eliminar permanentemente la prenda: "${confirmData?.Prenda_nombre}"? Esta acción no se puede deshacer.`,
+        buttonText: 'Sí, Eliminar',
+        buttonColor: styles.confirmDeleteButton.backgroundColor, // Rojo
+        onConfirm: handleConfirmDelete,
+        icon: <Trash2 size={40} style={{marginRight: '12px', color: styles.confirmDeleteButton.backgroundColor}} />
+      };
+    }
+    return null;
+  };
+
 
   return (
     <>
@@ -1201,22 +1344,22 @@ const Prendas = () => {
                   
                   <div style={styles.prendaDetail}>
                     <span style={styles.prendaDetailLabel}>Marca:</span>
-                    <span>{prenda.Prenda_marca_nombre || 'N/A'}</span>
+                    <span style={styles.prendaDetailValue}>{prenda.Prenda_marca_nombre || 'N/A'}</span>
                   </div>
                   
                   <div style={styles.prendaDetail}>
                     <span style={styles.prendaDetailLabel}>Modelo:</span>
-                    <span>{prenda.Prenda_modelo_nombre || 'N/A'}</span>
+                    <span style={styles.prendaDetailValue}>{prenda.Prenda_modelo_nombre || 'N/A'}</span>
                   </div>
                   
                   <div style={styles.prendaDetail}>
                     <span style={styles.prendaDetailLabel}>Color:</span>
-                    <span>{prenda.Prenda_color_nombre || 'N/A'}</span>
+                    <span style={styles.prendaDetailValue}>{prenda.Prenda_color_nombre || 'N/A'}</span>
                   </div>
                   
                   <div style={styles.prendaDetail}>
                     <span style={styles.prendaDetailLabel}>Costo:</span>
-                    <span>${prenda.Prenda_costo_total_produccion?.toFixed(2) || '0.00'}</span>
+                    <span style={styles.prendaDetailValue}>${prenda.Prenda_costo_total_produccion?.toFixed(2) || '0.00'}</span>
                   </div>
                 </div>
 
@@ -1649,127 +1792,183 @@ const Prendas = () => {
           )}
 
           {/* MODAL DETALLES */}
-          // En el MODAL DETALLES, reemplaza la sección completa desde el título hasta el final del modal con esto:
+          {modalDetalles && prendaDetalles && (
+            <div style={styles.modalOverlay} onClick={() => setModalDetalles(false)}>
+              <div
+                style={{...styles.modal, ...styles.modalDetalles}}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div style={styles.modalHeader}>
+                  <h2 style={styles.modalTitle}>Detalles de la Prenda</h2>
+                  <button
+                    style={styles.closeButton}
+                    onClick={() => setModalDetalles(false)}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                  >
+                    <X style={{ width: '24px', height: '24px', color: '#9ca3af' }} />
+                  </button>
+                </div>
 
-{/* MODAL DETALLES */}
-{modalDetalles && prendaDetalles && (
-  <div style={styles.modalOverlay} onClick={() => setModalDetalles(false)}>
-    <div
-      style={{...styles.modal, ...styles.modalDetalles}}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div style={styles.modalHeader}>
-        <h2 style={styles.modalTitle}>Detalles de la Prenda</h2>
-        <button
-          style={styles.closeButton}
-          onClick={() => setModalDetalles(false)}
-          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)')}
-          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-        >
-          <X style={{ width: '24px', height: '24px', color: '#9ca3af' }} />
-        </button>
-      </div>
+                <div style={styles.detallesContenido}>
+                  <div style={styles.detallesImagenGrande}>
+                    {prendaDetalles.Prenda_imagen_url ? (
+                      <img
+                        src={prendaDetalles.Prenda_imagen_url}
+                        alt={prendaDetalles.Prenda_nombre}
+                        style={styles.detallesImagenGrandeImg}
+                      />
+                    ) : (
+                      <div style={styles.imagePlaceholder}>Sin imagen</div>
+                    )}
+                  </div>
 
-      <div style={styles.detallesContenido}>
-        <div style={styles.detallesImagenGrande}>
-          {prendaDetalles.Prenda_imagen_url ? (
-            <img
-              src={prendaDetalles.Prenda_imagen_url}
-              alt={prendaDetalles.Prenda_nombre}
-              style={styles.detallesImagenGrandeImg}
-            />
-          ) : (
-            <div style={styles.imagePlaceholder}>Sin imagen</div>
-          )}
-        </div>
+                  <div style={styles.detallesInfo}>
+                    <h3 style={styles.detallesInfoTitulo}>{prendaDetalles.Prenda_nombre}</h3>
 
-        <div style={styles.detallesInfo}>
-          <h3 style={styles.detallesInfoTitulo}>{prendaDetalles.Prenda_nombre}</h3>
+                    <div style={styles.detalleItem}>
+                      <span style={styles.detalleItemLabel}>Marca:</span>
+                      <span style={styles.detalleItemValue}>
+                        {prendaDetalles.Prenda_marca_nombre || 'N/A'}
+                      </span>
+                    </div>
 
-          <div style={styles.detalleItem}>
-            <span style={styles.detalleItemLabel}>Marca:</span>
-            <span style={styles.detalleItemValue}>
-              {prendaDetalles.Prenda_marca_nombre || 'N/A'}
-            </span>
-          </div>
+                    <div style={styles.detalleItem}>
+                      <span style={styles.detalleItemLabel}>Modelo:</span>
+                      <span style={styles.detalleItemValue}>
+                        {prendaDetalles.Prenda_modelo_nombre || 'N/A'}
+                      </span>
+                    </div>
 
-          <div style={styles.detalleItem}>
-            <span style={styles.detalleItemLabel}>Modelo:</span>
-            <span style={styles.detalleItemValue}>
-              {prendaDetalles.Prenda_modelo_nombre || 'N/A'}
-            </span>
-          </div>
+                    <div style={styles.detalleItem}>
+                      <span style={styles.detalleItemLabel}>Color:</span>
+                      <span style={styles.detalleItemValue}>
+                        {prendaDetalles.Prenda_color_nombre || 'N/A'}
+                      </span>
+                    </div>
 
-          <div style={styles.detalleItem}>
-            <span style={styles.detalleItemLabel}>Color:</span>
-            <span style={styles.detalleItemValue}>
-              {prendaDetalles.Prenda_color_nombre || 'N/A'}
-            </span>
-          </div>
+                    {/* 🔒 SOLO MOSTRAR COSTO SI NO ES COSTURERO NI ESTAMPADOR */}
+                    {user?.rol !== "Costurero" && user?.rol !== "Estampador" && (
+                      <div style={styles.detalleItem}>
+                        <span style={styles.detalleItemLabel}>Costo Total de Producción:</span>
+                        <span style={styles.detalleItemValue}>
+                          ${prendaDetalles.Prenda_costo_total_produccion?.toFixed(2) || '0.00'}
+                        </span>
+                      </div>
+                    )}
 
-          {/* 🔒 SOLO MOSTRAR COSTO SI NO ES COSTURERO NI ESTAMPADOR */}
-          {user?.rol !== "Costurero" && user?.rol !== "Estampador" && (
-            <div style={styles.detalleItem}>
-              <span style={styles.detalleItemLabel}>Costo Total de Producción:</span>
-              <span style={styles.detalleItemValue}>
-                ${prendaDetalles.Prenda_costo_total_produccion?.toFixed(2) || '0.00'}
-              </span>
+                    <div style={styles.detalleSeccion}>
+                      <h4 style={styles.detalleSeccionTitulo}>Insumos Utilizados:</h4>
+                      {prendaDetalles.insumos_prendas?.length > 0 ? (
+                        <table style={styles.tablaInsumos}>
+                          <thead style={styles.tablaInsumosHead}>
+                            <tr>
+                              <th style={styles.tablaInsumosTh}>Insumo</th>
+                              <th style={styles.tablaInsumosTh}>Cantidad</th>
+                              {/* 🔒 SOLO MOSTRAR COLUMNA COSTO SI NO ES COSTURERO NI ESTAMPADOR */}
+                              {user?.rol !== "Costurero" && user?.rol !== "Estampador" && (
+                                <th style={styles.tablaInsumosTh}>Costo</th>
+                              )}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {prendaDetalles.insumos_prendas.map((ip, index) => (
+                              <tr key={index}>
+                                <td style={styles.tablaInsumosTd}>{ip.insumo_nombre}</td>
+                                <td style={styles.tablaInsumosTd}>
+                                  {ip.Insumo_prenda_cantidad_utilizada} {ip.Insumo_prenda_unidad_medida}
+                                </td>
+                                {/* 🔒 SOLO MOSTRAR COSTO SI NO ES COSTURERO NI ESTAMPADOR */}
+                                {user?.rol !== "Costurero" && user?.rol !== "Estampador" && (
+                                  <td style={styles.tablaInsumosTd}>
+                                    ${ip.Insumo_prenda_costo_total?.toFixed(2) || '0.00'}
+                                  </td>
+                                )}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      ) : (
+                        <p style={{ color: '#999' }}>No hay insumos registrados</p>
+                      )}
+                    </div>
+
+                    <div style={styles.detalleSeccion}>
+                      <h4 style={styles.detalleSeccionTitulo}>Talles Disponibles:</h4>
+                      {prendaDetalles.talles?.length > 0 ? (
+                        <div style={styles.tallesLista}>
+                          {prendaDetalles.talles.map((talle, index) => (
+                            <span key={index} style={styles.talleBadge}>{talle}</span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p style={{ color: '#999' }}>No hay talles disponibles</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
+          
+          {/* MODAL DE CONFIRMACIÓN DE ELIMINACIÓN/EDICIÓN */}
+          {showConfirmModal && confirmData && (
+            <div style={styles.modalOverlay} onClick={handleCancelConfirm}>
+              <div style={styles.confirmModal} onClick={(e) => e.stopPropagation()}>
+                
+                {(() => {
+                    const content = getConfirmModalContent();
+                    
+                    return (
+                        <>
+                            <div style={styles.confirmHeader}>
+                                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px'}}>
+                                    {content.icon}
+                                </div>
+                                <h2 style={{...styles.confirmTitle, color: content.buttonColor}}>{content.title}</h2>
+                                
+                                <p style={styles.confirmMessage}>
+                                  {content.message.includes('eliminar permanentemente') ? (
+                                    <>
+                                        {content.message.split(': ')[0]}: <br/>
+                                        <span style={{fontWeight: 'bold', color: '#ffd70f'}}>
+                                            "{confirmData?.Prenda_nombre}"
+                                        </span>
+                                        <br/>
+                                        Esta acción **no se puede deshacer**.
+                                    </>
+                                  ) : (
+                                    content.message
+                                  )}
+                                </p>
+                            </div>
 
-          <div style={styles.detalleSeccion}>
-            <h4 style={styles.detalleSeccionTitulo}>Insumos Utilizados:</h4>
-            {prendaDetalles.insumos_prendas?.length > 0 ? (
-              <table style={styles.tablaInsumos}>
-                <thead style={styles.tablaInsumosHead}>
-                  <tr>
-                    <th style={styles.tablaInsumosTh}>Insumo</th>
-                    <th style={styles.tablaInsumosTh}>Cantidad</th>
-                    {/* 🔒 SOLO MOSTRAR COLUMNA COSTO SI NO ES COSTURERO NI ESTAMPADOR */}
-                    {user?.rol !== "Costurero" && user?.rol !== "Estampador" && (
-                      <th style={styles.tablaInsumosTh}>Costo</th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {prendaDetalles.insumos_prendas.map((ip, index) => (
-                    <tr key={index}>
-                      <td style={styles.tablaInsumosTd}>{ip.insumo_nombre}</td>
-                      <td style={styles.tablaInsumosTd}>
-                        {ip.Insumo_prenda_cantidad_utilizada} {ip.Insumo_prenda_unidad_medida}
-                      </td>
-                      {/* 🔒 SOLO MOSTRAR COSTO SI NO ES COSTURERO NI ESTAMPADOR */}
-                      {user?.rol !== "Costurero" && user?.rol !== "Estampador" && (
-                        <td style={styles.tablaInsumosTd}>
-                          ${ip.Insumo_prenda_costo_total?.toFixed(2) || '0.00'}
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <p style={{ color: '#999' }}>No hay insumos registrados</p>
-            )}
-          </div>
+                            <div style={styles.confirmActions}>
+                              <button
+                                onClick={handleCancelConfirm}
+                                style={styles.confirmCancelButton}
+                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#4b5563')}
+                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#374151')}
+                              >
+                                Cancelar
+                              </button>
+                              <button
+                                onClick={content.onConfirm}
+                                style={{...styles.confirmActionButton, backgroundColor: content.buttonColor}}
+                                disabled={loading}
+                                onMouseEnter={(e) => !loading && (e.currentTarget.style.backgroundColor = content.buttonColor)}
+                                onMouseLeave={(e) => !loading && (e.currentTarget.style.backgroundColor = content.buttonColor)}
+                              >
+                                {loading ? 'Procesando...' : content.buttonText}
+                              </button>
+                            </div>
+                        </>
+                    );
+                })()}
 
-          <div style={styles.detalleSeccion}>
-            <h4 style={styles.detalleSeccionTitulo}>Talles Disponibles:</h4>
-            {prendaDetalles.talles?.length > 0 ? (
-              <div style={styles.tallesLista}>
-                {prendaDetalles.talles.map((talle, index) => (
-                  <span key={index} style={styles.talleBadge}>{talle}</span>
-                ))}
               </div>
-            ) : (
-              <p style={{ color: '#999' }}>No hay talles disponibles</p>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+            </div>
+          )}
 
           {/* ALERTA */}
           {alert && (

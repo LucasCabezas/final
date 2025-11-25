@@ -338,32 +338,43 @@ const styles = {
     flex: 1,
     fontWeight: '500'
   },
+  // --- ESTILOS DE CONFIRMACIÓN DE ELIMINACIÓN ---
+  confirmModalOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 3000, 
+  },
   confirmModal: {
-    backgroundColor: 'rgba(30, 30, 30, 0.95)',
+    backgroundColor: 'rgba(30, 30, 30, 0.98)',
     borderRadius: '12px',
     padding: '28px',
     width: '100%',
     maxWidth: '420px',
-    border: '1px solid rgba(255, 255, 255, 0.1)'
-  },
-  confirmHeader: {
-    marginBottom: '20px'
+    border: '1px solid rgba(244, 67, 54, 0.5)',
+    textAlign: 'center'
   },
   confirmTitle: {
     fontSize: '22px',
     fontWeight: 'bold',
-    color: '#ffffff',
     marginBottom: '12px'
   },
   confirmMessage: {
     color: '#d1d5db',
     fontSize: '15px',
-    lineHeight: '1.5'
+    lineHeight: '1.5',
+    marginBottom: '24px'
   },
   confirmActions: {
     display: 'flex',
     gap: '12px',
-    marginTop: '24px'
+    justifyContent: 'center',
   },
   confirmCancelButton: {
     flex: 1,
@@ -377,22 +388,10 @@ const styles = {
     transition: 'background-color 0.2s',
     fontSize: '14px'
   },
-  confirmActionButton: {
-    flex: 1,
-    padding: '10px 16px',
-    backgroundColor: '#10b981',
-    color: '#ffffff',
-    borderRadius: '8px',
-    border: 'none',
-    cursor: 'pointer',
-    fontWeight: '600',
-    transition: 'background-color 0.2s',
-    fontSize: '14px'
-  },
   confirmDeleteButton: {
     flex: 1,
     padding: '10px 16px',
-    backgroundColor: '#ef4444',
+    backgroundColor: '#ef4444', // Rojo
     color: '#ffffff',
     borderRadius: '8px',
     border: 'none',
@@ -401,6 +400,7 @@ const styles = {
     transition: 'background-color 0.2s',
     fontSize: '14px'
   },
+  // --- FIN ESTILOS DE CONFIRMACIÓN ---
   alertasContainer: {
     marginBottom: '20px',
     padding: '16px',
@@ -1006,13 +1006,16 @@ function Insumos() {
   };
 
   const getConfirmModalContent = () => {
+    // Definimos los colores para las acciones
+    const COLOR_ACCION = styles.alertSuccess.backgroundColor; // Verde (#10b981)
+    const COLOR_ELIMINAR = styles.alertError.backgroundColor; // Rojo (#ef4444)
+
     if (confirmAction === 'add') {
       return {
         title: 'Agregar Insumo',
         message: '¿Está seguro que desea agregar este insumo al inventario?',
         buttonText: 'Agregar',
-        buttonStyle: styles.confirmActionButton,
-        buttonClass: 'hover-confirm-action',
+        buttonColor: COLOR_ACCION,
         onConfirm: handleConfirmSubmit
       };
     } else if (confirmAction === 'edit') {
@@ -1022,8 +1025,7 @@ function Insumos() {
           ? `¿Está seguro que desea agregar ${confirmData.cantidad} unidades? (Total: ${editingInsumo.Insumo_cantidad + Number(confirmData.cantidad)})`
           : '¿Está seguro que desea guardar los cambios realizados?',
         buttonText: 'Guardar',
-        buttonStyle: styles.confirmActionButton,
-        buttonClass: 'hover-confirm-action',
+        buttonColor: COLOR_ACCION,
         onConfirm: handleConfirmSubmit
       };
     } else if (confirmAction === 'edit_with_impact') {
@@ -1040,29 +1042,29 @@ function Insumos() {
         message: `Estás a punto de cambiar el ${cambiosTexto.join(' y el ')} del insumo "${confirmData.insumo.Insumo_nombre}".`,
         messageExtra: `Este cambio afectará automáticamente a ${confirmData.total} ${confirmData.total === 1 ? 'prenda que usa' : 'prendas que usan'} este insumo:`,
         buttonText: 'Confirmar cambios',
-        buttonStyle: styles.confirmActionButton,
-        buttonClass: 'hover-confirm-action',
+        buttonColor: COLOR_ACCION, 
         onConfirm: handleConfirmSubmit,
         showPrendas: true,
         showWarning: true
       };
     } else if (confirmAction === 'delete') {
+      // ✅ CASO DE ELIMINACIÓN SIMPLE
       return {
         title: 'Eliminar Insumo',
-        message: `¿Estás seguro de que deseas eliminar el insumo "${confirmData?.Insumo_nombre}"? Esta acción no se puede deshacer.`,
+        message: `¿Estás seguro de que deseas eliminar permanentemente el insumo: "${confirmData?.Insumo_nombre}"? Esta acción no se puede deshacer.`,
         buttonText: 'Eliminar',
-        buttonStyle: styles.confirmDeleteButton,
-        buttonClass: 'hover-confirm-delete',
-        onConfirm: handleConfirmDelete
+        buttonColor: COLOR_ELIMINAR, // Rojo para el botón principal
+        onConfirm: handleConfirmDelete,
+        icon: <Trash2 size={40} style={{marginRight: '12px', color: COLOR_ELIMINAR}} />
       };
     } else if (confirmAction === 'delete_blocked') {
+      // ✅ CASO DE ELIMINACIÓN BLOQUEADA
       return {
         title: '⚠️ No se puede eliminar',
         message: `El insumo "${confirmData.insumo.Insumo_nombre}" está siendo usado por ${confirmData.total} ${confirmData.total === 1 ? 'prenda' : 'prendas'}.`,
         messageExtra: 'Para eliminarlo, primero debes eliminar o modificar estas prendas:',
         buttonText: 'Entendido',
-        buttonStyle: styles.confirmActionButton,
-        buttonClass: 'hover-confirm-action',
+        buttonColor: COLOR_ACCION, // Color de acción para "Entendido"
         onConfirm: handleCancelConfirm,
         hideCancel: true,
         showPrendas: true
@@ -1225,17 +1227,6 @@ function Insumos() {
                 <span style={styles.paginationInfo}>
                   Página {currentPage} de {totalPages}
                 </span>
-                <button
-                  onClick={handlePrevPage}
-                  disabled={currentPage === 1}
-                  style={{
-                    ...styles.paginationButton,
-                    ...(currentPage === 1 && styles.paginationDisabled)
-                  }}
-                  className="hover-icon"
-                >
-                  <ChevronLeft size={18} />
-                </button>
                 <button
                   onClick={handleNextPage}
                   disabled={currentPage === totalPages}
@@ -1434,61 +1425,70 @@ function Insumos() {
             {showConfirmModal && (() => {
               const content = getConfirmModalContent();
               return (
-                <div style={styles.modalOverlay} onClick={handleCancelConfirm}>
+                <div style={styles.confirmModalOverlay} onClick={handleCancelConfirm}>
                   <div style={styles.confirmModal} onClick={(e) => e.stopPropagation()}>
                     <div style={styles.confirmHeader}>
-                      <h2 style={styles.confirmTitle}>{content.title}</h2>
-                      <p style={styles.confirmMessage}>{content.message}</p>
-                      {content.messageExtra && (
-                        <p style={{...styles.confirmMessage, marginTop: '12px'}}>
-                          {content.messageExtra}
-                        </p>
-                      )}
-                      
-                      {content.showWarning && (
-                        <div style={styles.warningBox}>
-                          <div style={styles.warningTitle}>
-                            <AlertCircle style={{ width: '16px', height: '16px' }} />
-                            Cambios que se aplicarán:
-                          </div>
-                          <ul style={styles.warningList}>
-                            {confirmData.cambios.nombre && (
-                              <li>El nombre se actualizará en el inventario</li>
-                            )}
-                            {confirmData.cambios.unidad && (
-                              <li>La unidad de medida se actualizará en todas las prendas relacionadas</li>
-                            )}
-                          </ul>
-                        </div>
-                      )}
-                      
-                      {content.showPrendas && confirmData.prendas && (
-                        <div style={styles.prendasList}>
-                          {confirmData.prendas.map((prenda) => (
-                            <div key={prenda.id} style={styles.prendaItem}>
-                              <div style={styles.prendaItemName}>{prenda.nombre}</div>
-                              <div style={styles.prendaItemDetail}>
-                                Usa {prenda.cantidad_usada} {prenda.unidad}
-                              </div>
+                        {content.icon && (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px'}}>
+                                {content.icon}
                             </div>
-                          ))}
-                        </div>
-                      )}
+                        )}
+                        {/* 1. Título: Usa el color del botón (rojo o verde) */}
+                        <h2 style={{...styles.confirmTitle, color: content.buttonColor}}>{content.title}</h2>
+                        
+                        <p style={{...styles.confirmMessage, marginBottom: content.messageExtra ? '12px' : '24px'}}>{content.message}</p>
+                      
+                        {content.messageExtra && (
+                            <p style={{...styles.confirmMessage, marginTop: '12px'}}>{content.messageExtra}</p>
+                        )}
+                      
+                        {content.showWarning && (
+                            <div style={styles.warningBox}>
+                              <div style={styles.warningTitle}>
+                                <AlertCircle style={{ width: '16px', height: '16px' }} />
+                                Cambios que se aplicarán:
+                              </div>
+                              <ul style={styles.warningList}>
+                                {confirmData.cambios.nombre && (
+                                  <li>El nombre se actualizará en el inventario</li>
+                                )}
+                                {confirmData.cambios.unidad && (
+                                  <li>La unidad de medida se actualizará en todas las prendas relacionadas</li>
+                                )}
+                              </ul>
+                            </div>
+                        )}
+                      
+                        {content.showPrendas && confirmData.prendas && (
+                            <div style={styles.prendasList}>
+                              {confirmData.prendas.map((prenda) => (
+                                <div key={prenda.id} style={styles.prendaItem}>
+                                  <div style={styles.prendaItemName}>{prenda.nombre}</div>
+                                  <div style={styles.prendaItemDetail}>
+                                    Usa {prenda.cantidad_usada} {prenda.unidad}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                        )}
                     </div>
 
                     <div style={styles.confirmActions}>
+                      {/* 2. Botón CANCELAR (Fondo oscuro/gris) */}
                       {!content.hideCancel && (
                         <button
                           onClick={handleCancelConfirm}
-                          style={styles.confirmCancelButton}
+                          style={{...styles.confirmCancelButton}} // Usamos el estilo base
                           className="hover-confirm-cancel"
                         >
                           Cancelar
                         </button>
                       )}
+                      
+                      {/* 3. Botón PRINCIPAL (Fondo rojo o verde) */}
                       <button
                         onClick={content.onConfirm}
-                        style={content.buttonStyle}
+                        style={{...styles.confirmDeleteButton, backgroundColor: content.buttonColor}}
                         className={content.buttonClass}
                       >
                         {content.buttonText}
