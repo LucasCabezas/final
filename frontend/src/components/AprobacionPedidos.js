@@ -1033,7 +1033,7 @@ const AprobacionPedidos = () => {
                                                         </div>
                                                         
                                                         {/* Precio Total de Línea (Costo + Ganancia) */}
-                                                        <div style={{ fontSize: "12px", color: "#9ca3af" }}>Precio Total de Línea (Final)</div>
+                                                        <div style={{ fontSize: "12px", color: "#9ca3af", marginTop: "8px" }}>Precio Total de Línea (Final)</div>
                                                         <div
                                                             style={{
                                                                 fontSize: "16px",
@@ -1042,8 +1042,8 @@ const AprobacionPedidos = () => {
                                                                 marginTop: "4px",
                                                             }}
                                                         >
-                                                            {/* 🔥 CORRECCIÓN 2: Mostrar el Precio Total de Línea con Ganancia (precio_total) */}
-                                                            ${parseFloat(detalle.precio_total || 0).toFixed(2)}
+                                                            {/* 🔥 CORRECCIÓN 2: El Precio Total de Línea (Final) ahora es el Costo Real */}
+                                                            ${(parseFloat(detalle.precio_unitario || 0) * (detalle.cantidad || 1)).toFixed(2)}
                                                         </div>
                                                     </div>
                                                 )}
