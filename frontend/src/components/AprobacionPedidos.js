@@ -5,7 +5,8 @@ import Componente from './componente.jsx';
 import fondoImg from "./assets/fondo.png";
 import { XCircle, CheckCircle, Package, Trash2, X, AlertCircle } from 'lucide-react';
 
-const API_PEDIDOS_URL = "http://localhost:8000/api/pedidos/";
+// 🔥 CORRECCIÓN: Definir la URL de la API aquí
+const API_PEDIDOS_URL = "http://localhost:8000/api/pedidos/"; 
 
 const styles = {
     container: {
@@ -100,7 +101,6 @@ const styles = {
         fontSize: '12px',
         fontWeight: '600',
         textTransform: 'uppercase',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
         backgroundColor: 'rgba(255, 255, 255, 0.05)'
     },
     td: {
@@ -350,7 +350,39 @@ const styles = {
         fontWeight: "600",
         cursor: "pointer",
         transition: "all 0.2s"
-    }
+    },
+    // 🔥 Estilos para el desglose de totales (copiado de RealizarPedido.js)
+    resultadoContainer: {
+        backgroundColor: "rgba(30, 30, 30, 0.8)",
+        borderRadius: "12px",
+        padding: "24px",
+        marginTop: "20px",
+        border: "1px solid rgba(255, 215, 15, 0.3)"
+    },
+    resultadoGrid: {
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+        gap: "16px",
+        marginBottom: "20px"
+    },
+    resultadoItem: {
+        backgroundColor: "rgba(0,0,0,0.3)",
+        padding: "16px",
+        borderRadius: "8px",
+        border: "1px solid rgba(255,255,255,0.05)",
+        color: "#fff",
+        textAlign: "center"
+    },
+    resultadoLabel: {
+        fontSize: "12px",
+        color: "#9ca3af",
+        marginBottom: "4px"
+    },
+    resultadoValue: {
+        fontSize: "20px",
+        fontWeight: "bold",
+        color: "#ffd70f"
+    },
 };
 
 // Función de utilidad para formatear la fecha sin desfase de zona horaria (mantenida de RealizarPedido.js)
@@ -406,12 +438,51 @@ const AprobacionPedidos = () => {
         fecha: '', 
         estado: 'PENDIENTE_DUENO' 
     });
+    
+    // 🔥 ESTADO PARA ALMACENAR EL DESGLOSE DE TOTALES EN DETALLES
+    const [resultadoDetalles, setResultadoDetalles] = useState(null);
+
 
     const navbarWidth = isNavbarCollapsed ? 70 : 250;
 
     const mostrarAlert = (message, type = "success") => {
         setAlert({ message, type });
         setTimeout(() => setAlert(null), 5000);
+    };
+    
+    // 🔥 FUNCIÓN PARA CALCULAR TOTALES DETALLES (COPIADA DE RealizarPedido.js)
+    const calcularTotalesDetalles = (detalles) => {
+        if (!detalles || detalles.length === 0) {
+            return { total_mo: 0, total_insumos: 0, subtotal: 0, total: 0 };
+        }
+        
+        let totalCostoMO = 0; 
+        let totalCostoInsumos = 0; 
+
+        detalles.forEach(d => {
+            const cantidad = parseInt(d.cantidad || 0);
+            
+            // Usamos los nuevos campos que el backend ahora envía:
+            const costoMOUnitario = parseFloat(d.costo_mo_unitario || 0);
+            const costoInsumoUnitario = parseFloat(d.costo_insumos_unitario || 0);
+            
+            totalCostoMO += costoMOUnitario * cantidad;
+            totalCostoInsumos += costoInsumoUnitario * cantidad;
+        });
+
+        const subtotal = totalCostoMO + totalCostoInsumos; // Costo Total de Producción
+        
+        // 🔥 Ganancia y Total Final: Se asume que en el modal de detalles NO queremos ver la ganancia aplicada
+        const total = subtotal; 
+        
+        return {
+            // Costo Total de Producción (Subtotal)
+            total_mo: totalCostoMO, 
+            total_insumos: totalCostoInsumos,
+            subtotal: subtotal,
+            // Total Final (Costo Real)
+            total: total
+        };
     };
 
     const cargarPedidos = async () => {
@@ -622,6 +693,28 @@ const AprobacionPedidos = () => {
             estado: 'PENDIENTE_DUENO' 
         });
     };
+    
+    // Función para cargar los detalles y establecer el estado de los totales
+    const handleVerDetalles = async (pedido) => {
+        try {
+            setLoading(true);
+            const response = await axios.get(`${API_PEDIDOS_URL}${pedido.Pedido_ID}/`);
+            const data = response.data;
+            
+            // Re-calculamos el desglose de totales aquí (usando la data del API)
+            // Esto usa los campos costo_mo_unitario y costo_insumos_unitario que el backend ahora envía
+            const totalesCalculados = calcularTotalesDetalles(data.detalles);
+            setResultadoDetalles(totalesCalculados);
+
+            setPedidoSeleccionado(data);
+            
+        } catch (error) {
+            console.error("Error al cargar detalles:", error);
+            mostrarAlert("Error al cargar los detalles del pedido", "error");
+        } finally {
+            setLoading(false);
+        }
+    };
 
 
     if (loading || !user) {
@@ -740,7 +833,7 @@ const AprobacionPedidos = () => {
                                                     <td style={styles.td}>
                                                         <button
                                                             style={styles.btnVer}
-                                                            onClick={() => setPedidoSeleccionado(pedido)}
+                                                            onClick={() => handleVerDetalles(pedido)}
                                                             onMouseEnter={(e) => e.target.style.backgroundColor = '#2563eb'}
                                                             onMouseLeave={(e) => e.target.style.backgroundColor = '#3b82f6'}
                                                         >
@@ -885,7 +978,8 @@ const AprobacionPedidos = () => {
                                                 }}
                                             >
                                                 <img
-                                                    src={detalle.prenda_imagen || "https://via.placeholder.com/100x100?text=Sin+Imagen"}
+                                                    // 🔥 CORRECCIÓN 1: Lógica de la URL de la imagen
+                                                    src={detalle.prenda_imagen?.startsWith('http') ? detalle.prenda_imagen : `http://localhost:8000${detalle.prenda_imagen}` || "https://via.placeholder.com/100x100?text=Sin+Imagen"}
                                                     alt={detalle.prenda_nombre || 'Prenda'}
                                                     style={{
                                                         width: "100px",
@@ -928,36 +1022,28 @@ const AprobacionPedidos = () => {
                                                         <div>Cantidad: {detalle.cantidad || 0}</div>
                                                     </div>
                                                 </div>
+                                                {/* Mostrar el desglose si es Dueño */}
                                                 {user && user.rol === 'Dueño' && detalle.precio_total !== undefined && (
                                                     <div style={{ textAlign: "right", minWidth: "140px" }}>
-                                                        <div style={{ fontSize: "12px", color: "#9ca3af" }}>Subtotal</div>
-                                                        <div style={{ fontSize: "14px", color: "#f59e0b", marginBottom: "4px" }}>
-                                                            ${parseFloat(detalle.precio_total || 0).toFixed(2)}
+                                                        
+                                                        {/* Costo Unitario Base (Costo de Producción + Recargo XL) */}
+                                                        <div style={{ fontSize: "12px", color: "#9ca3af" }}>Costo Unitario (Base + Recargo)</div>
+                                                        <div style={{ fontSize: "14px", fontWeight: "bold", color: "#ffd70f", marginBottom: "4px" }}>
+                                                            ${parseFloat(detalle.precio_unitario || 0).toFixed(2)}
                                                         </div>
-                                                        <div style={{ fontSize: "12px", color: "#9ca3af" }}>Ganancia (25%)</div>
-                                                        <div style={{ fontSize: "14px", color: "#10b981", marginBottom: "8px" }}>
-                                                            ${(() => {
-                                                                const subtotal = parseFloat(detalle.precio_total || 0);
-                                                                const ganancia = subtotal * (pedidoSeleccionado.porcentaje_ganancia || 25) / 100;
-                                                                return ganancia.toFixed(2);
-                                                            })()}
-                                                        </div>
-                                                        <div style={{ fontSize: "12px", color: "#9ca3af" }}>TOTAL REAL</div>
+                                                        
+                                                        {/* Precio Total de Línea (Costo + Ganancia) */}
+                                                        <div style={{ fontSize: "12px", color: "#9ca3af" }}>Precio Total de Línea (Final)</div>
                                                         <div
                                                             style={{
-                                                                fontSize: "18px",
+                                                                fontSize: "16px",
                                                                 fontWeight: "bold",
-                                                                color: "#ffd70f",
+                                                                color: "#f59e0b",
                                                                 marginTop: "4px",
-                                                                borderTop: "1px solid rgba(255,255,255,0.2)",
-                                                                paddingTop: "4px",
                                                             }}
                                                         >
-                                                            ${(() => {
-                                                                const subtotal = parseFloat(detalle.precio_total || 0);
-                                                                const ganancia = subtotal * (pedidoSeleccionado.porcentaje_ganancia || 25) / 100;
-                                                                return (subtotal + ganancia).toFixed(2);
-                                                            })()}
+                                                            {/* 🔥 CORRECCIÓN 2: Mostrar el Precio Total de Línea con Ganancia (precio_total) */}
+                                                            ${parseFloat(detalle.precio_total || 0).toFixed(2)}
                                                         </div>
                                                     </div>
                                                 )}
@@ -978,40 +1064,28 @@ const AprobacionPedidos = () => {
                                         </div>
                                     )}
                                 </div>
-                                {user && user.rol === 'Dueño' && pedidoSeleccionado.detalles &&
-                                    pedidoSeleccionado.detalles.some((d) => d.precio_total) && (
-                                    <div
-                                        style={{
-                                            backgroundColor: "rgba(255, 215, 15, 0.1)",
-                                            borderRadius: "12px",
-                                            padding: "20px",
-                                            marginTop: "20px",
-                                            border: "1px solid rgba(255, 215, 15, 0.3)",
-                                        }}
-                                    >
-                                        <div style={{ display: "flex", justifyContent: "space-between", width: "100%", color: "#d1d5db", fontSize: "14px", marginBottom: "8px" }}>
-                                            <span>Subtotal del Pedido:</span>
-                                            <span>
-                                                ${pedidoSeleccionado.detalles.reduce((acc, d) => acc + parseFloat(d.precio_total || 0), 0).toFixed(2)}
-                                            </span>
-                                        </div>
-                                        <div style={{ display: "flex", justifyContent: "space-between", width: "100%", color: "#10b981", fontSize: "14px", marginBottom: "12px" }}>
-                                            <span>Ganancia Total ({pedidoSeleccionado.porcentaje_ganancia || 25}%)</span>
-                                            <span>
-                                                ${(() => {
-                                                    const subtotal = pedidoSeleccionado.detalles.reduce((acc, d) => acc + parseFloat(d.precio_total || 0), 0);
-                                                    return (subtotal * (pedidoSeleccionado.porcentaje_ganancia || 25) / 100).toFixed(2);
-                                                })()}
-                                            </span>
-                                        </div>
-                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(255,255,255,0.2)", paddingTop: "12px" }}>
-                                            <div style={{ color: "#d1d5db", fontSize: "18px", fontWeight: "600" }}>TOTAL FINAL DEL PEDIDO</div>
-                                            <div style={{ color: "#ffd70f", fontSize: "28px", fontWeight: "bold" }}>
-                                                ${(() => {
-                                                    const subtotal = pedidoSeleccionado.detalles.reduce((acc, d) => acc + parseFloat(d.precio_total || 0), 0);
-                                                    const ganancia = subtotal * (pedidoSeleccionado.porcentaje_ganancia || 25) / 100;
-                                                    return (subtotal + ganancia).toFixed(2);
-                                                })()}
+                                
+                                {/* 🔥 BLOQUE DE DESGLOSE DE TOTALES (Resultado Completo) 🔥 */}
+                                {resultadoDetalles && (
+                                    <div style={styles.resultadoContainer}>
+                                        <div style={styles.resultadoGrid}>
+                                            <div style={styles.resultadoItem}>
+                                                <div style={styles.resultadoLabel}>Costo Mano de Obra Total</div>
+                                                <div style={styles.resultadoValue}>
+                                                    ${resultadoDetalles.total_mo.toFixed(2)}
+                                                </div>
+                                            </div>
+                                            <div style={styles.resultadoItem}>
+                                                <div style={styles.resultadoLabel}>Costo Total de Insumos</div>
+                                                <div style={styles.resultadoValue}>
+                                                    ${resultadoDetalles.total_insumos.toFixed(2)}
+                                                </div>
+                                            </div>
+                                            <div style={styles.resultadoItem}>
+                                                <div style={styles.resultadoLabel}>Costo Total de Producción (Subtotal)</div>
+                                                <div style={styles.resultadoValue}>
+                                                    ${resultadoDetalles.subtotal.toFixed(2)}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
