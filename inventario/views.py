@@ -5,6 +5,7 @@ from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.decorators import api_view
 from django.db import transaction
+# 🔥 Importamos Sum y F para la lógica del modelo
 from django.db.models import Sum, F, Q
 from django.shortcuts import get_object_or_404
 import json
@@ -101,7 +102,8 @@ class InsumoList(APIView):
         try:
             serializer = InsumoSerializer(data=request.data)
             if serializer.is_valid():
-                serializer.save()
+                # El save() del modelo se encarga del precio total y del recálculo (si aplica)
+                serializer.save() 
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
@@ -112,9 +114,13 @@ class InsumoList(APIView):
 # 🔹 INSUMOS - DETALLE / EDITAR / ELIMINAR
 # ===========================================================
 class InsumoDetail(APIView):
-    def get_object(self, pk):
+    def get_object(self, pk, lock=False):
         try:
-            return Insumo.objects.select_related('unidad_medida', 'tipo_insumo').get(pk=pk)
+            query = Insumo.objects.select_related('unidad_medida', 'tipo_insumo')
+            if lock:
+                # Solo aplica select_for_update si se pide explícitamente (ej: en PUT)
+                query = query.select_for_update()
+            return query.get(pk=pk)
         except Insumo.DoesNotExist:
             return None
 
@@ -126,24 +132,40 @@ class InsumoDetail(APIView):
 
     @transaction.atomic
     def put(self, request, pk):
-        insumo = self.get_object(pk)
+        # Usamos get_object con lock=True dentro de la transacción
+        insumo = self.get_object(pk, lock=True) 
         if not insumo:
             return Response({'error': 'Insumo no encontrado'}, status=status.HTTP_404_NOT_FOUND)
 
         unidad_anterior = insumo.unidad_medida_id
-        serializer = InsumoSerializer(insumo, data=request.data)
+        
+        # 🔥 Modificar la data para asegurar que el precio unitario se envíe con punto
+        data = request.data.copy()
+        precio_unitario_raw = data.get('Insumo_precio_unitario')
+        if precio_unitario_raw is not None:
+             # Reemplazar coma por punto para el parseo de float
+            data['Insumo_precio_unitario'] = str(precio_unitario_raw).replace(',', '.')
+        
+        serializer = InsumoSerializer(insumo, data=data)
+        
         if serializer.is_valid():
+            # El save() del modelo Insumo ahora maneja:
+            # 1. El cálculo de Insumo_precio_total
+            # 2. El recálculo de Prenda_costo_total_produccion para prendas relacionadas
             insumo_actualizado = serializer.save()
 
+            # Asegurar que la unidad de medida se actualice en la relación InsumosXPrendas
             if unidad_anterior != insumo_actualizado.unidad_medida_id:
                 InsumosXPrendas.objects.filter(insumo=insumo_actualizado).update(
                     Insumo_prenda_unidad_medida=insumo_actualizado.unidad_medida.nombre
                 )
-
+            
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @transaction.atomic # ✅ Añadimos @transaction.atomic para la eliminación segura
     def delete(self, request, pk):
+        # Usamos get_object sin lock para obtener el objeto a eliminar
         insumo = self.get_object(pk)
         if not insumo:
             return Response({'error': 'Insumo no encontrado'}, status=status.HTTP_404_NOT_FOUND)
@@ -584,9 +606,18 @@ class PrendaDetail(APIView):
                     TallesXPrendas.objects.create(talle=talle, prenda=prenda, stock=0)
 
             # Recalcular costo total si se actualizaron insumos
-            if insumos_data is not None:
+            if insumos_data is not None or 'Prenda_precio_unitario' in data:
+                # El valor de Prenda_precio_unitario (M.O.) puede venir actualizado en data
                 precio_confeccion = float(data.get('Prenda_precio_unitario', prenda.Prenda_precio_unitario))
+                
+                # Recalcular costo insumos total si no vino en el body (si solo se actualizó la MO)
+                if insumos_data is None:
+                    costo_insumos_total = InsumosXPrendas.objects.filter(prenda=prenda).aggregate(
+                        total=Sum('Insumo_prenda_costo_total')
+                    )['total'] or 0.0
+
                 costo_total = costo_insumos_total + precio_confeccion
+                
                 prenda.Prenda_costo_total_produccion = costo_total
                 prenda.Prenda_precio_unitario = precio_confeccion
                 prenda.save()
