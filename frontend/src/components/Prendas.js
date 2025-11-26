@@ -794,7 +794,7 @@ const Prendas = () => {
     try {
       const response = await axios.get(`${API_URL}/api/inventario/prendas/`);
       
-      // Validar que la respuesta sea un array
+      // 🔥 CORRECCIÓN DEL ERROR DE TIPOGRAFÍA
       if (!Array.isArray(response.data)) {
         console.error('La respuesta no es un array:', response.data);
         mostrarAlerta('Error: formato de datos inválido', 'error');
@@ -941,6 +941,20 @@ const Prendas = () => {
         return; // No actualiza si contiene caracteres no válidos
       }
     }
+
+    // 🔥 VALIDACIÓN DE COSTO DE PRODUCCIÓN (Prenda_precio_unitario)
+    if (name === 'Prenda_precio_unitario') {
+        // Regex que permite: 0 o más dígitos, opcionalmente un punto o coma, seguido de hasta 2 dígitos.
+        // Bloquea letras, símbolos, 'e'/'E', y el signo negativo.
+        const regex = /^\d*([.,]\d{0,2})?$/;
+        
+        // Convertir el valor a una cadena temporal con solo puntos para la verificación
+        const tempValue = value.replace(',', '.');
+
+        if (!regex.test(tempValue)) {
+            return; // No actualiza si no pasa la regex
+        }
+    }
     
     setFormData(prev => ({
       ...prev,
@@ -1083,6 +1097,12 @@ const Prendas = () => {
       }
     }
     
+    // Validar que el costo sea un número válido después de la entrada
+    if (isNaN(parseFloat(String(formData.Prenda_precio_unitario).replace(',', '.')))) {
+        mostrarAlerta('El costo de producción debe ser un valor numérico válido.', 'error');
+        return;
+    }
+
     if (modoEdicion) {
         // Intercepta la edición para mostrar el modal de confirmación
         setConfirmAction('edit');
@@ -1115,7 +1135,10 @@ const Prendas = () => {
       formDataToSend.append('Prenda_marca', dataToUse.formData.Prenda_marca);
       formDataToSend.append('Prenda_modelo', dataToUse.formData.Prenda_modelo);
       formDataToSend.append('Prenda_color', dataToUse.formData.Prenda_color);
-      formDataToSend.append('Prenda_precio_unitario', dataToUse.formData.Prenda_precio_unitario);
+      
+      // Asegurarse de que el precio se envíe con punto como separador decimal
+      const precioNormalizado = String(dataToUse.formData.Prenda_precio_unitario).replace(',', '.');
+      formDataToSend.append('Prenda_precio_unitario', parseFloat(precioNormalizado));
 
       if (dataToUse.formData.Prenda_imagen) {
         formDataToSend.append('Prenda_imagen', dataToUse.formData.Prenda_imagen);
@@ -1214,23 +1237,26 @@ const Prendas = () => {
   
   // Contenido del Modal de Confirmación
   const getConfirmModalContent = () => {
+    const COLOR_ACCION = styles.confirmActionButton.backgroundColor; // Verde
+    const COLOR_ELIMINAR = styles.confirmDeleteButton.backgroundColor; // Rojo
+
     if (confirmAction === 'edit') {
       return {
         title: 'Guardar Cambios',
         message: '¿Está seguro que desea actualizar la prenda con los cambios realizados?',
         buttonText: 'Actualizar',
-        buttonColor: styles.confirmActionButton.backgroundColor, // Verde
+        buttonColor: COLOR_ACCION, 
         onConfirm: handleConfirmSubmit,
-        icon: <Edit2 size={40} style={{marginRight: '12px', color: styles.confirmActionButton.backgroundColor}} />
+        icon: <Edit2 size={40} style={{marginRight: '12px', color: COLOR_ACCION}} />
       };
     } else if (confirmAction === 'delete') {
       return {
         title: 'Confirmar Eliminación',
         message: `¿Está seguro de que desea eliminar permanentemente la prenda: "${confirmData?.Prenda_nombre}"? Esta acción no se puede deshacer.`,
         buttonText: 'Sí, Eliminar',
-        buttonColor: styles.confirmDeleteButton.backgroundColor, // Rojo
+        buttonColor: COLOR_ELIMINAR, 
         onConfirm: handleConfirmDelete,
-        icon: <Trash2 size={40} style={{marginRight: '12px', color: styles.confirmDeleteButton.backgroundColor}} />
+        icon: <Trash2 size={40} style={{marginRight: '12px', color: COLOR_ELIMINAR}} />
       };
     }
     return null;
@@ -1357,10 +1383,13 @@ const Prendas = () => {
                     <span style={styles.prendaDetailValue}>{prenda.Prenda_color_nombre || 'N/A'}</span>
                   </div>
                   
-                  <div style={styles.prendaDetail}>
-                    <span style={styles.prendaDetailLabel}>Costo:</span>
-                    <span style={styles.prendaDetailValue}>${prenda.Prenda_costo_total_produccion?.toFixed(2) || '0.00'}</span>
-                  </div>
+                  {/* 🔥 CORRECCIÓN: Ocultar costo para Costurero y Estampador */}
+                  {user?.rol !== "Costurero" && user?.rol !== "Estampador" && (
+                      <div style={styles.prendaDetail}>
+                        <span style={styles.prendaDetailLabel}>Costo:</span>
+                        <span style={styles.prendaDetailValue}>${prenda.Prenda_costo_total_produccion?.toFixed(2) || '0.00'}</span>
+                      </div>
+                  )}
                 </div>
 
                 <div style={styles.prendaActions}>
@@ -1536,13 +1565,11 @@ const Prendas = () => {
                     <div style={styles.formGroup}>
                       <label style={styles.label}>Costo de Producción (Mano de Obra) *</label>
                       <input
-                        type="number"
+                        type="text" // Cambiado a type="text" para control total de input
                         name="Prenda_precio_unitario"
                         value={formData.Prenda_precio_unitario}
                         onChange={handleInputChange}
                         style={styles.input}
-                        min="0"
-                        step="0.01"
                         required
                       />
                     </div>

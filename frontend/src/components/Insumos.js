@@ -746,6 +746,7 @@ function Insumos() {
   };
   
   useEffect(() => {
+    // 🔥 CORRECCIÓN: Si los filtros cambian, volvemos a la página 1
     setCurrentPage(1);
   }, [searchTerm, filterMode]);
 
@@ -854,7 +855,10 @@ function Insumos() {
         finalQuantity = editingInsumo.Insumo_cantidad + Number(confirmData.cantidad || formData.cantidad);
       }
 
-      const precioUnitario = Number(confirmData.precioUnitario || formData.precioUnitario);
+      // Convertir el valor de precioUnitario, reemplazando la coma por punto si existe
+      const precioUnitarioValue = String(confirmData.precioUnitario || formData.precioUnitario).replace(',', '.');
+      const precioUnitario = Number(precioUnitarioValue);
+      
       const cantidad = Number(finalQuantity);
       const precioTotal = precioUnitario * cantidad;
 
@@ -991,14 +995,29 @@ function Insumos() {
       }
     }
 
-    // Validación para cantidad y cantidadMinima: solo números enteros
+    // 1. Validación para cantidad y cantidadMinima: solo números enteros
     if (name === 'cantidad' || name === 'cantidadMinima') {
-      // Permitir solo números enteros (sin decimales)
-      if (value !== '' && !/^\d+$/.test(value)) {
+      // Permitir solo números enteros (sin decimales, sin 'e', sin '-')
+      const regex = /^\d*$/;
+      if (!regex.test(value)) {
         return;
       }
     }
 
+    // 2. Validación para Precio Unitario: números positivos, 1 separador decimal (punto o coma) y hasta 2 decimales
+    if (name === 'precioUnitario') {
+        // Regex que permite: 0 o más dígitos, opcionalmente un punto o coma, seguido de hasta 2 dígitos.
+        const regex = /^\d*([.,]\d{0,2})?$/;
+        
+        // Convertir el valor a una cadena temporal con solo puntos para la verificación
+        const tempValue = value.replace(',', '.');
+
+        if (!regex.test(tempValue)) {
+            return;
+        }
+    }
+
+    // Caso por defecto
     setFormData((prev) => ({
       ...prev,
       [name]: value
@@ -1224,6 +1243,17 @@ function Insumos() {
 
             {filteredInsumos.length > itemsPerPage && (
               <div style={styles.paginationContainer}>
+                <button
+                  onClick={handlePrevPage}
+                  disabled={currentPage === 1}
+                  style={{
+                    ...styles.paginationButton,
+                    ...(currentPage === 1 && styles.paginationDisabled)
+                  }}
+                  className="hover-icon"
+                >
+                  <ChevronLeft size={18} />
+                </button>
                 <span style={styles.paginationInfo}>
                   Página {currentPage} de {totalPages}
                 </span>
@@ -1309,7 +1339,7 @@ function Insumos() {
                           : 'Cantidad disponible'}
                       </label>
                       <input
-                        type="number"
+                        type="text" // Cambiado a type="text" para control de input
                         name="cantidad"
                         value={formData.cantidad}
                         onChange={handleInputChange}
@@ -1358,7 +1388,7 @@ function Insumos() {
                     <div style={styles.formGroup}>
                       <label style={styles.label}>Precio Unitario</label>
                       <input
-                        type="number"
+                        type="text" // Cambiado a type="text" para control de input
                         name="precioUnitario"
                         value={formData.precioUnitario}
                         onChange={handleInputChange}
@@ -1386,7 +1416,7 @@ function Insumos() {
                     <div style={styles.formGroup}>
                       <label style={styles.label}>Cantidad Mínima</label>
                       <input
-                        type="number"
+                        type="text" // Cambiado a type="text" para control de input
                         name="cantidadMinima"
                         value={formData.cantidadMinima || ''}
                         onChange={handleInputChange}
@@ -1425,7 +1455,7 @@ function Insumos() {
             {showConfirmModal && (() => {
               const content = getConfirmModalContent();
               return (
-                <div style={styles.confirmModalOverlay} onClick={handleCancelConfirm}>
+                <div style={styles.modalOverlay} onClick={handleCancelConfirm}>
                   <div style={styles.confirmModal} onClick={(e) => e.stopPropagation()}>
                     <div style={styles.confirmHeader}>
                         {content.icon && (
@@ -1478,7 +1508,7 @@ function Insumos() {
                       {!content.hideCancel && (
                         <button
                           onClick={handleCancelConfirm}
-                          style={{...styles.confirmCancelButton}} // Usamos el estilo base
+                          style={styles.confirmCancelButton}
                           className="hover-confirm-cancel"
                         >
                           Cancelar

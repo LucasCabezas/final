@@ -383,27 +383,46 @@ class UsuarioDetail(APIView):
     def put(self, request, pk):
         try:
             user = User.objects.get(pk=pk)
+            data = request.data
             
-            # Actualizar campos básicos
-            user.first_name = request.data.get('nombre', user.first_name)
-            user.last_name = request.data.get('apellido', user.last_name)
-            user.email = request.data.get('email', user.email)
+            # --- MANEJO DE CONTRASEÑA ---
+            contrasena_actual = data.get('contrasenaActual')
+            nueva_contrasena = data.get('nuevaContrasena')
             
-            # Si hay nueva contraseña
-            new_password = request.data.get('password')
-            if new_password:
-                user.set_password(new_password)
+            if nueva_contrasena:
+                # 1. Verificar que la contraseña actual sea correcta
+                if not contrasena_actual:
+                    return Response({
+                        "error": "Debe proporcionar la contraseña actual para cambiarla."
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                if not user.check_password(contrasena_actual):
+                    return Response({
+                        "error": "La contraseña actual proporcionada es incorrecta."
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                # 2. Cifrar y guardar la nueva contraseña
+                user.set_password(nueva_contrasena)
+                # NOTA: user.save() debe llamarse después de set_password
             
+            # --- ACTUALIZAR CAMPOS BÁSICOS ---
+            user.first_name = data.get('nombre', user.first_name)
+            user.last_name = data.get('apellido', user.last_name)
+            user.email = data.get('correo', user.email) # Usamos 'correo' según tu frontend
+            user.username = data.get('correo', user.username) # Opcional: mantener username sincronizado
+            
+            # Guardar el usuario (incluye la contraseña si fue modificada)
             user.save()
             
-            # Actualizar DNI si existe
-            dni = request.data.get('dni')
-            if dni and hasattr(user, 'perfil'):
-                user.perfil.dni = dni
-                user.perfil.save()
+            # --- ACTUALIZAR PERFIL (DNI y Rol) ---
+            dni = data.get('dni')
+            if dni:
+                perfil, created = PerfilUsuario.objects.get_or_create(user=user)
+                perfil.dni = dni
+                perfil.save()
             
             # Actualizar rol si se proporciona
-            rol_id = request.data.get('rol_id')
+            rol_id = data.get('rol_id')
             if rol_id:
                 try:
                     user.groups.clear()  # Limpiar roles anteriores
@@ -412,18 +431,40 @@ class UsuarioDetail(APIView):
                 except Group.DoesNotExist:
                     pass
 
-            return Response({"message": "Usuario actualizado exitosamente"})
+            return Response({
+                "message": "Usuario actualizado exitosamente",
+                "nombre": user.first_name,
+                "apellido": user.last_name,
+                "correo": user.email,
+            }, status=status.HTTP_200_OK)
 
         except User.DoesNotExist:
             return Response({"error": "Usuario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error al actualizar usuario: {str(e)}")
+            return Response({
+                "error": f"Error interno al actualizar perfil."
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def delete(self, request, pk):
         try:
             user = User.objects.get(pk=pk)
+            
+            # 🔥 REGLA DE NEGOCIO APLICADA AQUÍ: Bloquear eliminación si el usuario es Dueño
+            if user.groups.filter(name='Dueño').exists():
+                return Response({
+                    "error": "No se puede eliminar un usuario con el rol 'Dueño'."
+                }, status=status.HTTP_403_FORBIDDEN) # 403 Forbidden
+            
             user.delete()
             return Response({"message": "Usuario eliminado exitosamente"})
         except User.DoesNotExist:
             return Response({"error": "Usuario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error al eliminar usuario: {str(e)}")
+            return Response({
+                "error": f"Error interno al eliminar usuario."
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # ===== GESTIÓN DE ROLES =====
 class RolList(APIView):

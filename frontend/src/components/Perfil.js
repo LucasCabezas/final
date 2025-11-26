@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { FaUpload, FaCheck, FaTimes } from "react-icons/fa";
+import { Eye, EyeOff } from 'lucide-react'; // Importar iconos de ojo
 import Componente from "./componente";
 import { useAuth } from "../context/AuthContext";
 
@@ -26,6 +27,11 @@ function Perfil() {
     hasLowerCase: false,
     hasNumber: false,
   });
+  
+  // 🔥 NUEVOS ESTADOS PARA CONTROLAR LA VISIBILIDAD DE LAS CONTRASEÑAS
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Cargar datos del usuario al montar el componente
   useEffect(() => {
@@ -466,9 +472,29 @@ function Perfil() {
       color: "#fff",
       transition: "all 0.3s ease",
       outline: "none",
+      width: '100%',
+      boxSizing: 'border-box'
     },
     inputError: {
       borderColor: "#ff4444",
+    },
+    // 🔥 NUEVOS ESTILOS PARA EL WRAPPER DEL INPUT CON ICONO
+    inputWrapper: {
+        position: 'relative',
+        display: 'flex',
+        alignItems: 'center',
+    },
+    passwordToggle: {
+        position: 'absolute',
+        right: '10px',
+        background: 'none',
+        border: 'none',
+        cursor: 'pointer',
+        color: '#9ca3af',
+        padding: 0,
+        display: 'flex',
+        alignItems: 'center',
+        zIndex: 10,
     },
     errorMessage: {
       fontSize: "12px",
@@ -649,19 +675,29 @@ function Perfil() {
               </p>
 
               <div style={styles.formGridFull}>
+                {/* 1. Contraseña Actual */}
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Contraseña Actual</label>
-                  <input
-                    type="password"
-                    name="contrasenaActual"
-                    value={formData.contrasenaActual}
-                    onChange={handleInputChange}
-                    placeholder=""
-                    style={{
-                      ...styles.input,
-                      ...(errors.contrasenaActual ? styles.inputError : {}),
-                    }}
-                  />
+                  <div style={styles.inputWrapper}>
+                    <input
+                      type={showCurrentPassword ? "text" : "password"}
+                      name="contrasenaActual"
+                      value={formData.contrasenaActual}
+                      onChange={handleInputChange}
+                      placeholder=""
+                      style={{
+                        ...styles.input,
+                        ...(errors.contrasenaActual ? styles.inputError : {}),
+                      }}
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                        style={styles.passwordToggle}
+                    >
+                        {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                   {errors.contrasenaActual && (
                     <span style={styles.errorMessage}>{errors.contrasenaActual}</span>
                   )}
@@ -669,23 +705,34 @@ function Perfil() {
               </div>
 
               <div style={{ ...styles.formGrid, marginTop: "20px" }}>
+                {/* 2. Nueva Contraseña */}
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Nueva Contraseña</label>
-                  <input
-                    type="password"
-                    name="nuevaContrasena"
-                    value={formData.nuevaContrasena}
-                    onChange={handleInputChange}
-                    placeholder=""
-                    style={{
-                      ...styles.input,
-                      ...(errors.nuevaContrasena ? styles.inputError : {}),
-                    }}
-                  />
+                  <div style={styles.inputWrapper}>
+                    <input
+                      type={showNewPassword ? "text" : "password"}
+                      name="nuevaContrasena"
+                      value={formData.nuevaContrasena}
+                      onChange={handleInputChange}
+                      placeholder=""
+                      style={{
+                        ...styles.input,
+                        ...(errors.nuevaContrasena ? styles.inputError : {}),
+                      }}
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        style={styles.passwordToggle}
+                    >
+                        {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                   {errors.nuevaContrasena && (
                     <span style={styles.errorMessage}>{errors.nuevaContrasena}</span>
                   )}
                   
+                  {/* Requisitos de Contraseña */}
                   {formData.nuevaContrasena && (
                     <div style={styles.passwordRequirements}>
                       <div style={{ fontSize: "12px", fontWeight: "600", color: "#ccc", marginBottom: "8px" }}>
@@ -730,19 +777,30 @@ function Perfil() {
                     </div>
                   )}
                 </div>
+                
+                {/* 3. Confirmar Nueva Contraseña */}
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Confirmar Nueva Contraseña</label>
-                  <input
-                    type="password"
-                    name="confirmarContrasena"
-                    value={formData.confirmarContrasena}
-                    onChange={handleInputChange}
-                    placeholder=""
-                    style={{
-                      ...styles.input,
-                      ...(errors.confirmarContrasena ? styles.inputError : {}),
-                    }}
-                  />
+                  <div style={styles.inputWrapper}>
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      name="confirmarContrasena"
+                      value={formData.confirmarContrasena}
+                      onChange={handleInputChange}
+                      placeholder=""
+                      style={{
+                        ...styles.input,
+                        ...(errors.confirmarContrasena ? styles.inputError : {}),
+                      }}
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        style={styles.passwordToggle}
+                    >
+                        {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                   {errors.confirmarContrasena && (
                     <span style={styles.errorMessage}>{errors.confirmarContrasena}</span>
                   )}

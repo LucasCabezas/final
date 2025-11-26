@@ -10,7 +10,7 @@ import {
   Search,
   XCircle
 } from "lucide-react";
-import Componente from "./componente.jsx";
+import Componente from "./componente.jsx"; 
 import fondoImg from "./assets/fondo.png";
 import { useAuth } from "../context/AuthContext";
 
@@ -72,7 +72,7 @@ const styles = {
     padding: "10px 14px",
     borderRadius: "8px",
     border: "1px solid #4b5563",
-    backgroundColor: "rgba(0,0,0,0.3)",
+    backgroundColor: "rgba(0,0,0,0.4)",
     color: "#fff",
     fontSize: "14px"
   },
@@ -81,7 +81,7 @@ const styles = {
     padding: "10px 14px",
     borderRadius: "8px",
     border: "1px solid #4b5563",
-    backgroundColor: "rgba(0,0,0,0.3)",
+    backgroundColor: "rgba(0,0,0,0.4)",
     color: "#fff",
     fontSize: "14px",
     cursor: "pointer"
@@ -600,6 +600,10 @@ export default function RealizarPedido() {
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
   const [modalDetallesOpen, setModalDetallesOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null); 
+  
+  // 🔥 ESTADO PARA ALMACENAR EL RESULTADO DEL CÁLCULO EN EL MODAL DE DETALLES
+  const [resultadoDetalles, setResultadoDetalles] = useState(null);
+
 
   const navbarWidth = isNavbarCollapsed ? 70 : 250;
 
@@ -732,7 +736,12 @@ export default function RealizarPedido() {
     const prendaBase = prendas.find((p) => p.Prenda_ID === selectedPrenda.Prenda_ID);
     if (!prendaBase) return;
 
-    let precioFinal = prendaBase.Prenda_precio_unitario || 0;
+    // 🔥 MODIFICACIÓN CLAVE: Usar el costo total de la prenda (insumos + M.O.)
+    // Si Prenda_costo_total_produccion no existe, usa Prenda_precio_unitario (solo M.O.) como fallback.
+    const costoUnitarioBase = prendaBase.Prenda_costo_total_produccion || prendaBase.Prenda_precio_unitario || 0;
+    
+    let precioFinal = costoUnitarioBase;
+    
     const recargo = (String(formData.talle).toUpperCase().includes("XL") ? Number(formData.recargoTalle) / 100 : 0);
     precioFinal = precioFinal * (1 + recargo);
 
@@ -740,7 +749,8 @@ export default function RealizarPedido() {
       ...prendaBase,
       cantidad: Number(formData.cantidad) || 1,
       talle: formData.talle,
-      precioUnitario: precioFinal
+      // Almacenar el costo unitario real incluyendo el recargo
+      precioUnitario: precioFinal 
     };
 
     setPedido((prev) => [...prev, nueva]);
@@ -758,16 +768,61 @@ export default function RealizarPedido() {
         showAlert("No hay prendas en el pedido", "error");
         return;
       }
-      const subtotal = pedido.reduce((acc, p) => acc + (p.precioUnitario || 0) * (Number(p.cantidad) || 0), 0);
+      
+      // Subtotal es la suma de COSTO * CANTIDAD (incluyendo insumos, M.O. y recargo XL)
+      const subtotal = pedido.reduce((acc, p) => {
+          // Aseguramos que los valores sean numéricos
+          const unitPrice = parseFloat(p.precioUnitario) || 0;
+          const quantity = parseInt(p.cantidad) || 0;
+          return acc + unitPrice * quantity;
+      }, 0);
+      
       const porcentaje = Number(formData.porcentajeGanancia) || 0;
       const ganancia = (subtotal * porcentaje) / 100;
       const total = subtotal + ganancia;
+      
       setResultado({ subtotal, ganancia, total });
       showAlert("Totales calculados correctamente", "success");
     } catch (error) {
       showAlert("Error al calcular totales", "error");
     }
   };
+  
+  // 🔥 FUNCIÓN PARA CALCULAR TOTALES AL VER DETALLES (FINAL: SOLO COSTO REAL)
+  const calcularTotalesDetalles = (detalles) => {
+    if (!detalles || detalles.length === 0) {
+        return { total_mo: 0, total_insumos: 0, subtotal: 0, total: 0 };
+    }
+    
+    let totalCostoMO = 0; 
+    let totalCostoInsumos = 0; 
+
+    detalles.forEach(d => {
+        const cantidad = parseInt(d.cantidad || 0);
+        
+        // Usamos los nuevos campos que el backend ahora envía:
+        const costoMOUnitario = parseFloat(d.costo_mo_unitario || 0);
+        const costoInsumoUnitario = parseFloat(d.costo_insumos_unitario || 0);
+        
+        totalCostoMO += costoMOUnitario * cantidad;
+        totalCostoInsumos += costoInsumoUnitario * cantidad;
+    });
+
+    const subtotal = totalCostoMO + totalCostoInsumos; // Costo Total de Producción
+    
+    // 🔥 Ganancia y Total Final: Se asume que en el modal de detalles NO queremos ver la ganancia aplicada
+    const total = subtotal; 
+    
+    return {
+        // Costo Total de Producción (Subtotal)
+        total_mo: totalCostoMO, 
+        total_insumos: totalCostoInsumos,
+        subtotal: subtotal,
+        // Total Final (Costo Real)
+        total: total
+    };
+  };
+
 
   const verificarStockAntesDeConfirmar = async () => {
     try {
@@ -806,6 +861,15 @@ export default function RealizarPedido() {
     }
     const stockOk = await verificarStockAntesDeConfirmar();
     if (!stockOk) return;
+    
+    // Si el usuario intentó confirmar sin calcular totales, forzamos el cálculo
+    if (!resultado) {
+        calcularTotales();
+        if (!resultado) {
+            showAlert("Calcule los totales antes de confirmar.", "error");
+            return;
+        }
+    }
 
     try {
       let estadoInicial = "PENDIENTE_COSTURERO";
@@ -916,9 +980,15 @@ export default function RealizarPedido() {
   const verDetallesPedido = async (p) => {
     try {
       const res = await axios.get(`http://localhost:8000/api/pedidos/${p.Pedido_ID || p.id}/`);
-      setPedidoSeleccionado(res.data);
+      const data = res.data;
+      
+      // 🔥 Calcular el desglose de totales aquí (FINAL: SOLO COSTO REAL)
+      const totalesCalculados = calcularTotalesDetalles(data.detalles);
+      setResultadoDetalles(totalesCalculados);
+      
+      setPedidoSeleccionado(data);
       setModalDetallesOpen(true);
-    } catch {
+    } catch (err) {
       showAlert("❌ Error al cargar detalles del pedido", "error");
     }
   };
@@ -1082,6 +1152,7 @@ export default function RealizarPedido() {
                               <div style={styles.prendaNombre}>{prenda.Prenda_nombre}</div>
                               <div style={styles.prendaDetalle}>{prenda.Prenda_marca_nombre || "Sin marca"}</div>
                               <div style={styles.prendaDetalle}>{prenda.Prenda_modelo_nombre || "Sin modelo"}</div>
+                              {/* Muestra el costo total de la prenda para el usuario */}
                               <div style={styles.prendaPrecio}>{"$" + (prenda.Prenda_costo_total_produccion || prenda.Prenda_precio_unitario || 0)}</div>
                             </div>
                           </div>
@@ -1127,9 +1198,10 @@ export default function RealizarPedido() {
                         <div style={styles.pedidoInfo}>
                           <div style={styles.pedidoNombre}>{p.Prenda_nombre}</div>
                           <div style={styles.pedidoDetalles}>
-                            Talle: {p.talle} | Cantidad: {p.cantidad} | Precio unit: {"$" + (p.precioUnitario || 0).toFixed(2)}
+                            Talle: {p.talle} | Cantidad: {p.cantidad} | Costo unit: {"$" + (p.precioUnitario || 0).toFixed(2)}
                           </div>
                         </div>
+                        {/* Muestra el Subtotal del costo para esta línea de pedido */}
                         <div style={styles.pedidoPrecio}>{"$" + ((p.precioUnitario || 0) * (p.cantidad || 0)).toFixed(2)}</div>
                         <button onClick={() => eliminarPrendaPedido(idx)} style={styles.btnEliminar}><Trash2 size={18} /></button>
                       </div>
@@ -1147,7 +1219,7 @@ export default function RealizarPedido() {
                       <div style={styles.resultadoContainer}>
                         <div style={styles.resultadoGrid}>
                           <div style={styles.resultadoItem}>
-                            <div style={styles.resultadoLabel}>Subtotal</div>
+                            <div style={styles.resultadoLabel}>Costo Total (Subtotal)</div>
                             <div style={styles.resultadoValue}>{"$" + resultado.subtotal.toFixed(2)}</div>
                           </div>
                           <div style={styles.resultadoItem}>
@@ -1155,7 +1227,7 @@ export default function RealizarPedido() {
                             <div style={styles.resultadoValue}>{"$" + resultado.ganancia.toFixed(2)}</div>
                           </div>
                           <div style={styles.resultadoItem}>
-                            <div style={styles.resultadoLabel}>Total Final</div>
+                            <div style={styles.resultadoLabel}>Total Final (Costo + Ganancia)</div>
                             <div style={styles.resultadoValue}>{"$" + resultado.total.toFixed(2)}</div>
                           </div>
                         </div>
@@ -1219,15 +1291,18 @@ export default function RealizarPedido() {
                             <div>Cantidad: {detalle.cantidad}</div>
                           </div>
                         </div>
+                        {/* El backend nos da el precio_total con la ganancia ya aplicada para cada detalle */}
                         {detalle.precio_total !== undefined && (
                           <div style={{ textAlign: "right", minWidth: "140px" }}>
-                            <div style={{ fontSize: "12px", color: "#9ca3af" }}>Subtotal</div>
-                            <div style={{ fontSize: "14px", color: "#f59e0b", marginBottom: "4px" }}>{"$" + parseFloat(detalle.precio_total || 0).toFixed(2)}</div>
-                            <div style={{ fontSize: "12px", color: "#9ca3af" }}>Ganancia (25%)</div>
-                            <div style={{ fontSize: "14px", color: "#10b981", marginBottom: "8px" }}>{"$" + ((parseFloat(detalle.precio_total || 0) * 0.25).toFixed(2))}</div>
-                            <div style={{ fontSize: "12px", color: "#9ca3af" }}>TOTAL REAL</div>
-                            <div style={{ fontSize: "18px", fontWeight: "bold", color: "#ffd70f", marginTop: "4px", borderTop: "1px solid rgba(255,255,255,0.2)", paddingTop: "4px" }}>
-                              {"$" + ((parseFloat(detalle.precio_total || 0) * 1.25).toFixed(2))}
+                            {/* 🔥 CAMBIO 1: Ajuste de título a solo "Costo Unitario" */}
+                            <div style={{ fontSize: "12px", color: "#9ca3af" }}>Costo Unitario (Base + Recargo)</div>
+                            <div style={{ fontSize: "18px", fontWeight: "bold", color: "#ffd70f", marginTop: "4px" }}>
+                              {"$" + (parseFloat(detalle.precio_unitario || 0)).toFixed(2)}
+                            </div>
+                            {/* 🔥 CAMBIO 2: Título y Cálculo basado en el COSTO UNITARIO para ignorar la ganancia */}
+                            <div style={{ fontSize: "12px", color: "#9ca3af", marginTop: "8px" }}>Precio Total de Línea (Costo)</div>
+                            <div style={{ fontSize: "14px", color: "#f59e0b" }}>
+                              {"$" + (parseFloat(detalle.precio_unitario || 0) * (detalle.cantidad || 1)).toFixed(2)}
                             </div>
                           </div>
                         )}
@@ -1240,24 +1315,34 @@ export default function RealizarPedido() {
                     </div>
                   )}
                 </div>
-                {pedidoSeleccionado.detalles && (
-                  <div style={{ backgroundColor: "rgba(255, 215, 15, 0.1)", borderRadius: "12px", padding: "20px", marginTop: "20px", border: "1px solid rgba(255, 215, 15, 0.3)" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", width: "100%", color: "#d1d5db", fontSize: "14px", marginBottom: "8px" }}>
-                      <span>Subtotal del Pedido:</span>
-                      <span>{"$" + pedidoSeleccionado.detalles.reduce((acc, d) => acc + parseFloat(d.precio_total || 0), 0).toFixed(2)}</span>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", width: "100%", color: "#10b981", fontSize: "14px", marginBottom: "12px" }}>
-                      <span>Ganancia Total (25%):</span>
-                      <span>{"$" + ((pedidoSeleccionado.detalles.reduce((acc, d) => acc + parseFloat(d.precio_total || 0), 0) * 0.25).toFixed(2))}</span>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(255,255,255,0.2)", paddingTop: "12px" }}>
-                      <div style={{ color: "#d1d5db", fontSize: "18px", fontWeight: "600" }}>TOTAL FINAL DEL PEDIDO</div>
-                      <div style={{ color: "#ffd70f", fontSize: "28px", fontWeight: "bold" }}>
-                        {"$" + ((pedidoSeleccionado.detalles.reduce((acc, d) => acc + parseFloat(d.precio_total || 0), 0) * 1.25).toFixed(2))}
+                
+                {/* 🔥 BLOQUE DE DESGLOSE DE TOTALES (CORRECTO: Muestra el desglose de MO + Insumos) 🔥 */}
+                {resultadoDetalles && (
+                  <div style={styles.resultadoContainer}>
+                    <h4 style={{ color: "#ffd70f", fontSize: "18px", fontWeight: "700", marginBottom: "15px", borderBottom: "1px solid rgba(255, 215, 15, 0.3)", paddingBottom: "8px" }}>Resumen de Costos</h4>
+                    
+                    <div style={styles.resultadoGrid}>
+                      {/* COSTO MANO DE OBRA */}
+                      <div style={styles.resultadoItem}>
+                        <div style={styles.resultadoLabel}>Costo Mano de Obra Total</div>
+                        <div style={styles.resultadoValue}>{"$" + resultadoDetalles.total_mo.toFixed(2)}</div>
+                      </div>
+                      
+                      {/* COSTO INSUMOS */}
+                      <div style={styles.resultadoItem}>
+                        <div style={styles.resultadoLabel}>Costo Total de Insumos</div>
+                        <div style={styles.resultadoValue}>{"$" + resultadoDetalles.total_insumos.toFixed(2)}</div>
+                      </div>
+
+                      <div style={styles.resultadoItem}>
+                        <div style={styles.resultadoLabel}>Costo Total de Producción (Subtotal)</div>
+                        <div style={styles.resultadoValue}>{"$" + resultadoDetalles.subtotal.toFixed(2)}</div>
                       </div>
                     </div>
                   </div>
                 )}
+                {/* FIN DEL NUEVO BLOQUE */}
+                
               </div>
             </div>
           )}

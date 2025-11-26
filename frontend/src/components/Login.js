@@ -468,7 +468,7 @@ function Login() {
 
             <form onSubmit={handleLogin} style={styles.form}>
               <div style={styles.inputGroup}>
-                <label style={styles.label}>Usuario</label>
+                <label style={styles.label}>Correo Electrónico</label>
                 <input
                   type="text"
                   placeholder="Ingresa tu usuario"

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Search, Plus, Edit2, Trash2, X, CheckCircle, AlertCircle, User } from 'lucide-react';
-import Componente from './componente.jsx';
+import { Search, Plus, Edit2, Trash2, X, CheckCircle, AlertCircle, User, Eye, EyeOff } from 'lucide-react';
+import Componente from './componente.jsx'; 
 import fondoImg from './assets/fondo.png';
 
 const styles = {
@@ -225,6 +225,23 @@ const styles = {
     transition: 'border-color 0.2s',
     boxSizing: 'border-box'
   },
+  inputWrapper: {
+    position: 'relative',
+    width: '100%'
+  },
+  passwordToggle: {
+    position: 'absolute',
+    right: '12px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    color: '#9ca3af',
+    padding: 0,
+    display: 'flex',
+    alignItems: 'center',
+  },
   select: {
     width: '100%',
     padding: '8px 16px',
@@ -279,6 +296,17 @@ const styles = {
     flex: 1,
     padding: '10px 16px',
     backgroundColor: '#10b981',
+    color: '#ffffff',
+    borderRadius: '8px',
+    border: 'none',
+    fontWeight: '600',
+    transition: 'background-color 0.2s',
+    fontSize: '14px'
+  },
+  confirmDeleteButton: {
+    flex: 1,
+    padding: '10px 16px',
+    backgroundColor: '#ef4444',
     color: '#ffffff',
     borderRadius: '8px',
     border: 'none',
@@ -472,6 +500,9 @@ function GestionUsuarios() {
     hasLowerCase: false,
     hasNumber: false,
   });
+  
+  // 🔥 NUEVO ESTADO PARA MOSTRAR/OCULTAR CONTRASEÑA
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (authenticatedFetch) { 
@@ -568,6 +599,8 @@ function GestionUsuarios() {
         rol_id: ''
       });
     }
+    // Reiniciar el estado de mostrar/ocultar contraseña al abrir
+    setShowPassword(false);
     setShowModal(true);
   };
 
@@ -746,6 +779,12 @@ function GestionUsuarios() {
       });
 
       if (!response.ok && response.status !== 204) {
+        // Verifica si es el error 403 que establecimos en Django
+        if (response.status === 403) {
+             const errorData = await response.json();
+             throw new Error(errorData.error || 'No tienes permiso para eliminar este usuario.');
+        }
+        
         throw new Error('Error al eliminar el usuario');
       }
 
@@ -756,7 +795,7 @@ function GestionUsuarios() {
       setConfirmData(null);
     } catch (error) {
       console.error('Error al eliminar usuario:', error);
-      showAlert('Error al eliminar el usuario', 'error');
+      showAlert(error.message, 'error');
     }
   };
 
@@ -802,11 +841,14 @@ function GestionUsuarios() {
     } else if (confirmAction === 'delete') {
       return {
         title: 'Eliminar Usuario',
-        message: `¿Estás seguro de que deseas eliminar al usuario "${confirmData?.nombre} ${confirmData?.apellido}"? Esta acción no se puede deshacer.`,
-        buttonText: 'Eliminar',
-        buttonStyle: styles.confirmDeleteButton,
-        buttonClass: 'hover-confirm-delete',
-        onConfirm: handleConfirmDelete
+        // Mensaje modificado para ser más claro sobre la restricción si aplica
+        message: confirmData?.rol === 'Dueño' 
+            ? 'ADVERTENCIA: Este usuario es Dueño. No se puede eliminar por seguridad.'
+            : `¿Estás seguro de que deseas eliminar al usuario "${confirmData?.nombre} ${confirmData?.apellido}"? Esta acción no se puede deshacer.`,
+        buttonText: confirmData?.rol === 'Dueño' ? 'Cerrar' : 'Eliminar',
+        buttonStyle: confirmData?.rol === 'Dueño' ? styles.confirmCancelButton : styles.confirmDeleteButton,
+        buttonClass: confirmData?.rol === 'Dueño' ? 'hover-confirm-cancel' : 'hover-confirm-delete',
+        onConfirm: confirmData?.rol === 'Dueño' ? handleCancelConfirm : handleConfirmDelete
       };
     }
     return null;
@@ -841,6 +883,10 @@ function GestionUsuarios() {
     // Mostrar resultados
     return filteredUsuarios.map((usuario) => {
         const badgeColor = getRolBadgeColor(usuario.rol);
+        
+        // 🔥 REGLA DE NEGOCIO EN FRONTEND: No mostrar el botón de eliminar si el rol es 'Dueño'
+        const isDueno = usuario.rol === 'Dueño';
+
         return (
             <tr key={usuario.id} style={styles.tr} className="hover-row">
               <td style={styles.td}>{usuario.nombre}</td>
@@ -873,13 +919,17 @@ function GestionUsuarios() {
                   >
                     <Edit2 style={{ width: '20px', height: '20px', color: '#60a5fa' }} />
                   </button>
-                  <button
-                    onClick={() => handleDeleteClick(usuario)}
-                    style={styles.iconButton}
-                    className="hover-icon"
-                  >
-                    <Trash2 style={{ width: '20px', height: '20px', color: '#f87171' }} />
-                  </button>
+                  
+                  {/* 🔥 OCULTAR BOTÓN DE ELIMINAR SI ES DUEÑO */}
+                  {!isDueno && (
+                      <button
+                        onClick={() => handleDeleteClick(usuario)}
+                        style={styles.iconButton}
+                        className="hover-icon"
+                      >
+                        <Trash2 style={{ width: '20px', height: '20px', color: '#f87171' }} />
+                      </button>
+                  )}
                 </div>
               </td>
             </tr>
@@ -1059,20 +1109,29 @@ function GestionUsuarios() {
                           />
                         </div>
 
-                        {/* Contraseña con requisitos */}
+                        {/* Contraseña con ojo */}
                         <div style={styles.formGroup}>
                           <label style={styles.label}>Contraseña *</label>
-                          <input
-                            type="password"
-                            name="password"
-                            value={formData.password}
-                            onChange={handleInputChange}
-                            style={styles.input}
-                            className="form-input"
-                            placeholder="Contraseña"
-                            required
-                            autoComplete='new-password'
-                          />
+                          <div style={styles.inputWrapper}>
+                            <input
+                              type={showPassword ? 'text' : 'password'}
+                              name="password"
+                              value={formData.password}
+                              onChange={handleInputChange}
+                              style={styles.input}
+                              className="form-input"
+                              placeholder="Contraseña"
+                              required
+                              autoComplete='new-password'
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                style={styles.passwordToggle}
+                            >
+                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                          </div>
                           
                           {/* Este bloque solo aparece si se empieza a escribir la contraseña */}
                           {formData.password && (
